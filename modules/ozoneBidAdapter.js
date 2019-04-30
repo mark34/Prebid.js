@@ -4,10 +4,13 @@ import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes';
 import {config} from '../src/config';
 
 const BIDDER_CODE = 'ozone';
-
-const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+// const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+// const OZONEURI = 'http://us.ozpr.net/openrtb2/auction';
+// const OZONEURI = 'http://eu.ozpr.net/openrtb2/auction';
+const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONEVERSION = '1.4.7';
+const OZONEVERSION = '1.4.8';
+
 export const spec = {
   code: BIDDER_CODE,
 
@@ -67,15 +70,11 @@ export const spec = {
   },
   buildRequests(validBidRequests, bidderRequest) {
     utils.logInfo('OZONE: ozone v' + OZONEVERSION + ' validBidRequests', validBidRequests, 'bidderRequest', bidderRequest);
-    utils.logInfo('OZONE: buildRequests setting auctionId', bidderRequest.auctionId);
     let singleRequest = config.getConfig('ozone.singleRequest');
-
     singleRequest = singleRequest !== false; // undefined & true will be true
     utils.logInfo('OZONE: config ozone.singleRequest : ', singleRequest);
     let htmlParams = validBidRequests[0].params; // the html page config params will be included in each element
     let ozoneRequest = {}; // we only want to set specific properties on this, not validBidRequests[0].params
-    //    ozoneRequest['id'] = utils.generateUUID();
-
     delete ozoneRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
     if (bidderRequest.gdprConsent) {
       utils.logInfo('OZONE: ADDING GDPR info');
@@ -92,7 +91,7 @@ export const spec = {
     ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
-      obj.id = ozoneBidRequest.bidId; // this causes a failure if we change it to something else
+      obj.id = ozoneBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
       // obj.id = ozoneBidRequest.adUnitCode; // (eg. 'mpu' or 'leaderboard') A unique identifier for this impression within the context of the bid request (typically, starts with 1 and increments.
       obj.tagid = (ozoneBidRequest.params.placementId).toString();
       obj.secure = window.location.protocol === 'https:' ? 1 : 0;
@@ -155,11 +154,9 @@ export const spec = {
       }
       return obj;
     });
-    utils.logInfo('tosendtags = ', tosendtags);
 
     ozoneRequest.site = {'publisher': {'id': htmlParams.publisherId}, 'page': document.location.href};
     ozoneRequest.test = parseInt(getTestQuerystringValue()); // will be 1 or 0
-    //    utils.logInfo('_ozoneInternal is', _ozoneInternal);
     // return the single request object OR the array:
     if (singleRequest) {
       utils.logInfo('OZONE: buildRequests starting to generate response for a single request');
@@ -177,7 +174,6 @@ export const spec = {
       utils.logInfo('OZONE: buildRequests going to return for single: ', ret);
       return ret;
     }
-
     // not single request - pull apart the tosendtags array & return an array of objects each containing one element in the imp array.
     let arrRet = tosendtags.map(imp => {
       utils.logInfo('OZONE: buildRequests starting to generate non-single response, working on imp : ', imp);
@@ -201,67 +197,49 @@ export const spec = {
   /**
    * Interpret the response if the array contains BIDDER elements, in the format: [ [bidder1 bid 1, bidder1 bid 2], [bidder2 bid 1, bidder2 bid 2] ]
    * NOte that in singleRequest mode this will be called once, else it will be called for each adSlot's response
+   *
+   * Updated April 2019 to return all bids, not just the one we decide is the 'winner'
+   *
    * @param serverResponse
    * @param request
    * @returns {*}
    */
   interpretResponse(serverResponse, request) {
-    utils.logInfo('OZONE: version' + OZONEVERSION + ' interpretResponse', serverResponse, request);
     serverResponse = serverResponse.body || {};
-    if (serverResponse.seatbid) {
-      if (utils.isArray(serverResponse.seatbid)) {
-        // serverResponse seems good, let's get the list of bids from the request object:
-        let arrRequestBids = request.bidderRequest.bids;
-        // build up a list of winners, one for each bidId in arrBidIds
-        let arrWinners = [];
-        for (let i = 0; i < arrRequestBids.length; i++) {
-          let thisBid = arrRequestBids[i];
-          let ozoneInternalKey = thisBid.bidId;
-          let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(thisBid, serverResponse.seatbid);
-
-          if (winningBid == null) {
-            utils.logInfo('OZONE: FAILED to get winning bid for bid : ', thisBid, 'will skip. Possibly a non-single request, which will be missing some bid IDs');
-            continue;
-          }
-
-          const {defaultWidth, defaultHeight} = defaultSize(arrRequestBids[i]);
-          winningBid = ozoneAddStandardProperties(winningBid, defaultWidth, defaultHeight);
-
-          utils.logInfo('OZONE: Going to add the adserverTargeting custom parameters for key: ', ozoneInternalKey);
-          let adserverTargeting = {};
-          let allBidsForThisBidid = ozoneGetAllBidsForBidId(ozoneInternalKey, serverResponse.seatbid);
-          // add all the winning & non-winning bids for this bidId:
-          Object.keys(allBidsForThisBidid).forEach(function(bidderName, index, ar2) {
-            utils.logInfo('OZONE: inside allBidsForThisBidid:foreach', bidderName, index, ar2, allBidsForThisBidid);
-            adserverTargeting['oz_' + bidderName] = bidderName;
-            adserverTargeting['oz_' + bidderName + '_pb'] = String(allBidsForThisBidid[bidderName].price);
-            adserverTargeting['oz_' + bidderName + '_crid'] = String(allBidsForThisBidid[bidderName].crid);
-            adserverTargeting['oz_' + bidderName + '_adv'] = String(allBidsForThisBidid[bidderName].adomain);
-            adserverTargeting['oz_' + bidderName + '_imp_id'] = String(allBidsForThisBidid[bidderName].impid);
-          });
-          // now add the winner data:
-          adserverTargeting['oz_auc_id'] = String(request.bidderRequest.auctionId);
-          adserverTargeting['oz_winner'] = String(winningSeat);
-          adserverTargeting['oz_winner_auc_id'] = String(winningBid.id);
-          adserverTargeting['oz_winner_imp_id'] = String(winningBid.impid);
-          adserverTargeting['oz_response_id'] = String(serverResponse.id);
-
-          winningBid.adserverTargeting = adserverTargeting;
-          utils.logInfo('OZONE: winner is', winningBid);
-          arrWinners.push(winningBid);
-          utils.logInfo('OZONE: arrWinners is', arrWinners);
-        }
-        let winnersClean = arrWinners.filter(w => {
-          return (w.bidId); // will be cast to boolean
+    if (!serverResponse.hasOwnProperty('seatbid')) { return []; }
+    if (typeof serverResponse.seatbid !== 'object') { return []; }
+    let arrAllBids = [];
+    serverResponse.seatbid = injectAdIdsIntoAllBidResponses(serverResponse.seatbid); // we now make sure that each bid in the bidresponse has a unique (within page) adId attribute.
+    for (let i = 0; i < serverResponse.seatbid.length; i++) {
+      let sb = serverResponse.seatbid[i];
+      const {defaultWidth, defaultHeight} = defaultSize(request.bidderRequest.bids[i]);
+      for (let j = 0; j < sb.bid.length; j++) {
+        let thisBid = ozoneAddStandardProperties(sb.bid[j], defaultWidth, defaultHeight);
+        let ozoneInternalKey = thisBid.bidId;
+        let adserverTargeting = {};
+        // all keys for all bidders for this bid have to be added to all objects returned, else some keys will not be sent to ads?
+        let allBidsForThisBidid = ozoneGetAllBidsForBidId(ozoneInternalKey, serverResponse.seatbid);
+        // add all the winning & non-winning bids for this bidId:
+        Object.keys(allBidsForThisBidid).forEach(function(bidderName, index, ar2) {
+          adserverTargeting['oz_' + bidderName] = bidderName;
+          adserverTargeting['oz_' + bidderName + '_pb'] = String(allBidsForThisBidid[bidderName].price);
+          adserverTargeting['oz_' + bidderName + '_crid'] = String(allBidsForThisBidid[bidderName].crid);
+          adserverTargeting['oz_' + bidderName + '_adv'] = String(allBidsForThisBidid[bidderName].adomain);
+          adserverTargeting['oz_' + bidderName + '_imp_id'] = String(allBidsForThisBidid[bidderName].impid);
+          adserverTargeting['oz_' + bidderName + '_adId'] = String(allBidsForThisBidid[bidderName].adId);
         });
-        utils.logInfo('OZONE: going to return winnersClean:', winnersClean);
-        return winnersClean;
-      } else {
-        return [];
+        // also add in the winning bid, to be sent to dfp
+        let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(ozoneInternalKey, serverResponse.seatbid);
+        adserverTargeting['oz_auc_id'] = String(request.bidderRequest.auctionId);
+        adserverTargeting['oz_winner'] = String(winningSeat);
+        adserverTargeting['oz_winner_auc_id'] = String(winningBid.id);
+        adserverTargeting['oz_winner_imp_id'] = String(winningBid.impid);
+        adserverTargeting['oz_response_id'] = String(serverResponse.id);
+        thisBid.adserverTargeting = adserverTargeting;
+        arrAllBids.push(thisBid);
       }
-    } else {
-      return [];
     }
+    return arrAllBids;
   },
   getUserSyncs(optionsType, serverResponse) {
     if (!serverResponse || serverResponse.length === 0) {
@@ -274,6 +252,21 @@ export const spec = {
       }];
     }
   }
+}
+/**
+ * add a page-level-unique adId element to all server response bids.
+ * NOTE that this is distructive - it mutates the serverResponse object sent in as a parameter
+ * @param seatbid  object (serverResponse.seatbid)
+ * @returns seatbid object
+ */
+export function injectAdIdsIntoAllBidResponses(seatbid) {
+  for (let i = 0; i < seatbid.length; i++) {
+    let sb = seatbid[i];
+    for (let j = 0; j < sb.bid.length; j++) {
+      sb.bid[j]['adId'] = sb.bid[j]['impid'] + '-' + i; // modify the bidId per-bid, so each bid has a unique adId within this response, and dfp can select one.
+    }
+  }
+  return seatbid;
 }
 export function checkDeepArray(Arr) {
   if (Array.isArray(Arr)) {
@@ -300,15 +293,14 @@ export function defaultSize(thebidObj) {
  * @param serverResponseSeatBid
  * @returns {*} bid object
  */
-export function ozoneGetWinnerForRequestBid(requestBid, serverResponseSeatBid) {
+export function ozoneGetWinnerForRequestBid(requestBidId, serverResponseSeatBid) {
   let thisBidWinner = null;
   let winningSeat = null;
   for (let j = 0; j < serverResponseSeatBid.length; j++) {
     let theseBids = serverResponseSeatBid[j].bid;
     let thisSeat = serverResponseSeatBid[j].seat;
     for (let k = 0; k < theseBids.length; k++) {
-      if (theseBids[k].impid === requestBid.bidId) { // we've found a matching server response bid for this request bid
-        // if (theseBids[k].impid === requestBid.adUnitCode) { // we've found a matching server response bid for this request bid
+      if (theseBids[k].impid === requestBidId) { // we've found a matching server response bid for this request bid
         if ((thisBidWinner == null) || (thisBidWinner.price < theseBids[k].price)) {
           thisBidWinner = theseBids[k];
           winningSeat = thisSeat;
@@ -327,19 +319,16 @@ export function ozoneGetWinnerForRequestBid(requestBid, serverResponseSeatBid) {
  * @returns {} = {ozone:{obj}, appnexus:{obj}, ... }
  */
 export function ozoneGetAllBidsForBidId(matchBidId, serverResponseSeatBid) {
-  utils.logInfo('OZONE: ozoneGetAllBidsForBidId - starting, with: ', matchBidId, serverResponseSeatBid);
   let objBids = {};
   for (let j = 0; j < serverResponseSeatBid.length; j++) {
     let theseBids = serverResponseSeatBid[j].bid;
     let thisSeat = serverResponseSeatBid[j].seat;
     for (let k = 0; k < theseBids.length; k++) {
       if (theseBids[k].impid === matchBidId) { // we've found a matching server response bid for the request bid we're looking for
-        utils.logInfo('ozoneGetAllBidsForBidId - found matching bid: ', matchBidId, theseBids[k]);
         objBids[thisSeat] = theseBids[k];
       }
     }
   }
-  utils.logInfo('OZONE: ozoneGetAllBidsForBidId - going to return: ', objBids);
   return objBids;
 }
 
@@ -377,6 +366,18 @@ export function getTestQuerystringValue() {
     }
   }
   return 0;
+}
+
+/**
+ * Generate a random number per ad; I'll use the current ms timestamp, then append 8 random alpha/numeric characters
+ * Randomness : 1 in 208 billion random combinations per-millisecond, non-repeating sequence.
+ *
+ * @returns {*}
+ */
+export function pgGuid() {
+  return new Date().getTime() + 'xxxxxxxx'.replace(/x/g, function(c) {
+    return Math.round((Math.random() * 36)).toString(36);
+  });
 }
 
 registerBidder(spec);
