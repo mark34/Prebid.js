@@ -2,14 +2,15 @@ import * as utils from '../src/utils';
 import { registerBidder } from '../src/adapters/bidderFactory';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes';
 import {config} from '../src/config';
+import {getPriceBucketString} from '../src/cpmBucketManager';
 
 const BIDDER_CODE = 'ozone';
-// const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 // const OZONEURI = 'http://us.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://eu.ozpr.net/openrtb2/auction';
-const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
+/// const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONEVERSION = '1.4.8';
+const OZONEVERSION = '1.5.0';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -140,6 +141,7 @@ export const spec = {
       obj.ext = {'prebid': {'storedrequest': {'id': (ozoneBidRequest.params.placementId).toString()}}, 'ozone': {}};
       obj.ext.ozone.adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
       obj.ext.ozone.transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
+      obj.ext.ozone.oz_pb_v = OZONEVERSION;
       if (ozoneBidRequest.params.hasOwnProperty('customData')) {
         obj.ext.ozone.customData = ozoneBidRequest.params.customData;
       }
@@ -205,6 +207,10 @@ export const spec = {
    * @returns {*}
    */
   interpretResponse(serverResponse, request) {
+
+    var granularityToUse = config.getConfig('priceGranularity'); // eg. medium, custom (if granularity is set)
+    console.log( ['interpretResponse', serverResponse, request, granularityToUse]);
+
     serverResponse = serverResponse.body || {};
     if (!serverResponse.hasOwnProperty('seatbid')) { return []; }
     if (typeof serverResponse.seatbid !== 'object') { return []; }
@@ -220,13 +226,19 @@ export const spec = {
         // all keys for all bidders for this bid have to be added to all objects returned, else some keys will not be sent to ads?
         let allBidsForThisBidid = ozoneGetAllBidsForBidId(ozoneInternalKey, serverResponse.seatbid);
         // add all the winning & non-winning bids for this bidId:
+        utils.logInfo('Going to iterate allBidsForThisBidId', allBidsForThisBidid);
         Object.keys(allBidsForThisBidid).forEach(function(bidderName, index, ar2) {
+
           adserverTargeting['oz_' + bidderName] = bidderName;
           adserverTargeting['oz_' + bidderName + '_pb'] = String(allBidsForThisBidid[bidderName].price);
           adserverTargeting['oz_' + bidderName + '_crid'] = String(allBidsForThisBidid[bidderName].crid);
           adserverTargeting['oz_' + bidderName + '_adv'] = String(allBidsForThisBidid[bidderName].adomain);
           adserverTargeting['oz_' + bidderName + '_imp_id'] = String(allBidsForThisBidid[bidderName].impid);
           adserverTargeting['oz_' + bidderName + '_adId'] = String(allBidsForThisBidid[bidderName].adId);
+          adserverTargeting['oz_' + bidderName + '_pb_r'] = getRoundedBid(allBidsForThisBidid[bidderName].price, allBidsForThisBidid[bidderName].ext.prebid.type);
+          if( allBidsForThisBidid[bidderName].hasOwnProperty('dealid') ) {
+            adserverTargeting['oz_' + bidderName + '_dealid'] = String(allBidsForThisBidid[bidderName].dealid);
+          }
         });
         // also add in the winning bid, to be sent to dfp
         let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(ozoneInternalKey, serverResponse.seatbid);
@@ -235,6 +247,7 @@ export const spec = {
         adserverTargeting['oz_winner_auc_id'] = String(winningBid.id);
         adserverTargeting['oz_winner_imp_id'] = String(winningBid.impid);
         adserverTargeting['oz_response_id'] = String(serverResponse.id);
+        adserverTargeting['oz_pb_v'] = OZONEVERSION;
         thisBid.adserverTargeting = adserverTargeting;
         arrAllBids.push(thisBid);
       }
@@ -330,6 +343,82 @@ export function ozoneGetAllBidsForBidId(matchBidId, serverResponseSeatBid) {
     }
   }
   return objBids;
+}
+
+/**
+ * Round the bid price down according to the granularity
+ * @param price
+ * @param mediaType = video, banner or native
+ */
+export function getRoundedBid(price, mediaType) {
+
+  const mediaTypeGranularity = config.getConfig(`mediaTypePriceGranularity.${mediaType}`); // might be string or object or nothing; if set then this takes precedence over 'priceGranularity'
+  let objBuckets = config.getConfig('customPriceBucket'); // this is always an object - {} if strBuckets is not 'custom'
+  let strBuckets = config.getConfig('priceGranularity'); // priceGranularity value, always a string ** if priceGranularity is set to an object then it's always 'custom'
+  // if( strBuckets == 'custom' )
+  // if( (typeof strBuckets === 'object') && (Object.keys(strBuckets).length === 0) ) {
+  //   strBuckets = false; // note that typeof null === 'object' is true!! ALso don't use an empty string as strBuckets might be a valid string
+  // }
+  let theConfigObject = getGranularityObject(mediaType, mediaTypeGranularity, strBuckets, objBuckets);
+  let theConfigKey = getGranularityKeyName(mediaType, mediaTypeGranularity, strBuckets);
+
+  utils.logInfo('getRoundedBid. price:', price , 'mediaType:',  mediaType, 'configkey:', theConfigKey, 'configObject:', theConfigObject, 'mediaTypeGranularity:', mediaTypeGranularity, 'strBuckets:' , strBuckets );
+
+  let priceStringsObj = getPriceBucketString(
+    price,
+    theConfigObject,
+    config.getConfig('currency.granularityMultiplier')
+  );
+  utils.logInfo('priceStringsObj', priceStringsObj);
+  // by default, without any custom granularity set, you get granularity name : 'medium'
+  let granularityNamePriceStringsKeyMapping = {
+    'medium' : 'med',
+    'custom' : 'custom',
+    'high'   : 'high',
+    'low'    : 'low',
+    'dense'  : 'dense'
+  };
+  if( granularityNamePriceStringsKeyMapping.hasOwnProperty( theConfigKey )) {
+    let priceStringsKey = granularityNamePriceStringsKeyMapping[theConfigKey];
+    utils.logInfo('looking for priceStringsKey:', priceStringsKey);
+    return priceStringsObj[priceStringsKey];
+  }
+  return priceStringsObj['auto'];
+}
+
+/**
+ * return the key to use to get the value out of the priceStrings object, taking into account anything at
+ * config.priceGranularity level or config.mediaType.xxx level
+ * I've noticed that the key specified by prebid core : config.getConfig('priceGranularity') does not properly
+ * take into account the 2-levels of config
+ */
+export function getGranularityKeyName(mediaType, mediaTypeGranularity, strBuckets) {
+
+  if( typeof mediaTypeGranularity === 'string') {
+    return mediaTypeGranularity;
+  }
+  if( typeof mediaTypeGranularity === 'object' ) {
+    return 'custom';
+  }
+  if( typeof strBuckets === 'string' ) {
+    return strBuckets;
+  }
+  return 'auto'; // fall back to a default key - should literally never be needed though.
+}
+
+/**
+ * return the object to use to create the custom value of the priceStrings object, taking into account anything at
+ * config.priceGranularity level or config.mediaType.xxx level
+ */
+export function getGranularityObject(mediaType, mediaTypeGranularity, strBuckets, objBuckets) {
+
+  if( typeof mediaTypeGranularity === 'object' ) {
+    return mediaTypeGranularity;
+  }
+  if( strBuckets === 'custom' ) {
+    return objBuckets;
+  }
+  return '';
 }
 
 /**
