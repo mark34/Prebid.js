@@ -8,7 +8,7 @@ const BIDDER_CODE = 'ozone';
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 // const OZONEURI = 'http://us.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://eu.ozpr.net/openrtb2/auction';
-/// const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
+// const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONEVERSION = '1.5.0';
 
@@ -207,10 +207,7 @@ export const spec = {
    * @returns {*}
    */
   interpretResponse(serverResponse, request) {
-
     var granularityToUse = config.getConfig('priceGranularity'); // eg. medium, custom (if granularity is set)
-    console.log( ['interpretResponse', serverResponse, request, granularityToUse]);
-
     serverResponse = serverResponse.body || {};
     if (!serverResponse.hasOwnProperty('seatbid')) { return []; }
     if (typeof serverResponse.seatbid !== 'object') { return []; }
@@ -228,7 +225,6 @@ export const spec = {
         // add all the winning & non-winning bids for this bidId:
         utils.logInfo('Going to iterate allBidsForThisBidId', allBidsForThisBidid);
         Object.keys(allBidsForThisBidid).forEach(function(bidderName, index, ar2) {
-
           adserverTargeting['oz_' + bidderName] = bidderName;
           adserverTargeting['oz_' + bidderName + '_pb'] = String(allBidsForThisBidid[bidderName].price);
           adserverTargeting['oz_' + bidderName + '_crid'] = String(allBidsForThisBidid[bidderName].crid);
@@ -236,7 +232,7 @@ export const spec = {
           adserverTargeting['oz_' + bidderName + '_imp_id'] = String(allBidsForThisBidid[bidderName].impid);
           adserverTargeting['oz_' + bidderName + '_adId'] = String(allBidsForThisBidid[bidderName].adId);
           adserverTargeting['oz_' + bidderName + '_pb_r'] = getRoundedBid(allBidsForThisBidid[bidderName].price, allBidsForThisBidid[bidderName].ext.prebid.type);
-          if( allBidsForThisBidid[bidderName].hasOwnProperty('dealid') ) {
+          if (allBidsForThisBidid[bidderName].hasOwnProperty('dealid')) {
             adserverTargeting['oz_' + bidderName + '_dealid'] = String(allBidsForThisBidid[bidderName].dealid);
           }
         });
@@ -351,7 +347,6 @@ export function ozoneGetAllBidsForBidId(matchBidId, serverResponseSeatBid) {
  * @param mediaType = video, banner or native
  */
 export function getRoundedBid(price, mediaType) {
-
   const mediaTypeGranularity = config.getConfig(`mediaTypePriceGranularity.${mediaType}`); // might be string or object or nothing; if set then this takes precedence over 'priceGranularity'
   let objBuckets = config.getConfig('customPriceBucket'); // this is always an object - {} if strBuckets is not 'custom'
   let strBuckets = config.getConfig('priceGranularity'); // priceGranularity value, always a string ** if priceGranularity is set to an object then it's always 'custom'
@@ -362,7 +357,7 @@ export function getRoundedBid(price, mediaType) {
   let theConfigObject = getGranularityObject(mediaType, mediaTypeGranularity, strBuckets, objBuckets);
   let theConfigKey = getGranularityKeyName(mediaType, mediaTypeGranularity, strBuckets);
 
-  utils.logInfo('getRoundedBid. price:', price , 'mediaType:',  mediaType, 'configkey:', theConfigKey, 'configObject:', theConfigObject, 'mediaTypeGranularity:', mediaTypeGranularity, 'strBuckets:' , strBuckets );
+  utils.logInfo('getRoundedBid. price:', price, 'mediaType:', mediaType, 'configkey:', theConfigKey, 'configObject:', theConfigObject, 'mediaTypeGranularity:', mediaTypeGranularity, 'strBuckets:', strBuckets);
 
   let priceStringsObj = getPriceBucketString(
     price,
@@ -372,13 +367,13 @@ export function getRoundedBid(price, mediaType) {
   utils.logInfo('priceStringsObj', priceStringsObj);
   // by default, without any custom granularity set, you get granularity name : 'medium'
   let granularityNamePriceStringsKeyMapping = {
-    'medium' : 'med',
-    'custom' : 'custom',
-    'high'   : 'high',
-    'low'    : 'low',
-    'dense'  : 'dense'
+    'medium': 'med',
+    'custom': 'custom',
+    'high': 'high',
+    'low': 'low',
+    'dense': 'dense'
   };
-  if( granularityNamePriceStringsKeyMapping.hasOwnProperty( theConfigKey )) {
+  if (granularityNamePriceStringsKeyMapping.hasOwnProperty(theConfigKey)) {
     let priceStringsKey = granularityNamePriceStringsKeyMapping[theConfigKey];
     utils.logInfo('looking for priceStringsKey:', priceStringsKey);
     return priceStringsObj[priceStringsKey];
@@ -393,14 +388,13 @@ export function getRoundedBid(price, mediaType) {
  * take into account the 2-levels of config
  */
 export function getGranularityKeyName(mediaType, mediaTypeGranularity, strBuckets) {
-
-  if( typeof mediaTypeGranularity === 'string') {
+  if (typeof mediaTypeGranularity === 'string') {
     return mediaTypeGranularity;
   }
-  if( typeof mediaTypeGranularity === 'object' ) {
+  if (typeof mediaTypeGranularity === 'object') {
     return 'custom';
   }
-  if( typeof strBuckets === 'string' ) {
+  if (typeof strBuckets === 'string') {
     return strBuckets;
   }
   return 'auto'; // fall back to a default key - should literally never be needed though.
@@ -411,11 +405,10 @@ export function getGranularityKeyName(mediaType, mediaTypeGranularity, strBucket
  * config.priceGranularity level or config.mediaType.xxx level
  */
 export function getGranularityObject(mediaType, mediaTypeGranularity, strBuckets, objBuckets) {
-
-  if( typeof mediaTypeGranularity === 'object' ) {
+  if (typeof mediaTypeGranularity === 'object') {
     return mediaTypeGranularity;
   }
-  if( strBuckets === 'custom' ) {
+  if (strBuckets === 'custom') {
     return objBuckets;
   }
   return '';
