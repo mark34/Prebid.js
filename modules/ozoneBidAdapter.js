@@ -11,11 +11,11 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 // const OZONEURI = 'http://eu.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONEVERSION = '2.0.0-a';
+const OZONEVERSION = '2.0.0-b';
 
 export const spec = {
   code: BIDDER_CODE,
-  supportedMediaTypes: ["video", "banner"],
+  supportedMediaTypes: ['video', 'banner'],
 
   /**
    * Basic check to see whether required parameters are in the request.
@@ -108,71 +108,71 @@ export const spec = {
           return true;
         })
       .map(ozoneBidRequest => {
-      var obj = {};
-      obj.id = ozoneBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
-      // obj.id = ozoneBidRequest.adUnitCode; // (eg. 'mpu' or 'leaderboard') A unique identifier for this impression within the context of the bid request (typically, starts with 1 and increments.
-      obj.tagid = (ozoneBidRequest.params.placementId).toString();
-      obj.secure = window.location.protocol === 'https:' ? 1 : 0;
-      // is there a banner (or nothing declared, so banner is the default)?
-      let arrBannerSizes = [];
-      /* NOTE - if there is sizes element in the config root then there will be a mediaTypes.banner element automatically generated for us, so this code is deprecated */
-      if (!ozoneBidRequest.hasOwnProperty('mediaTypes')) {
-        if (ozoneBidRequest.hasOwnProperty('sizes')) {
-          utils.logInfo('OZONE: no mediaTypes detected - will use the sizes array in the config root');
-          arrBannerSizes = ozoneBidRequest.sizes;
+        var obj = {};
+        obj.id = ozoneBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
+        // obj.id = ozoneBidRequest.adUnitCode; // (eg. 'mpu' or 'leaderboard') A unique identifier for this impression within the context of the bid request (typically, starts with 1 and increments.
+        obj.tagid = (ozoneBidRequest.params.placementId).toString();
+        obj.secure = window.location.protocol === 'https:' ? 1 : 0;
+        // is there a banner (or nothing declared, so banner is the default)?
+        let arrBannerSizes = [];
+        /* NOTE - if there is sizes element in the config root then there will be a mediaTypes.banner element automatically generated for us, so this code is deprecated */
+        if (!ozoneBidRequest.hasOwnProperty('mediaTypes')) {
+          if (ozoneBidRequest.hasOwnProperty('sizes')) {
+            utils.logInfo('OZONE: no mediaTypes detected - will use the sizes array in the config root');
+            arrBannerSizes = ozoneBidRequest.sizes;
+          } else {
+            utils.logInfo('OZONE: no mediaTypes detected, no sizes array in the config root either. Cannot set sizes for banner type');
+          }
         } else {
-          utils.logInfo('OZONE: no mediaTypes detected, no sizes array in the config root either. Cannot set sizes for banner type');
+          if (ozoneBidRequest.mediaTypes.hasOwnProperty(BANNER)) {
+            arrBannerSizes = ozoneBidRequest.mediaTypes[BANNER].sizes; /* Note - if there is a sizes element in the config root it will be pushed into here */
+            utils.logInfo('OZONE: setting banner size from the mediaTypes.banner element for bidId ' + obj.id + ': ', arrBannerSizes);
+          }
+          // Video integration is not complete yet
+          if (ozoneBidRequest.mediaTypes.hasOwnProperty(VIDEO)) {
+            obj.video = ozoneBidRequest.mediaTypes[VIDEO];
+            utils.logInfo('OZONE: setting video object from the mediaTypes.video element: ' + obj.id + ':', obj.video);
+          }
+          // Native integration is not complete yet
+          if (ozoneBidRequest.mediaTypes.hasOwnProperty(NATIVE)) {
+            obj.native = ozoneBidRequest.mediaTypes[NATIVE];
+            utils.logInfo('OZONE: setting native object from the mediaTypes.native element: ' + obj.id + ':', obj.native);
+          }
         }
-      } else {
-        if (ozoneBidRequest.mediaTypes.hasOwnProperty(BANNER)) {
-          arrBannerSizes = ozoneBidRequest.mediaTypes[BANNER].sizes; /* Note - if there is a sizes element in the config root it will be pushed into here */
-          utils.logInfo('OZONE: setting banner size from the mediaTypes.banner element for bidId ' + obj.id + ': ', arrBannerSizes);
+        // build the banner request using banner sizes we found in either possible location:
+        if (arrBannerSizes.length > 0) {
+          obj.banner = {
+            topframe: 1,
+            w: arrBannerSizes[0][0] || 0,
+            h: arrBannerSizes[0][1] || 0,
+            format: arrBannerSizes.map(s => {
+              return {w: s[0], h: s[1]};
+            })
+          };
         }
-        // Video integration is not complete yet
-        if (ozoneBidRequest.mediaTypes.hasOwnProperty(VIDEO)) {
-          obj.video = ozoneBidRequest.mediaTypes[VIDEO];
-          utils.logInfo('OZONE: setting video object from the mediaTypes.video element: ' + obj.id + ':', obj.video);
+        // these 3 MUST exist - we check them in the validation method
+        obj.placementId = (ozoneBidRequest.params.placementId).toString();
+        obj.publisherId = (ozoneBidRequest.params.publisherId).toString();
+        obj.siteId = (ozoneBidRequest.params.siteId).toString();
+        // build the imp['ext'] object
+        obj.ext = {'prebid': {'storedrequest': {'id': (ozoneBidRequest.params.placementId).toString()}}, 'ozone': {}};
+        obj.ext.ozone.adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
+        obj.ext.ozone.transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
+        obj.ext.ozone.oz_pb_v = OZONEVERSION;
+        if (ozoneBidRequest.params.hasOwnProperty('customData')) {
+          obj.ext.ozone.customData = ozoneBidRequest.params.customData;
         }
-        // Native integration is not complete yet
-        if (ozoneBidRequest.mediaTypes.hasOwnProperty(NATIVE)) {
-          obj.native = ozoneBidRequest.mediaTypes[NATIVE];
-          utils.logInfo('OZONE: setting native object from the mediaTypes.native element: ' + obj.id + ':', obj.native);
+        if (ozoneBidRequest.params.hasOwnProperty('ozoneData')) {
+          obj.ext.ozone.ozoneData = ozoneBidRequest.params.ozoneData;
         }
-      }
-      // build the banner request using banner sizes we found in either possible location:
-      if (arrBannerSizes.length > 0) {
-        obj.banner = {
-          topframe: 1,
-          w: arrBannerSizes[0][0] || 0,
-          h: arrBannerSizes[0][1] || 0,
-          format: arrBannerSizes.map(s => {
-            return {w: s[0], h: s[1]};
-          })
-        };
-      }
-      // these 3 MUST exist - we check them in the validation method
-      obj.placementId = (ozoneBidRequest.params.placementId).toString();
-      obj.publisherId = (ozoneBidRequest.params.publisherId).toString();
-      obj.siteId = (ozoneBidRequest.params.siteId).toString();
-      // build the imp['ext'] object
-      obj.ext = {'prebid': {'storedrequest': {'id': (ozoneBidRequest.params.placementId).toString()}}, 'ozone': {}};
-      obj.ext.ozone.adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
-      obj.ext.ozone.transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
-      obj.ext.ozone.oz_pb_v = OZONEVERSION;
-      if (ozoneBidRequest.params.hasOwnProperty('customData')) {
-        obj.ext.ozone.customData = ozoneBidRequest.params.customData;
-      }
-      if (ozoneBidRequest.params.hasOwnProperty('ozoneData')) {
-        obj.ext.ozone.ozoneData = ozoneBidRequest.params.ozoneData;
-      }
-      if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
-        obj.ext.ozone.lotameData = ozoneBidRequest.params.lotameData;
-      }
-      if (ozoneBidRequest.hasOwnProperty('crumbs') && ozoneBidRequest.crumbs.hasOwnProperty('pubcid')) {
-        obj.ext.ozone.pubcid = ozoneBidRequest.crumbs.pubcid;
-      }
-      return obj;
-    });
+        if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
+          obj.ext.ozone.lotameData = ozoneBidRequest.params.lotameData;
+        }
+        if (ozoneBidRequest.hasOwnProperty('crumbs') && ozoneBidRequest.crumbs.hasOwnProperty('pubcid')) {
+          obj.ext.ozone.pubcid = ozoneBidRequest.crumbs.pubcid;
+        }
+        return obj;
+      });
 
     ozoneRequest.site = {'publisher': {'id': htmlParams.publisherId}, 'page': document.location.href};
     ozoneRequest.test = parseInt(getTestQuerystringValue()); // will be 1 or 0
@@ -189,7 +189,7 @@ export const spec = {
         data: JSON.stringify(ozoneRequest),
         bidderRequest: bidderRequest
       };
-      if (tosendtags.length > 0){
+      if (tosendtags.length > 0) {
         utils.logInfo('OZONE: buildRequests ozoneRequest for single = ', ozoneRequest);
         utils.logInfo('OZONE: buildRequests going to return for single: ', ret);
         return ret;
@@ -215,7 +215,7 @@ export const spec = {
         bidderRequest: bidderRequest
       };
     });
-    if (tosendtags.length > 0){
+    if (tosendtags.length > 0) {
       utils.logInfo('OZONE: buildRequests going to return for non-single: ', arrRet);
       return arrRet;
     } else {
@@ -234,7 +234,6 @@ export const spec = {
    * @returns {*}
    */
   interpretResponse(serverResponse, request) {
-    var granularityToUse = config.getConfig('priceGranularity'); // eg. medium, custom (if granularity is set)
     serverResponse = serverResponse.body || {};
     if (!serverResponse.hasOwnProperty('seatbid')) { return []; }
     if (typeof serverResponse.seatbid !== 'object') { return []; }
@@ -380,13 +379,13 @@ export function ozoneGetAllUnrulyOutstreamBids(serverResponseSeatBid) {
   for (let j = 0; j < serverResponseSeatBid.length; j++) {
     let theseBids = serverResponseSeatBid[j].bid;
     let thisSeat = serverResponseSeatBid[j].seat;
-    if(thisSeat != 'unruly') {
+    if (thisSeat != 'unruly') {
       continue;
     }
     for (let k = 0; k < theseBids.length; k++) {
       let renderer = utils.deepAccess(theseBids[k], 'ext.renderer');
       let context = utils.deepAccess(theseBids[k], mediaTypes.video.context);
-      if(renderer && (context === 'outstream')) {
+      if (renderer && (context === 'outstream')) {
         arrBids.push(theseBids[k]);
       }
     }
@@ -513,23 +512,26 @@ export function pgGuid() {
 
 /**
  * Taking the unruly code from 4.1.7
- * @param allBids array = list of all bids for all bidIds
+ * This function directly modifies the objects sent in as the array of bids
+ *
+ * NOTE - this is untested & probably needs to be fixed/changed!
+ *
+ * @param allUnrulyOutstreamBids array = list of all bids that are video outstream from unruly
  */
 function setupUnrulyVideoIfRequired(allUnrulyOutstreamBids) {
-  utils.logInfo('setupUnrulyVideoIfRequired - allUnrulyOutstreamBids: ' , allUnrulyOutstreamBids);
+  utils.logInfo('setupUnrulyVideoIfRequired - allUnrulyOutstreamBids: ', allUnrulyOutstreamBids);
   var arrayLength = allUnrulyOutstreamBids.length;
   let setupDone = false;
   for (let i = 0; i < arrayLength; i++) {
     let thisBid = allUnrulyOutstreamBids[i];
-    utils.logInfo('setupUnrulyVideoIfRequired iterating: ' , thisBid);
+    utils.logInfo('OZONE: setupUnrulyVideoIfRequired iterating: ', thisBid);
     const exchangeRenderer = utils.deepAccess(thisBid, 'ext.renderer');
-    if( !setupDone ){
+    if (!setupDone) {
       configureUnrulyUniversalTag(exchangeRenderer);
       configureUnrulyRendererQueue();
       setupDone = true;
     }
     const rendererInstance = Renderer.install(Object.assign({}, exchangeRenderer, { callback: () => {} }));
-    thisBid.renderer = rendererInstance;
     const additionalRendererConfig = utils.deepAccess(thisBid, 'ext.additional_renderer_config');
     const rendererConfig = Object.assign(
       {
@@ -538,9 +540,9 @@ function setupUnrulyVideoIfRequired(allUnrulyOutstreamBids) {
       },
       additionalRendererConfig
     );
-    utils.logInfo('OZONE: unruly thisBid:', thisBid);
     utils.logInfo('OZONE: unruly rendererConfig:', rendererConfig);
     rendererInstance.setRender(() => { notifyUnrulyRenderer(rendererConfig) });
+    thisBid.renderer = rendererInstance;
   }
 }
 
