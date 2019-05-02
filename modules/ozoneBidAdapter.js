@@ -3,6 +3,7 @@ import { registerBidder } from '../src/adapters/bidderFactory';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes';
 import {config} from '../src/config';
 import {getPriceBucketString} from '../src/cpmBucketManager';
+import { Renderer } from '../src/Renderer'
 
 const BIDDER_CODE = 'ozone';
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
@@ -10,10 +11,11 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 // const OZONEURI = 'http://eu.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONEVERSION = '1.5.0';
+const OZONEVERSION = '2.0.0-a';
 
 export const spec = {
   code: BIDDER_CODE,
+  supportedMediaTypes: ["video", "banner"],
 
   /**
    * Basic check to see whether required parameters are in the request.
@@ -90,7 +92,22 @@ export const spec = {
       utils.logInfo('OZONE: WILL NOT ADD GDPR info');
     }
     ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
-    let tosendtags = validBidRequests.map(ozoneBidRequest => {
+    let tosendtags = validBidRequests
+      .filter(
+        function(ozoneBidRequest) {
+          if (ozoneBidRequest.hasOwnProperty('mediaTypes') && ozoneBidRequest.mediaTypes.hasOwnProperty(VIDEO)) {
+            if (!ozoneBidRequest.mediaTypes.video.hasOwnProperty('context')) {
+              utils.logInfo('OZONE: [WARNING] No context key/value in bid. Rejecting bid: ', ozoneBidRequest);
+              return false;
+            }
+            if (ozoneBidRequest.mediaTypes.video.context !== 'outstream') {
+              utils.logInfo('OZONE: [WARNING] Only outstream video is supported. Rejecting bid: ', ozoneBidRequest);
+              return false;
+            }
+          }
+          return true;
+        })
+      .map(ozoneBidRequest => {
       var obj = {};
       obj.id = ozoneBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
       // obj.id = ozoneBidRequest.adUnitCode; // (eg. 'mpu' or 'leaderboard') A unique identifier for this impression within the context of the bid request (typically, starts with 1 and increments.
@@ -172,9 +189,14 @@ export const spec = {
         data: JSON.stringify(ozoneRequest),
         bidderRequest: bidderRequest
       };
-      utils.logInfo('OZONE: buildRequests ozoneRequest for single = ', ozoneRequest);
-      utils.logInfo('OZONE: buildRequests going to return for single: ', ret);
-      return ret;
+      if (tosendtags.length > 0){
+        utils.logInfo('OZONE: buildRequests ozoneRequest for single = ', ozoneRequest);
+        utils.logInfo('OZONE: buildRequests going to return for single: ', ret);
+        return ret;
+      } else {
+        utils.logInfo('OZONE: no valid bid requests in potential single: ', ret);
+        return null
+      }
     }
     // not single request - pull apart the tosendtags array & return an array of objects each containing one element in the imp array.
     let arrRet = tosendtags.map(imp => {
@@ -193,8 +215,13 @@ export const spec = {
         bidderRequest: bidderRequest
       };
     });
-    utils.logInfo('OZONE: buildRequests going to return for non-single: ', arrRet);
-    return arrRet;
+    if (tosendtags.length > 0){
+      utils.logInfo('OZONE: buildRequests going to return for non-single: ', arrRet);
+      return arrRet;
+    } else {
+      utils.logInfo('OZONE: no valid bid requests in potential non-single: ', arrRet);
+      return null;
+    }
   },
   /**
    * Interpret the response if the array contains BIDDER elements, in the format: [ [bidder1 bid 1, bidder1 bid 2], [bidder2 bid 1, bidder2 bid 2] ]
@@ -213,6 +240,9 @@ export const spec = {
     if (typeof serverResponse.seatbid !== 'object') { return []; }
     let arrAllBids = [];
     serverResponse.seatbid = injectAdIdsIntoAllBidResponses(serverResponse.seatbid); // we now make sure that each bid in the bidresponse has a unique (within page) adId attribute.
+    // do any necessary video setup (unruly for now)
+    utils.logInfo('going to call setupUnrulyVideoIfRequired');
+    setupUnrulyVideoIfRequired(ozoneGetAllUnrulyOutstreamBids(serverResponse.seatbid));
     for (let i = 0; i < serverResponse.seatbid.length; i++) {
       let sb = serverResponse.seatbid[i];
       const {defaultWidth, defaultHeight} = defaultSize(request.bidderRequest.bids[i]);
@@ -342,6 +372,29 @@ export function ozoneGetAllBidsForBidId(matchBidId, serverResponseSeatBid) {
 }
 
 /**
+ * return all Unruly Video Outstream bids
+ * @param serverResponseSeatBid
+ */
+export function ozoneGetAllUnrulyOutstreamBids(serverResponseSeatBid) {
+  let arrBids = [];
+  for (let j = 0; j < serverResponseSeatBid.length; j++) {
+    let theseBids = serverResponseSeatBid[j].bid;
+    let thisSeat = serverResponseSeatBid[j].seat;
+    if(thisSeat != 'unruly') {
+      continue;
+    }
+    for (let k = 0; k < theseBids.length; k++) {
+      let renderer = utils.deepAccess(theseBids[k], 'ext.renderer');
+      let context = utils.deepAccess(theseBids[k], mediaTypes.video.context);
+      if(renderer && (context === 'outstream')) {
+        arrBids.push(theseBids[k]);
+      }
+    }
+  }
+  return arrBids;
+}
+
+/**
  * Round the bid price down according to the granularity
  * @param price
  * @param mediaType = video, banner or native
@@ -350,10 +403,6 @@ export function getRoundedBid(price, mediaType) {
   const mediaTypeGranularity = config.getConfig(`mediaTypePriceGranularity.${mediaType}`); // might be string or object or nothing; if set then this takes precedence over 'priceGranularity'
   let objBuckets = config.getConfig('customPriceBucket'); // this is always an object - {} if strBuckets is not 'custom'
   let strBuckets = config.getConfig('priceGranularity'); // priceGranularity value, always a string ** if priceGranularity is set to an object then it's always 'custom'
-  // if( strBuckets == 'custom' )
-  // if( (typeof strBuckets === 'object') && (Object.keys(strBuckets).length === 0) ) {
-  //   strBuckets = false; // note that typeof null === 'object' is true!! ALso don't use an empty string as strBuckets might be a valid string
-  // }
   let theConfigObject = getGranularityObject(mediaType, mediaTypeGranularity, strBuckets, objBuckets);
   let theConfigKey = getGranularityKeyName(mediaType, mediaTypeGranularity, strBuckets);
 
@@ -460,6 +509,58 @@ export function pgGuid() {
   return new Date().getTime() + 'xxxxxxxx'.replace(/x/g, function(c) {
     return Math.round((Math.random() * 36)).toString(36);
   });
+}
+
+/**
+ * Taking the unruly code from 4.1.7
+ * @param allBids array = list of all bids for all bidIds
+ */
+function setupUnrulyVideoIfRequired(allUnrulyOutstreamBids) {
+  utils.logInfo('setupUnrulyVideoIfRequired - allUnrulyOutstreamBids: ' , allUnrulyOutstreamBids);
+  var arrayLength = allUnrulyOutstreamBids.length;
+  let setupDone = false;
+  for (let i = 0; i < arrayLength; i++) {
+    let thisBid = allUnrulyOutstreamBids[i];
+    utils.logInfo('setupUnrulyVideoIfRequired iterating: ' , thisBid);
+    const exchangeRenderer = utils.deepAccess(thisBid, 'ext.renderer');
+    if( !setupDone ){
+      configureUnrulyUniversalTag(exchangeRenderer);
+      configureUnrulyRendererQueue();
+      setupDone = true;
+    }
+    const rendererInstance = Renderer.install(Object.assign({}, exchangeRenderer, { callback: () => {} }));
+    thisBid.renderer = rendererInstance;
+    const additionalRendererConfig = utils.deepAccess(thisBid, 'ext.additional_renderer_config');
+    const rendererConfig = Object.assign(
+      {
+        renderer: rendererInstance,
+        adUnitCode: thisBid.adUnitCode
+      },
+      additionalRendererConfig
+    );
+    utils.logInfo('OZONE: unruly thisBid:', thisBid);
+    utils.logInfo('OZONE: unruly rendererConfig:', rendererConfig);
+    rendererInstance.setRender(() => { notifyUnrulyRenderer(rendererConfig) });
+  }
+}
+
+//
+// unruly temp code
+//
+function configureUnrulyUniversalTag (exchangeRenderer) {
+  parent.window.unruly = parent.window.unruly || {};
+  parent.window.unruly['native'] = parent.window.unruly['native'] || {};
+  parent.window.unruly['native'].siteId = parent.window.unruly['native'].siteId || exchangeRenderer.config.siteId;
+  parent.window.unruly['native'].supplyMode = 'prebid';
+}
+
+function configureUnrulyRendererQueue () {
+  parent.window.unruly['native'].prebid = parent.window.unruly['native'].prebid || {};
+  parent.window.unruly['native'].prebid.uq = parent.window.unruly['native'].prebid.uq || [];
+}
+
+function notifyUnrulyRenderer (rendererConfig) {
+  parent.window.unruly['native'].prebid.uq.push(['render', rendererConfig]);
 }
 
 registerBidder(spec);
