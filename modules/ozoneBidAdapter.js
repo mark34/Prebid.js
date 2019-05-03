@@ -529,6 +529,10 @@ function setupUnrulyVideoIfRequired(allUnrulyOutstreamBids) {
     let thisBid = allUnrulyOutstreamBids[i];
     utils.logInfo('OZONE: setupUnrulyVideoIfRequired iterating: ', thisBid);
     const exchangeRenderer = utils.deepAccess(thisBid, 'ext.renderer');
+    if( !exchangeRenderer ) {
+      utils.logError('FAILED to locate "etc.renderer" in outstream ad response - cannot display this ad.');
+      continue;
+    }
     if (!setupDone) {
       configureUnrulyUniversalTag(exchangeRenderer);
       configureUnrulyRendererQueue();
