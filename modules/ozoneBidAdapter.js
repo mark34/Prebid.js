@@ -266,13 +266,13 @@ export const spec = {
               utils.logError('FAILED to locate "etc.renderer" in outstream ad response - cannot display this ad');
             }
             else {
-              configureUnrulyUniversalTag(exchangeRenderer)
-              configureUnrulyRendererQueue()
+              configureUnrulyUniversalTag(exchangeRenderer);
+              configureUnrulyRendererQueue();
               const rendererInstance = Renderer.install(Object.assign({}, exchangeRenderer, { callback: () => {} }));
 
-              winningBid.renderer = rendererInstance
+              winningBid.renderer = rendererInstance;
 
-              const additionalRendererConfig = utils.deepAccess(winningBid, 'ext.additional_renderer_config')
+              const additionalRendererConfig = utils.deepAccess(winningBid, 'ext.additional_renderer_config');
               const rendererConfig = Object.assign(
                 {
                   renderer: rendererInstance,
