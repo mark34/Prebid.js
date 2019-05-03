@@ -7,7 +7,8 @@ import {config} from '../src/config';
 const BIDDER_CODE = 'ozone';
 
 // const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
-const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/video_response.php';
+// const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/video_response.php'; // appnexus
+const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/unruly_video.php';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONEVERSION = '1.4.7-test';
 export const spec = {
@@ -246,45 +247,56 @@ export const spec = {
         let arrWinners = [];
         for (let i = 0; i < arrRequestBids.length; i++) {
           let thisBid = arrRequestBids[i];
+          utils.logInfo('thisBid', thisBid);
           let ozoneInternalKey = thisBid.bidId;
           let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(thisBid, serverResponse.seatbid);
-
+          utils.logInfo('winningSeat = ', winningSeat );
+          utils.logInfo('winningBid = ', winningBid );
           if (winningBid == null) {
             utils.logInfo('OZONE: FAILED to get winning bid for bid : ', thisBid, 'will skip. Possibly a non-single request, which will be missing some bid IDs');
             continue;
           }
 
-          if (winningBid.ext.renderer && winningSeat == 'unruly' && thisBid.mediaTypes.video.context == 'outstream') {
+          if ( winningSeat == 'unruly' && thisBid.mediaTypes.video.context == 'outstream') {
+            utils.logInfo('processing unruly vid');
+            // if (winningBid.ext.renderer && winningSeat == 'unruly' && thisBid.mediaTypes.video.context == 'outstream') {
             const exchangeRenderer = utils.deepAccess(winningBid, 'ext.renderer');
-            configureUnrulyUniversalTag(exchangeRenderer)
-            configureUnrulyRendererQueue()
-            const rendererInstance = Renderer.install(Object.assign({}, exchangeRenderer, { callback: () => {} }));
+            utils.logInfo('exchangeRenderer = ', exchangeRenderer);
+            if( !exchangeRenderer ) {
+              utils.logError('FAILED to locate "etc.renderer" in outstream ad response - cannot display this ad');
+            }
+            else {
+              configureUnrulyUniversalTag(exchangeRenderer)
+              configureUnrulyRendererQueue()
+              const rendererInstance = Renderer.install(Object.assign({}, exchangeRenderer, { callback: () => {} }));
 
-            winningBid.renderer = rendererInstance
+              winningBid.renderer = rendererInstance
 
-            const additionalRendererConfig = utils.deepAccess(winningBid, 'ext.additional_renderer_config')
-            const rendererConfig = Object.assign(
-              {
-                renderer: rendererInstance,
-                adUnitCode: thisBid.adUnitCode
-              },
-              additionalRendererConfig
-            );
-
-            utils.logInfo('OZONE: unruly winningBid:', winningBid)
-            utils.logInfo('OZONE: unruly rendererConfig:', rendererConfig)
-            rendererInstance.setRender(() => { notifyUnrulyRenderer(rendererConfig) });
+              const additionalRendererConfig = utils.deepAccess(winningBid, 'ext.additional_renderer_config')
+              const rendererConfig = Object.assign(
+                {
+                  renderer: rendererInstance,
+                  adUnitCode: thisBid.adUnitCode
+                },
+                additionalRendererConfig
+              );
+              utils.logInfo('OZONE: unruly winningBid:', winningBid)
+              utils.logInfo('OZONE: unruly rendererConfig:', rendererConfig)
+              rendererInstance.setRender(() => { notifyUnrulyRenderer(rendererConfig) });            }
           }
 
           const {defaultWidth, defaultHeight} = defaultSize(arrRequestBids[i]);
           winningBid = ozoneAddStandardProperties(winningBid, defaultWidth, defaultHeight);
 
-          // from https://github.com/prebid/Prebid.js/pull/1082
-          if(utils.deepAccess(winningBid, 'ext.prebid.type') === VIDEO ) {
-            utils.logInfo('going to attach an adResponse key to the bid');
-            winningBid.adResponse = createAdResponseObject(winningBid);
-            let renderConf = createObjectForInternalVideoRender(winningBid);
-            winningBid.renderer = Renderer.install(renderConf);
+          if ( winningSeat == 'appnexus' && thisBid.mediaTypes.video.context == 'outstream') {
+            utils.logInfo('processing appnexus vid');
+            // from https://github.com/prebid/Prebid.js/pull/1082
+            if(utils.deepAccess(winningBid, 'ext.prebid.type') === VIDEO ) {
+              utils.logInfo('going to attach an adResponse key to the bid');
+              winningBid.adResponse = createAdResponseObject(winningBid);
+              let renderConf = createObjectForInternalVideoRender(winningBid);
+              winningBid.renderer = Renderer.install(renderConf);
+            }
           }
 
           utils.logInfo('OZONE: Going to add the adserverTargeting custom parameters for key: ', ozoneInternalKey);
