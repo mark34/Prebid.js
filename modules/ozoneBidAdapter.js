@@ -6,10 +6,13 @@ import {getPriceBucketString} from '../src/cpmBucketManager';
 import { Renderer } from '../src/Renderer'
 
 const BIDDER_CODE = 'ozone';
-const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+// const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 // const OZONEURI = 'http://us.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://eu.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
+
+// const OZONEURI = 'http://52.14.16.151:8000/'; // polish guys
+const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/unruly_video.php'
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONEVERSION = '2.0.0-b';
 
