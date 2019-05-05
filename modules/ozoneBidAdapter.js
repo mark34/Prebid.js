@@ -387,7 +387,7 @@ export function ozoneGetAllUnrulyOutstreamBids(serverResponseSeatBid) {
     }
     for (let k = 0; k < theseBids.length; k++) {
       let renderer = utils.deepAccess(theseBids[k], 'ext.renderer');
-      let context = utils.deepAccess(theseBids[k], mediaTypes.video.context);
+      let context = utils.deepAccess(theseBids[k], 'mediaTypes.video.context');
       if (renderer && (context === 'outstream')) {
         arrBids.push(theseBids[k]);
       }
