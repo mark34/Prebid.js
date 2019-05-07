@@ -12,7 +12,7 @@ const BIDDER_CODE = 'ozone';
 // const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
 
 // const OZONEURI = 'http://52.14.16.151:8000/'; // polish guys
-const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/unruly_video.php'
+const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/auction_unruly_video.php'
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONEVERSION = '2.0.0-b';
 
@@ -378,11 +378,16 @@ export function ozoneGetAllBidsForBidId(matchBidId, serverResponseSeatBid) {
  * @param serverResponseSeatBid
  */
 export function ozoneGetAllUnrulyOutstreamBids(serverResponseSeatBid) {
+
+  utils.logInfo('ozoneGetAllUnrulyOutstreamBids: ' , serverResponseSeatBid);
+
   let arrBids = [];
   for (let j = 0; j < serverResponseSeatBid.length; j++) {
     let theseBids = serverResponseSeatBid[j].bid;
     let thisSeat = serverResponseSeatBid[j].seat;
+    utils.logInfo('ozoneGetAllUnrulyOutstreamBids: thesebids = ', theseBids);
     if (thisSeat != 'unruly') {
+      utils.logInfo('ozoneGetAllUnrulyOutstreamBids: ignoring non-unruly seat');
       continue;
     }
     for (let k = 0; k < theseBids.length; k++) {
@@ -390,6 +395,9 @@ export function ozoneGetAllUnrulyOutstreamBids(serverResponseSeatBid) {
       let context = utils.deepAccess(theseBids[k], 'mediaTypes.video.context');
       if (renderer && (context === 'outstream')) {
         arrBids.push(theseBids[k]);
+      }
+      else {
+        utils.logInfo("Skipping this bid : either no renderer or mediaTypes.video.context !== outstream");
       }
     }
   }
@@ -529,7 +537,7 @@ function setupUnrulyVideoIfRequired(allUnrulyOutstreamBids) {
     let thisBid = allUnrulyOutstreamBids[i];
     utils.logInfo('OZONE: setupUnrulyVideoIfRequired iterating: ', thisBid);
     const exchangeRenderer = utils.deepAccess(thisBid, 'ext.renderer');
-    if( !exchangeRenderer ) {
+    if (!exchangeRenderer) {
       utils.logError('FAILED to locate "etc.renderer" in outstream ad response - cannot display this ad.');
       continue;
     }
