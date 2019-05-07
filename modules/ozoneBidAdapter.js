@@ -252,6 +252,7 @@ export const spec = {
           thisBid.adResponse = createAdResponseObject(thisBid);
           let renderConf = createObjectForInternalVideoRender(thisBid);
           thisBid.renderer = Renderer.install(renderConf);
+          utils.logInfo('attached a renderer to the bid. Bid is now: ', thisBid );
         } else {
           utils.logInfo('bid is not a video, will not attach a renderer: ', j);
         }
