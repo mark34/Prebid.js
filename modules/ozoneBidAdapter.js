@@ -9,8 +9,8 @@ const BIDDER_CODE = 'ozone';
 // const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 // const OZONEURI = 'http://us.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://eu.ozpr.net/openrtb2/auction';
-const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
-// const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/video_response.php';
+// const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
+const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/video_response.php';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONEVERSION = '2.0.0-a';
 
