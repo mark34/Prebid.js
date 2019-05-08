@@ -5,12 +5,13 @@ import {config} from '../src/config';
 import {getPriceBucketString} from '../src/cpmBucketManager';
 
 const BIDDER_CODE = 'ozone';
-const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+// const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 // const OZONEURI = 'http://us.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://eu.ozpr.net/openrtb2/auction';
-// const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
-const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONEVERSION = '1.5.0';
+const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
+// const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
+const OZONECOOKIESYNC = 'http://pbs.pootl.net/static/load-cookie.html';
+const OZONEVERSION = '1.5.0-20190507';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -207,7 +208,6 @@ export const spec = {
    * @returns {*}
    */
   interpretResponse(serverResponse, request) {
-    var granularityToUse = config.getConfig('priceGranularity'); // eg. medium, custom (if granularity is set)
     serverResponse = serverResponse.body || {};
     if (!serverResponse.hasOwnProperty('seatbid')) { return []; }
     if (typeof serverResponse.seatbid !== 'object') { return []; }
