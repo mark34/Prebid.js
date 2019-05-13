@@ -10,9 +10,13 @@ const BIDDER_CODE = 'ozone';
 // const OZONEURI = 'http://us.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://eu.ozpr.net/openrtb2/auction';
 // const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
-const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/video_response.php';
+// const OZONEURI = 'https://www.betalyst.com/test/ozone_stubs/video_response.php';
+// const OZONEURI = 'http://localhost:8000/openrtb2/auction';
+const OZONEURI = 'http://silvermine.io/pb0419/auction_unruly_video_silvermine.php';
+const OZONE_RENDERER_URL = 'http://silvermine.io/pb0419/ozoneRenderer.js'
+
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONEVERSION = '2.0.0-a';
+const OZONEVERSION = '2.0.1-a';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -248,11 +252,9 @@ export const spec = {
 
         // from https://github.com/prebid/Prebid.js/pull/1082
         if (utils.deepAccess(thisBid, 'ext.prebid.type') === VIDEO) {
-          utils.logInfo('going to attach an adResponse key to the bid:', j);
-          thisBid.adResponse = createAdResponseObject(thisBid);
+          utils.logInfo('going to attach a renderer to:', j);
           let renderConf = createObjectForInternalVideoRender(thisBid);
           thisBid.renderer = Renderer.install(renderConf);
-          utils.logInfo('attached a renderer to the bid. Bid is now: ', thisBid );
         } else {
           utils.logInfo('bid is not a video, will not attach a renderer: ', j);
         }
@@ -497,41 +499,13 @@ export function pgGuid() {
   });
 }
 
-function createAdResponseObject(bid) {
-  utils.logInfo('createAdResponseObject', bid);
-  let obj = {
-    'ad': {
-      'adText': 'This is the text that appears on the top right...',
-      'video': {
-        /* this ensures content is pushed around the player, otherwise it displays behind the page content. */
-        'player_width': 640,
-        'player_height': 480
-      },
-      'content': 'VAST xml here...'
-    }
-  };
-  obj.ad.content = bid.ad;
-  let size = utils.deepAccess(bid, 'ext.prebid.targeting.hb_size');
-  if (size) {
-    let arrWH = size.split('x');
-    if (typeof arrWH === 'object' && arrWH.length == 2) {
-      obj.ad.video.player_width = arrWH[0];
-      obj.ad.video.player_height = arrWH[1];
-    }
-  }
-  obj.ad.adText = ''; // for now I don't know if there's anything that we can put here.
-  return obj;
-}
-
 //
 // from https://github.com/prebid/Prebid.js/pull/1082
 //
 function createObjectForInternalVideoRender(bid) {
   let obj = {
-    url: 'http://cdn.adnxs.com/renderer/video/ANOutstreamVideo.js',
-    config: createAdResponseObject(bid),
+    url: OZONE_RENDERER_URL,
     id: 1, // an id may be present in the renderer info returned on a bid
-    // callback: () => onOutstreamRendererLoaded.call(null, bid)
     callback: () => onOutstreamRendererLoaded(bid)
   }
   return obj;
@@ -542,19 +516,7 @@ function onOutstreamRendererLoaded(bid) {
 }
 
 function outstreamRender(bid) {
-  window.ANOutstreamVideo.renderAd({
-    tagId: bid.adResponse.tag_id,
-    sizes: [640, 480],
-    targetId: bid.adUnitCode, // target div id to render video
-    uuid: bid.crid,
-    adResponse: bid.adResponse,
-    rendererOptions: bid.renderer.getConfig()
-  }, handleOutstreamRendererEvents.bind(bid));
-}
-
-function handleOutstreamRendererEvents(id, eventName) {
-  const bid = this;
-  bid.renderer.handleVideoEvent({ id, eventName });
+  window.ozoneVideo.outstreamRender(bid);
 }
 
 //
