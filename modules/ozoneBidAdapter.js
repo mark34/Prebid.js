@@ -7,11 +7,14 @@ import { Renderer } from '../src/Renderer'
 
 const BIDDER_CODE = 'ozone';
 
+// const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
+// const OZONECOOKIESYNC = 'http://pbs.pootl.net/static/load-cookie.html';
+
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONEVERSION = '2.0.1';
+const OZONEVERSION = '2.1.0';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -98,10 +101,17 @@ export const spec = {
       if (ozoneRequest.regs.ext.gdpr) {
         ozoneRequest.user = {};
         ozoneRequest.user.ext = {'consent': bidderRequest.gdprConsent.consentString};
+        // are we able to make this request?
+        let vendorConsents = bidderRequest.gdprConsent.vendorData.vendorConsents;
+        let boolGdprConsentForOzone = vendorConsents[524];
+        let arrGdprConsents = toFlatArray(bidderRequest.gdprConsent.vendorData.purposeConsents);
+        ozoneRequest.regs.ext.oz_con = boolGdprConsentForOzone ? 1 : 0;
+        ozoneRequest.regs.ext.gap = arrGdprConsents;
       }
     } else {
-      utils.logInfo('OZONE: WILL NOT ADD GDPR info');
+      utils.logInfo('OZONE: WILL NOT ADD GDPR info; no bidderRequest.gdprConsent object was present.');
     }
+
     ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
@@ -504,6 +514,22 @@ function onOutstreamRendererLoaded(bid) {
 
 function outstreamRender(bid) {
   window.ozoneVideo.outstreamRender(bid);
+}
+
+/**
+ * convert {1: true,
+            2: true,
+            3: true,
+            4: true,
+            5: true}
+   to : [1,2,3,4,5]
+ * @param obj
+ */
+function toFlatArray(obj) {
+  let ret = [];
+  Object.keys(obj).forEach(function(key) { if (obj[key]) { ret.push(parseInt(key)); } });
+  utils.logInfo('toFlatArray:', obj, 'returning', ret);
+  return ret;
 }
 
 registerBidder(spec);
