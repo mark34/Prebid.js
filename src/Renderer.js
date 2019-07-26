@@ -97,6 +97,7 @@ export function isRendererRequired(renderer) {
  * @param {Object} bid Bid response
  */
 export function executeRenderer(renderer, bid) {
+  utils.logInfo('executeRenderer', renderer, typeof renderer, bid);
   renderer.render(bid);
 }
 

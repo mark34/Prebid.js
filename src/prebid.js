@@ -302,6 +302,8 @@ $$PREBID_GLOBAL$$.renderAd = function (doc, id) {
     try {
       // lookup ad by ad Id
       const bid = auctionManager.findBidByAdId(id);
+      utils.logMessage('renderAd found bid :', bid);
+
       if (bid) {
         bid.status = CONSTANTS.BID_STATUS.RENDERED;
         // replace macros according to openRTB with price paid = bid.cpm
@@ -319,6 +321,7 @@ $$PREBID_GLOBAL$$.renderAd = function (doc, id) {
         utils.insertElement(creativeComment, doc, 'body');
 
         if (isRendererRequired(renderer)) {
+          utils.logMessage('renderAd inside isRendererRequired');
           executeRenderer(renderer, bid);
         } else if ((doc === document && !utils.inIframe()) || mediaType === 'video') {
           const message = `Error trying to write ad. Ad render call ad id ${id} was prevented from writing to the main document.`;
