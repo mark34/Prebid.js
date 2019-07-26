@@ -15,7 +15,7 @@ const OZONECOOKIESYNC = 'http://pbs.pootl.net/static/load-cookie.html';
 // const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
 
-const OZONEVERSION = '2.1.2';
+const OZONEVERSION = '2.1.3';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -82,6 +82,16 @@ export const spec = {
 
   buildRequests(validBidRequests, bidderRequest) {
     utils.logInfo('OZONE: ozone v' + OZONEVERSION + ' validBidRequests', validBidRequests, 'bidderRequest', bidderRequest);
+    utils.logInfo('going to set pbjs.auctionId to ' + bidderRequest.auctionId);
+    pbjs.auctionId = bidderRequest.auctionId;
+    if (utils.deepAccess(validBidRequests[0], 'crumbs.pubcid')) {
+      // this will be set per-user (same for all bid requests) if the pubCommonId module is used.
+      utils.logInfo('going to set pbjs.pubcid to ' + validBidRequests[0].crumbs.pubcid );
+      pbjs.pubcid = validBidRequests[0].crumbs.pubcid;
+    }
+    else {
+      utils.logInfo('cannot set pbjs.auctionId - there are no bid requests');
+    }
     let singleRequest = config.getConfig('ozone.singleRequest');
     singleRequest = singleRequest !== false; // undefined & true will be true
     utils.logInfo('OZONE: config ozone.singleRequest : ', singleRequest);
