@@ -10,12 +10,16 @@ const BIDDER_CODE = 'ozone';
 // const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
 // const OZONECOOKIESYNC = 'http://pbs.pootl.net/static/load-cookie.html';
 
-const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
-const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-// const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
-const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
+const OZONEURI = 'http://afsheen-dev.the-ozone-project.com/openrtb2/auction';
+const OZONECOOKIESYNC = 'http://afsheen-dev.the-ozone-project.com/static/load-cookie.html';
 
-const OZONEVERSION = '2.1.3';
+// const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+// const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
+
+const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
+
+const OZONEVERSION = '2.1.2';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -82,16 +86,6 @@ export const spec = {
 
   buildRequests(validBidRequests, bidderRequest) {
     utils.logInfo('OZONE: ozone v' + OZONEVERSION + ' validBidRequests', validBidRequests, 'bidderRequest', bidderRequest);
-    let objOzone = {pubcid: null, auctionId: bidderRequest.auctionId};
-    if (utils.deepAccess(validBidRequests[0], 'crumbs.pubcid')) {
-      // this will be set per-user (same for all bid requests) if the pubCommonId module is used.
-      utils.logInfo('going to set pbjs.ozone.pubcid to ' + validBidRequests[0].crumbs.pubcid);
-      objOzone.pubcid = validBidRequests[0].crumbs.pubcid;
-    } else {
-      utils.logInfo('cannot set pbjs.ozone.pubcid - there are no bid requests');
-    }
-    utils.logInfo(['going to attach pbjs.ozone ', objOzone]);
-    pbjs.ozone = objOzone;
     let singleRequest = config.getConfig('ozone.singleRequest');
     singleRequest = singleRequest !== false; // undefined & true will be true
     utils.logInfo('OZONE: config ozone.singleRequest : ', singleRequest);
