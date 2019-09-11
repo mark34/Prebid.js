@@ -10,16 +10,17 @@ const BIDDER_CODE = 'ozone';
 // const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
 // const OZONECOOKIESYNC = 'http://pbs.pootl.net/static/load-cookie.html';
 
-const OZONEURI = 'http://afsheen-dev.the-ozone-project.com/openrtb2/auction';
-const OZONECOOKIESYNC = 'http://afsheen-dev.the-ozone-project.com/static/load-cookie.html';
+// const OZONEURI = 'http://afsheen-dev.the-ozone-project.com/openrtb2/auction';
+// const OZONECOOKIESYNC = 'http://afsheen-dev.the-ozone-project.com/static/load-cookie.html';
 
-// const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
-// const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
+const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
+// const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
 
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 // const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
 
-const OZONEVERSION = '2.1.2';
+const OZONEVERSION = '2.1.2'; // add the word 'reach' for the reach build.
 
 export const spec = {
   code: BIDDER_CODE,
@@ -249,6 +250,7 @@ export const spec = {
    * @returns {*}
    */
   interpretResponse(serverResponse, request) {
+    utils.logInfo('interpretResponse: serverResponse, request', serverResponse, request);
     serverResponse = serverResponse.body || {};
     if (!serverResponse.hasOwnProperty('seatbid')) { return []; }
     if (typeof serverResponse.seatbid !== 'object') { return []; }
@@ -272,6 +274,7 @@ export const spec = {
         let ozoneInternalKey = thisBid.bidId;
         let adserverTargeting = {};
         // all keys for all bidders for this bid have to be added to all objects returned, else some keys will not be sent to ads?
+        // COMMENT OUT FOR REACH FROM HERE:
         let allBidsForThisBidid = ozoneGetAllBidsForBidId(ozoneInternalKey, serverResponse.seatbid);
         // add all the winning & non-winning bids for this bidId:
         utils.logInfo('OZONE: Going to iterate allBidsForThisBidId', allBidsForThisBidid);
@@ -287,21 +290,24 @@ export const spec = {
             adserverTargeting['oz_' + bidderName + '_dealid'] = String(allBidsForThisBidid[bidderName].dealid);
           }
         });
+        // COMMENT OUT FOR REACH TO HERE
         // also add in the winning bid, to be sent to dfp
         let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(ozoneInternalKey, serverResponse.seatbid);
         adserverTargeting['oz_auc_id'] = String(request.bidderRequest.auctionId);
         adserverTargeting['oz_winner'] = String(winningSeat);
-        adserverTargeting['oz_winner_auc_id'] = String(winningBid.id);
-        adserverTargeting['oz_winner_imp_id'] = String(winningBid.impid);
+        adserverTargeting['oz_winner_auc_id'] = String(winningBid.id); // comment out for reach
+        adserverTargeting['oz_winner_imp_id'] = String(winningBid.impid); // comment out for reach
         adserverTargeting['oz_response_id'] = String(serverResponse.id);
-        adserverTargeting['oz_pb_v'] = OZONEVERSION;
+        adserverTargeting['oz_pb_v'] = OZONEVERSION; // comment out for reach
         thisBid.adserverTargeting = adserverTargeting;
         arrAllBids.push(thisBid);
       }
     }
     return arrAllBids;
   },
+  // http://prebid.org/dev-docs/bidder-adaptor.html#registering-user-syncs
   getUserSyncs(optionsType, serverResponse) {
+    utils.logInfo('getUserSyncs called', optionsType, serverResponse);
     if (!serverResponse || serverResponse.length === 0) {
       return [];
     }
