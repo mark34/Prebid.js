@@ -159,6 +159,37 @@ var bidderRequestWithFullGdpr = {
   },
 };
 
+// simulating the Mirror
+var bidderRequestWithPartialGdpr = {
+  auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
+  auctionStart: 1536838908986,
+  bidderCode: 'ozone',
+  bidderRequestId: '1c1586b27a1b5c8',
+  bids: [{
+    adUnitCode: 'div-gpt-ad-1460505748561-0',
+    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
+    bidId: '2899ec066a91ff8',
+    bidRequestsCount: 1,
+    bidder: 'ozone',
+    bidderRequestId: '1c1586b27a1b5c8',
+    crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
+    params: { publisherId: '9876abcd12-3', customData: {'gender': 'bart', 'age': 'low'}, lotameData: {'Profile': {'tpid': 'c8ef27a0d4ba771a81159f0d2e792db4', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}], 'ThirdPartyAudience': [{'id': '123', 'name': 'Automobiles'}, {'id': '456', 'name': 'Ages: 30-39'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { banner: { topframe: 1, w: 300, h: 250, format: [{ w: 300, h: 250 }, { w: 300, h: 600 }] }, id: '2899ec066a91ff8', secure: 1, tagid: 'undefined' } ] },
+    sizes: [[300, 250], [300, 600]],
+    transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
+  }],
+  doneCbCallCount: 1,
+  start: 1536838908987,
+  timeout: 3000,
+  gdprConsent: {
+    'consentString': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
+    'gdprApplies': true,
+    'vendorData': {
+      'metadata': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
+      'gdprApplies': true
+    }
+  },
+};
+
 // make sure the impid matches the request bidId
 var validResponse = {
   'body': {
@@ -796,6 +827,8 @@ describe('ozone Adapter', function () {
         consentString: consentString,
         gdprApplies: true,
         vendorData: {
+          metadata: consentString,
+          gdprApplies: true,
           vendorConsents: {524: true},
           purposeConsents: {1: true, 2: true, 3: true, 4: true, 5: true}
         }
@@ -804,46 +837,25 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
       const payload = JSON.parse(request.data);
       expect(payload.regs.ext.gdpr).to.equal(1);
-      expect(payload.regs.ext.oz_con).to.exist.and.to.equal(1);
-      expect(payload.regs.ext.gap).to.exist.and.to.be.an('array').and.to.eql([1, 2, 3, 4, 5]);
+      expect(payload.user.ext.consent).to.equal(consentString);
     });
 
-    it('should add correct gdpr consent information to the request when user has accepted only some purpose consents', function () {
+    it('should add gdpr consent information to the request when ozone is true and vendorData is missing vendorConsents (Mirror)', function () {
       let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
       let bidderRequest = validBidderRequest;
       bidderRequest.gdprConsent = {
         consentString: consentString,
         gdprApplies: true,
         vendorData: {
-          vendorConsents: {524: true},
-          purposeConsents: {1: true, 4: true, 5: true}
+          metadata: consentString,
+          gdprApplies: true
         }
       }
 
       const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
       const payload = JSON.parse(request.data);
       expect(payload.regs.ext.gdpr).to.equal(1);
-      expect(payload.regs.ext.oz_con).to.exist.and.to.equal(1);
-      expect(payload.regs.ext.gap).to.exist.and.to.be.an('array').and.to.eql([1, 4, 5]);
-    });
-
-    it('should add gdpr consent information to the request when ozone is false', function () {
-      let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
-      let bidderRequest = validBidderRequest;
-      bidderRequest.gdprConsent = {
-        consentString: consentString,
-        gdprApplies: true,
-        vendorData: {
-          vendorConsents: {}, /* 524 is not present */
-          purposeConsents: {1: true, 2: true, 3: true, 4: true, 5: true}
-        }
-      };
-
-      const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.regs.ext.gdpr).to.equal(1);
-      expect(payload.regs.ext.oz_con).to.exist.and.to.equal(0);
-      expect(payload.regs.ext.gap).to.exist.and.to.be.an('array').and.to.eql([1, 2, 3, 4, 5]);
+      expect(payload.user.ext.consent).to.equal(consentString);
     });
 
     it('should set regs.ext.gdpr flag to 0 when gdprApplies is false', function () {
@@ -853,6 +865,8 @@ describe('ozone Adapter', function () {
         consentString: consentString,
         gdprApplies: false,
         vendorData: {
+          metadata: consentString,
+          gdprApplies: true,
           vendorConsents: {}, /* 524 is not present */
           purposeConsents: {1: true, 2: true, 3: true, 4: true, 5: true}
         }
@@ -861,8 +875,6 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
       const payload = JSON.parse(request.data);
       expect(payload.regs.ext.gdpr).to.equal(0);
-      expect(payload.regs.ext.oz_con).to.be.undefined;
-      expect(payload.regs.ext.gap).to.be.undefined;
     });
   });
 
@@ -883,11 +895,17 @@ describe('ozone Adapter', function () {
     });
 
     it('should build bid array with gdpr', function () {
-      var validBidderRequestWithGdpr = validBidderRequest;
+      var validBidderRequestWithGdpr = bidderRequestWithFullGdpr;
       validBidderRequestWithGdpr.gdprConsent = {'gdprApplies': 1, 'consentString': 'This is the gdpr consent string'};
       const request = spec.buildRequests(validBidRequests, validBidderRequestWithGdpr);
       const result = spec.interpretResponse(validResponse, request);
       expect(result.length).to.equal(1);
+    });
+
+    it('should build bid array with only partial gdpr', function () {
+      var validBidderRequestWithGdpr = bidderRequestWithPartialGdpr;
+      validBidderRequestWithGdpr.gdprConsent = {'gdprApplies': 1, 'consentString': 'This is the gdpr consent string'};
+      const request = spec.buildRequests(validBidRequests, validBidderRequestWithGdpr);
     });
 
     it('should fail ok if no seatbid in server response', function () {
@@ -924,6 +942,12 @@ describe('ozone Adapter', function () {
     it('should fail gracefully if server response is empty', function () {
       const result = spec.getUserSyncs('bad', []);
       expect(result).to.be.empty;
+    });
+    it('should append the syncsPerBidder value if it exists', function() {
+      config.setConfig({'userSync': {'syncsPerBidder': 12}});
+      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response');
+      expect(result).to.be.an('array');
+      expect(result[0].url).to.include('?syncsPerBidder=12');
     });
   });
 
