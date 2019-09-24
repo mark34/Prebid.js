@@ -159,6 +159,39 @@ var bidderRequestWithFullGdpr = {
   },
 };
 
+var gdpr1 = {
+  'consentString': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
+  'vendorData': {
+    'metadata': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
+    'gdprApplies': true,
+    'hasGlobalScope': false,
+    'cookieVersion': '1',
+    'created': '2019-05-31T12:46:48.825',
+    'lastUpdated': '2019-05-31T12:46:48.825',
+    'cmpId': '28',
+    'cmpVersion': '1',
+    'consentLanguage': 'en',
+    'consentScreen': '1',
+    'vendorListVersion': 148,
+    'maxVendorId': 631,
+    'purposeConsents': {
+      '1': true,
+      '2': true,
+      '3': true,
+      '4': true,
+      '5': true
+    },
+    'vendorConsents': {
+      '468': true,
+      '522': true,
+      '524': true, /* 524 is ozone */
+      '565': true,
+      '591': true
+    }
+  },
+  'gdprApplies': true
+};
+
 // simulating the Mirror
 var bidderRequestWithPartialGdpr = {
   auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
@@ -936,18 +969,22 @@ describe('ozone Adapter', function () {
 
   describe('userSyncs', function () {
     it('should fail gracefully if no server response', function () {
-      const result = spec.getUserSyncs('bad', false);
+      const result = spec.getUserSyncs('bad', false, gdpr1);
       expect(result).to.be.empty;
     });
     it('should fail gracefully if server response is empty', function () {
-      const result = spec.getUserSyncs('bad', []);
+      const result = spec.getUserSyncs('bad', [], gdpr1);
       expect(result).to.be.empty;
     });
-    it('should append the syncsPerBidder value if it exists', function() {
-      config.setConfig({'userSync': {'syncsPerBidder': 12}});
-      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response');
+    it('should append the various values if they exist', function() {
+      // get the cookie bag populated
+      spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', gdpr1);
       expect(result).to.be.an('array');
-      expect(result[0].url).to.include('?syncsPerBidder=12');
+      expect(result[0].url).to.include('publisherId=9876abcd12-3');
+      expect(result[0].url).to.include('siteId=1234567890');
+      expect(result[0].url).to.include('gdpr=1');
+      expect(result[0].url).to.include('gdpr_consent=BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA');
     });
   });
 

@@ -13,7 +13,6 @@ const BIDDER_CODE = 'ozone';
 // testing fake endpoint for cookie sync new code with postMessage
 // const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
 
-
 // *** DEV ***
 // const OZONEURI = 'http://afsheen-dev.the-ozone-project.com/openrtb2/auction';
 // const OZONECOOKIESYNC = 'http://afsheen-dev.the-ozone-project.com/static/load-cookie.html';
@@ -24,7 +23,7 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
 
-const OZONEVERSION = '2.1.3';
+const OZONEVERSION = '2.1.4';
 
 // src/prebid.js calls src/userSync.js very early. userSync.js sets default for syncsPerBidder
 // IF you want to call this here and set your OWN custom values then you need to specify ALL the userSync keys & values,
@@ -41,6 +40,7 @@ const OZONEVERSION = '2.1.3';
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
+  cookieSyncBag: {'publisherId': null, 'siteId': null, 'pubcid': null}, /* variables we want to make available to cookie sync */
 
   /**
    * Basic check to see whether required parameters are in the request.
@@ -106,6 +106,11 @@ export const spec = {
 
   buildRequests(validBidRequests, bidderRequest) {
     utils.logInfo('OZONE: ozone v' + OZONEVERSION + ' validBidRequests', validBidRequests, 'bidderRequest', bidderRequest);
+    if (validBidRequests.length > 0) {
+      this.cookieSyncBag.pubcid = utils.deepAccess(validBidRequests[0], 'crumbs.pubcid');
+      this.cookieSyncBag.siteId = utils.deepAccess(validBidRequests[0], 'params.siteId');
+      this.cookieSyncBag.publisherId = utils.deepAccess(validBidRequests[0], 'params.publisherId');
+    }
     let singleRequest = config.getConfig('ozone.singleRequest');
     singleRequest = singleRequest !== false; // undefined & true will be true
     utils.logInfo('OZONE: config ozone.singleRequest : ', singleRequest);
@@ -320,27 +325,29 @@ export const spec = {
     return arrAllBids;
   },
   // http://prebid.org/dev-docs/bidder-adaptor.html#registering-user-syncs
-  getUserSyncs(optionsType, serverResponse) {
-    utils.logInfo('OZONE: getUserSyncs optionsType, serverResponse', optionsType, serverResponse);
+  getUserSyncs(optionsType, serverResponse, gdprConsent) {
+    utils.logInfo('OZONE: getUserSyncs optionsType, serverResponse, gdprConsent, cookieSyncBag', optionsType, serverResponse, gdprConsent, this.cookieSyncBag);
     if (!serverResponse || serverResponse.length === 0) {
       return [];
     }
     if (optionsType.iframeEnabled) {
       var arrQueryString = [];
-      var spb = config.getConfig('userSync.syncsPerBidder');
-      if (spb) {
-        arrQueryString.push('syncsPerBidder=' + spb);
-      }
       if (document.location.search.match(/pbjs_debug=true/)) {
         arrQueryString.push('pbjs_debug=true');
       }
-      var syncsPerBidderQueryString = arrQueryString.join('&');
-      if (syncsPerBidderQueryString.length > 0) {
-        syncsPerBidderQueryString = '?' + syncsPerBidderQueryString;
+      arrQueryString.push('gdpr=' + (utils.deepAccess(gdprConsent, 'gdprApplies', false) ? '1' : '0'));
+      arrQueryString.push('gdpr_consent=' + utils.deepAccess(gdprConsent, 'consentString', ''));
+      arrQueryString.push('pubcid=' + this.cookieSyncBag.pubcid);
+      arrQueryString.push('publisherId=' + this.cookieSyncBag.publisherId);
+      arrQueryString.push('siteId=' + this.cookieSyncBag.siteId);
+
+      var strQueryString = arrQueryString.join('&');
+      if (strQueryString.length > 0) {
+        strQueryString = '?' + strQueryString;
       }
       return [{
         type: 'iframe',
-        url: OZONECOOKIESYNC + syncsPerBidderQueryString
+        url: OZONECOOKIESYNC + strQueryString
       }];
     }
   }
