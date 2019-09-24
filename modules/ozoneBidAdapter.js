@@ -13,15 +13,15 @@ const BIDDER_CODE = 'ozone';
 // testing fake endpoint for cookie sync new code with postMessage
 // const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
 
-// *** DEV ***
-// const OZONEURI = 'http://afsheen-dev.the-ozone-project.com/openrtb2/auction';
-// const OZONECOOKIESYNC = 'http://afsheen-dev.the-ozone-project.com/static/load-cookie.html';
-// const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+// *** DEV
+const OZONEURI = 'https://test.ozpr.net/openrtb2/auction';
+const OZONECOOKIESYNC = 'https://test.ozpr.net/static/load-cookie.html';
+const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
 // *** PROD ***
-const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
-const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
+// const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+// const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
+// const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
 
 const OZONEVERSION = '2.1.4';
 
