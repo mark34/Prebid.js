@@ -10,15 +10,15 @@ const BIDDER_CODE = 'ozone';
 // const OZONEURI = 'http://pbs.pootl.net/openrtb2/auction';
 // const OZONECOOKIESYNC = 'http://pbs.pootl.net/static/load-cookie.html';
 
-// const OZONEURI = 'http://afsheen-dev.the-ozone-project.com/openrtb2/auction';
-// const OZONECOOKIESYNC = 'http://afsheen-dev.the-ozone-project.com/static/load-cookie.html';
-
-const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
-const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-// const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
-
-const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+// const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
+// const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 // const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
+
+const OZONEURI = 'http://test.ozpr.net/openrtb2/auction';
+const OZONECOOKIESYNC = 'http://test.ozpr.net/static/load-cookie.html';
+const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+
+// const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
 
 const OZONEVERSION = '2.1.2'; // add the word 'reach' for the reach build.
 
