@@ -965,6 +965,12 @@ describe('ozone Adapter', function () {
       const result = spec.interpretResponse(validBidResponse1adWith2Bidders, request);
       expect(result.length).to.equal(2);
     });
+
+    it('should have a ttl of 600', function () {
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(result[0].ttl).to.equal(300);
+    });
   });
 
   describe('userSyncs', function () {
