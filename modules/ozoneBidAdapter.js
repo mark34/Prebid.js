@@ -9,6 +9,7 @@ const BIDDER_CODE = 'ozone';
 
 // testing fake endpoint for cookie sync new code with postMessage
 // const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
+// const OZONECOOKIESYNC = 'https://betalyst.local/prebid-cookie-sync-development.html';
 
 // *** DEV-ozpr
 const OZONEURI = 'https://test.ozpr.net/openrtb2/auction';
@@ -77,15 +78,27 @@ export const spec = {
       utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : siteId must be exactly 10 numeric characters');
       return false;
     }
-    if (bid.params.hasOwnProperty('customData')) {
-      if (typeof bid.params.customData !== 'object') {
-        utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : customData is not an object');
-        return false;
-      }
-    }
     if (bid.params.hasOwnProperty('customParams')) {
       utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : customParams should be renamed to customData');
       return false;
+    }
+    if (bid.params.hasOwnProperty('customData')) {
+      if (!Array.isArray(bid.params.customData)) {
+        utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : customData is not an Array');
+        return false;
+      }
+      if (bid.params.customData.length < 1) {
+        utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : customData is an array but does not contain any elements');
+        return false;
+      }
+      if (!(bid.params.customData[0]).hasOwnProperty('targeting')) {
+        utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : customData[0] does not contain "targeting"');
+        return false;
+      }
+      if (typeof bid.params.customData[0]['targeting'] != 'object') {
+        utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : customData[0] targeting is not an object');
+        return false;
+      }
     }
     if (bid.params.hasOwnProperty('lotameData')) {
       if (typeof bid.params.lotameData !== 'object') {
@@ -342,11 +355,13 @@ export const spec = {
       arrQueryString.push('pubcid=' + this.cookieSyncBag.pubcid);
       arrQueryString.push('publisherId=' + this.cookieSyncBag.publisherId);
       arrQueryString.push('siteId=' + this.cookieSyncBag.siteId);
+      arrQueryString.push('cb=' + Date.now());
 
       var strQueryString = arrQueryString.join('&');
       if (strQueryString.length > 0) {
         strQueryString = '?' + strQueryString;
       }
+      utils.logInfo('OZONE: getUserSyncs going to return cookie sync url : ' + OZONECOOKIESYNC + strQueryString);
       return [{
         type: 'iframe',
         url: OZONECOOKIESYNC + strQueryString
@@ -551,11 +566,11 @@ export function getTestQuerystringValue() {
  *
  * @returns {*}
  */
-export function pgGuid() {
-  return new Date().getTime() + 'xxxxxxxx'.replace(/x/g, function(c) {
-    return Math.round((Math.random() * 36)).toString(36);
-  });
-}
+// export function pgGuid() {
+//   return new Date().getTime() + 'xxxxxxxx'.replace(/x/g, function(c) {
+//     return Math.round((Math.random() * 36)).toString(36);
+//   });
+// }
 
 function createObjectForInternalVideoRender(bid) {
   let obj = {
