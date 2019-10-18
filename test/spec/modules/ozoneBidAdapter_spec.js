@@ -265,6 +265,7 @@ var validResponse = {
         'seat': 'appnexus'
       }
     ],
+    'cur': 'GBP', /* NOTE - this is where cur is, not in the seatbids. */
     'ext': {
       'responsetimemillis': {
         'appnexus': 47,
