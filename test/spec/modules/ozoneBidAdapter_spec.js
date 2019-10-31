@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { spec, getWidthAndHeightFromVideoObject, playerSizeIsNestedArray, defaultSize } from 'modules/ozoneBidAdapter';
 import { config } from 'src/config';
 import {Renderer} from '../../../src/Renderer';
+import {getGranularityKeyName, getGranularityObject} from '../../../modules/ozoneBidAdapter';
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const BIDDER_CODE = 'ozone';
 /*
@@ -950,6 +951,54 @@ describe('ozone Adapter', function () {
       const payload = JSON.parse(request.data);
       expect(payload.regs.ext.gdpr).to.equal(0);
     });
+
+    it('should put new userIds into auction calls when we use UserId module & individual Systems', function () {
+      let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
+      let bidderRequest = validBidderRequest;
+      bidderRequest.gdprConsent = {
+        consentString: consentString,
+        gdprApplies: false,
+        vendorData: {
+          metadata: consentString,
+          gdprApplies: true,
+          vendorConsents: {524: true},
+          purposeConsents: {1: true, 2: true, 3: true, 4: true, 5: true}
+        }
+      };
+
+      let bidRequests = validBidRequests;
+      // values from http://prebid.org/dev-docs/modules/userId.html#pubcommon-id
+      bidRequests[0]['userId'] = {
+        'criteortus': '1111',
+        'digitrustid': {data: {id: 'DTID', keyv: 4, privacy: {optout: false}, producer: 'ABC', version: 2}},
+        'id5id': '2222',
+        'idl_env': '3333',
+        'lipb': {'lipbid': '4444'},
+        'parrableid': 'eidVersion.encryptionKeyReference.encryptedValue',
+        'pubcid': '5555',
+        'tdid': '6666'
+      };
+      const request = spec.buildRequests(bidRequests, bidderRequest);
+      const payload = JSON.parse(request.data);
+      let firstBid = payload.imp[0].ext.ozone;
+      expect(firstBid.userId.pubcid).to.equal(bidRequests[0]['userId']['pubcid']);
+      expect(firstBid.userId.tdid).to.equal(bidRequests[0]['userId']['tdid']);
+      expect(firstBid.userId.id5id).to.equal(bidRequests[0]['userId']['id5id']);
+      expect(firstBid.userId.parrableid).to.equal(bidRequests[0]['userId']['parrableid']);
+      expect(firstBid.userId.idl_env).to.equal(bidRequests[0]['userId']['idl_env']);
+      expect(firstBid.userId.digitrustid).to.be.an('object');
+      expect(firstBid.userId.criteortus).to.equal(bidRequests[0]['userId']['criteortus']);
+      expect(firstBid.userId.lipb.lipbid).to.equal(bidRequests[0]['userId']['lipb']['lipbid']);
+      expect(firstBid.pubcid).to.equal(bidRequests[0]['userId']['pubcid']);
+      delete validBidRequests[0].userId; // tidy up now, else it will screw with other tests
+    });
+
+    it('should pick up the value of pubcid when built using the pubCommonId module (not userId)', function () {
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      let firstBid = payload.imp[0].ext.ozone;
+      expect(firstBid.pubcid).to.equal(validBidRequests[0]['crumbs']['pubcid']);
+    });
   });
 
   describe('interpretResponse', function () {
@@ -1089,12 +1138,39 @@ describe('ozone Adapter', function () {
       expect(result).to.be.null;
     });
   });
+
   describe('default size', function () {
     it('should should return default sizes if no obj is sent', function () {
       let obj = '';
       const result = defaultSize(obj);
       expect(result.defaultHeight).to.equal(250);
       expect(result.defaultWidth).to.equal(300);
+    });
+  });
+
+  describe('getGranularityKeyName', function() {
+    it('should return a string granularity as-is', function() {
+      const result = getGranularityKeyName('', 'this is it', '');
+      expect(result).to.equal('this is it');
+    });
+    it('should return "custom" for a mediaTypeGranularity object', function() {
+      const result = getGranularityKeyName('', {}, '');
+      expect(result).to.equal('custom');
+    });
+    it('should return "custom" for a mediaTypeGranularity object', function() {
+      const result = getGranularityKeyName('', false, 'string buckets');
+      expect(result).to.equal('string buckets');
+    });
+  });
+
+  describe('getGranularityObject', function() {
+    it('should return an object as-is', function() {
+      const result = getGranularityObject('', {'name': 'mark'}, '', '');
+      expect(result.name).to.equal('mark');
+    });
+    it('should return an object as-is', function() {
+      const result = getGranularityObject('', false, 'custom', {'name': 'rupert'});
+      expect(result.name).to.equal('rupert');
     });
   });
 });

@@ -414,6 +414,15 @@ export const spec = {
    * @return string
    */
   getPlacementId(bidRequest) {
+    let override = new URLSearchParams(document.location.search.substr(1)).get('ozstoredrequest');
+    if (override) {
+      if (this.isValidPlacementId(override)) {
+        utils.logInfo('using GET ozstoredrequest ' + override + ' to replace placementId');
+        return override;
+      } else {
+        utils.logError('GET ozstoredrequest FAILED VALIDATION - will not use it');
+      }
+    }
     return (bidRequest.params.placementId).toString();
   }
 
