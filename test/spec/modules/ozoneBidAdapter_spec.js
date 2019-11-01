@@ -102,6 +102,10 @@ var validBidderRequest = {
   timeout: 3000
 };
 
+// bidder request with GDPR - change the values for testing:
+// gdprConsent.gdprApplies (true/false)
+// gdprConsent.vendorData.purposeConsents (make empty, make null, remove it)
+// gdprConsent.vendorData.vendorConsents (remove 524, remove all, make the element null, remove it)
 var bidderRequestWithFullGdpr = {
   auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
   auctionStart: 1536838908986,
@@ -189,7 +193,7 @@ var gdpr1 = {
   'gdprApplies': true
 };
 
-// simulating Mirror
+// simulating the Mirror
 var bidderRequestWithPartialGdpr = {
   auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
   auctionStart: 1536838908986,
@@ -948,7 +952,7 @@ describe('ozone Adapter', function () {
       expect(payload.regs.ext.gdpr).to.equal(0);
     });
 
-    it.only('should put new userIds into auction calls when we use UserId module & individual Systems', function () {
+    it('should put new userIds into auction calls when we use UserId module & individual Systems', function () {
       let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
       let bidderRequest = validBidderRequest;
       bidderRequest.gdprConsent = {
@@ -975,7 +979,6 @@ describe('ozone Adapter', function () {
         'tdid': '6666'
       };
       const request = spec.buildRequests(bidRequests, bidderRequest);
-      console.log(request);
       const payload = JSON.parse(request.data);
       let firstBid = payload.imp[0].ext.ozone;
       expect(firstBid.userId.pubcid).to.equal(bidRequests[0]['userId']['pubcid']);
@@ -1135,6 +1138,7 @@ describe('ozone Adapter', function () {
       expect(result).to.be.null;
     });
   });
+
   describe('default size', function () {
     it('should should return default sizes if no obj is sent', function () {
       let obj = '';

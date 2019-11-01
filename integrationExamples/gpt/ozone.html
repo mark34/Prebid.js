@@ -1,0 +1,147 @@
+<!--
+
+  This is the ozone integration test page, taken from the hello_world html file.
+  To use it, set in  your /etc/hosts file:
+
+  127.0.0.1 ozone.ardm.io
+
+  and execute:
+
+  gulp e2e-test --host=ozone.ardm.io
+
+  an put the automate.browserstack.com username & key into your ~/.profile file
+
+-->
+
+<html>
+  <head>
+      <script async src="../../build/dist/prebid.js"></script>
+      <script async src="https://www.googletagservices.com/tag/js/gpt.js"></script>
+      <script>
+        var FAILSAFE_TIMEOUT = 3300;
+        var PREBID_TIMEOUT = 1000;
+  
+        var adUnits = [{
+            code: 'ads-rectangle-desktop',
+            mediaTypes: {
+                banner: {
+                    sizes: [[300, 250]]
+                }
+            },
+            bids: [
+                {
+                    bidder: 'ozone',
+                    params: {
+                        publisherId: 'OZONENUK0001', /* an ID to identify the publisher account  - required */
+                        siteId: '4204204201', /* An ID used to identify a site within a publisher account - required*/
+                        placementId: '0420420421', /* an ID used to identify the piece of inventory - required - for appnexus test use 13144370 */
+
+                        customData: [{"settings":{},"targeting":{"sens": "f", "pt1": "/uk", "pt2": "uk", "pt3": "network-front", "pt4": "ng", "pt5": ["uk"], "pt7": "wide"}}],
+                        lotameData: {"Profile": {"tpid":"4e5c21fc7c181c2b1eb3a73d543a27f6","pid":"3a45fd4872fa01f35c49586d8dcb7c60","Audiences": {"Audience":[{"id":"439847","abbr":"all"},{"id":"446197","abbr":"Arts, Culture & Literature"},{"id":"446198","abbr":"Business"}]}}}
+
+                    }
+                }
+            ]
+        }];
+  
+        var pbjs = pbjs || {};
+        pbjs.que = pbjs.que || [];
+  
+      </script>
+  
+      <script>
+        var googletag = googletag || {};
+        googletag.cmd = googletag.cmd || [];
+        googletag.cmd.push(function() {
+          googletag.pubads().disableInitialLoad();
+        });
+
+
+        pbjs.que.push(function() {
+            pbjs.setConfig({
+                userSync: { /* http://prebid.org/dev-docs/publisher-api-reference.html */
+                    filterSettings: {
+                        iframe: {
+                            bidders: '*',   // '*' means all bidders
+                            filter: 'include'
+                        }
+                    }
+                    ,
+
+                    userIds: [{
+                        // this one is for ID5 system:
+                        name: "id5Id",
+                        params: {
+                            partner: 173             // change to the Partner Number you received from ID5
+                        },
+                        storage: {
+                            type: "cookie",
+                            name: "pbjs-id5id",      // create a cookie with this name
+                            expires: 90,             // cookie lasts for 90 days
+                            refreshInSeconds: 8*3600 // refresh ID every 8 hours to ensure it's fresh
+                        }
+                    }
+                        ,
+                        {
+                            // this one is for pubcid:
+                            name: "pubCommonId",
+                            storage: {
+                                type: "html5",  // you must specify one or the other - cookie or html5
+                                name: "mb_should_be_LS",       // create a cookie/local storage with this name
+                                expires: 50          // expires in n days
+                            }
+                        }
+                    ]
+
+                    // , syncsPerBidder: 3
+                }
+
+            });
+            pbjs.addAdUnits(adUnits);
+            pbjs.requestBids({
+                bidsBackHandler: sendAdserverRequest
+            });
+        });
+
+
+        function sendAdserverRequest() {
+            console.log( 'In sendAdserverRequest : pbjs.adserverRequestSent = ' + pbjs.adserverRequestSent );
+            if (pbjs.adserverRequestSent) return;
+            pbjs.adserverRequestSent = true;
+            googletag.cmd.push(function() {
+                pbjs.que.push(function() {
+                    pbjs.setTargetingForGPTAsync();
+                    googletag.pubads().refresh();
+                });
+
+            });
+        }
+
+        setTimeout(function() {
+            sendAdserverRequest();
+        }, PREBID_TIMEOUT);
+        // setTimeout(function() { console.log( [" [html] Bidder responses: " , pbjs.getBidResponses() ] ); } , PREBID_TIMEOUT);
+
+        googletag.cmd.push(function() {
+
+            // just use slot1 for testing a single video hardcoded response from https://www.betalyst.com/test/ozone_stubs/video_response.php
+            var slot1 = googletag.defineSlot('/22037345/projectozone', [[300, 250]], 'ads-rectangle-desktop').addService(googletag.pubads());
+            googletag.pubads().disableInitialLoad();
+            googletag.pubads().enableSingleRequest();
+            googletag.enableServices();
+        });
+
+      </script>
+  
+  </head>
+  
+  <body>
+  <h2>Prebid.js Ozone Test</h2>
+  <h5>Div-1</h5>
+  <div id='ads-rectangle-desktop'>
+      <script type='text/javascript'>
+        googletag.cmd.push(function() { googletag.display('ads-rectangle-desktop'); });
+      </script>
+  </div>
+  </body>
+  </html>

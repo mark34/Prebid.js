@@ -26,7 +26,7 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.1.6';
+const OZONEVERSION = '2.2.0';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -45,7 +45,7 @@ export const spec = {
       utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : missing placementId : siteId, placementId and publisherId are REQUIRED');
       return false;
     }
-    if (!(bid.params.placementId).toString().match(/^[0-9]{10}$/)) {
+    if (!this.isValidPlacementId(bid.params.placementId)) {
       utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : placementId must be exactly 10 numeric characters');
       return false;
     }
@@ -106,6 +106,14 @@ export const spec = {
     return true;
   },
 
+  /**
+   * Split this out so that we can validate the placementId and also the override GET parameter ozstoredrequest
+   * @param placementId
+   */
+  isValidPlacementId(placementId) {
+    return placementId.toString().match(/^[0-9]{10}$/);
+  },
+
   buildRequests(validBidRequests, bidderRequest) {
     utils.logInfo('OZONE: ozone v' + OZONEVERSION + ' validBidRequests', validBidRequests, 'bidderRequest', bidderRequest);
     if (validBidRequests.length > 0) {
@@ -139,8 +147,9 @@ export const spec = {
     ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
+      let placementId = this.getPlacementId(ozoneBidRequest);
       obj.id = ozoneBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
-      obj.tagid = (ozoneBidRequest.params.placementId).toString();
+      obj.tagid = placementId;
       obj.secure = window.location.protocol === 'https:' ? 1 : 0;
       // is there a banner (or nothing declared, so banner is the default)?
       let arrBannerSizes = [];
@@ -193,11 +202,11 @@ export const spec = {
         };
       }
       // these 3 MUST exist - we check them in the validation method
-      obj.placementId = (ozoneBidRequest.params.placementId).toString();
+      obj.placementId = placementId;
       obj.publisherId = (ozoneBidRequest.params.publisherId).toString();
       obj.siteId = (ozoneBidRequest.params.siteId).toString();
       // build the imp['ext'] object
-      obj.ext = {'prebid': {'storedrequest': {'id': (ozoneBidRequest.params.placementId).toString()}}, 'ozone': {}};
+      obj.ext = {'prebid': {'storedrequest': {'id': placementId}}, 'ozone': {}};
       obj.ext.ozone.adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
       obj.ext.ozone.transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
       obj.ext.ozone.oz_pb_v = OZONEVERSION;
@@ -395,6 +404,26 @@ export const spec = {
     }
     utils.logInfo('debug going to return: ', ret);
     return ret;
+  },
+
+  /**
+   * Convenient method to get the value we need for the placementId - either from the bidRequest, or from the GET
+   * parameter introduced in 2.2.0 : ozstoredrequest
+   * IF the GET parameter exists then it must validate for placementId correctly
+   * @param bidRequest
+   * @return string
+   */
+  getPlacementId(bidRequest) {
+    let override = new URLSearchParams(document.location.search.substr(1)).get('ozstoredrequest');
+    if (override) {
+      if (this.isValidPlacementId(override)) {
+        utils.logInfo('using GET ozstoredrequest ' + override + ' to replace placementId');
+        return override;
+      } else {
+        utils.logError('GET ozstoredrequest FAILED VALIDATION - will not use it');
+      }
+    }
+    return (bidRequest.params.placementId).toString();
   }
 
 }
