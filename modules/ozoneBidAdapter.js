@@ -39,7 +39,7 @@ export const spec = {
    * @returns {boolean}
    */
   isBidRequestValid(bid) {
-    utils.logInfo('usersync : ', config.getConfig());
+    utils.logInfo('OZONE: isBidRequestValid : ', config.getConfig());
 
     if (!(bid.params.hasOwnProperty('placementId'))) {
       utils.logInfo('OZONE: OZONE BID ADAPTER VALIDATION FAILED : missing placementId : siteId, placementId and publisherId are REQUIRED');
@@ -121,7 +121,7 @@ export const spec = {
       this.cookieSyncBag.siteId = utils.deepAccess(validBidRequests[0], 'params.siteId');
       this.cookieSyncBag.publisherId = utils.deepAccess(validBidRequests[0], 'params.publisherId');
     }
-    utils.logInfo('cookie sync bag', this.cookieSyncBag);
+    utils.logInfo('OZONE: cookie sync bag', this.cookieSyncBag);
     let singleRequest = config.getConfig('ozone.singleRequest');
     singleRequest = singleRequest !== false; // undefined & true will be true
     utils.logInfo('OZONE: config ozone.singleRequest : ', singleRequest);
@@ -213,8 +213,12 @@ export const spec = {
       if (ozoneBidRequest.params.hasOwnProperty('customData')) {
         obj.ext.ozone.customData = ozoneBidRequest.params.customData;
       }
+      utils.logInfo('lotameData', ozoneBidRequest, ozoneBidRequest.params.lotameData);
       if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
         obj.ext.ozone.lotameData = ozoneBidRequest.params.lotameData;
+      }
+      else {
+        obj.ext.ozone.lotameData = 'Failed to find lotameData';
       }
       let userIds = this.findAllUserIds(ozoneBidRequest);
       obj.ext.ozone.userId = userIds;
@@ -285,7 +289,7 @@ export const spec = {
     if (typeof enhancedAdserverTargeting == 'undefined') {
       enhancedAdserverTargeting = true;
     }
-    utils.logInfo(['enhancedAdserverTargeting', enhancedAdserverTargeting]);
+    utils.logInfo('OZONE: enhancedAdserverTargeting', enhancedAdserverTargeting);
     serverResponse.seatbid = injectAdIdsIntoAllBidResponses(serverResponse.seatbid); // we now make sure that each bid in the bidresponse has a unique (within page) adId attribute.
     for (let i = 0; i < serverResponse.seatbid.length; i++) {
       let sb = serverResponse.seatbid[i];
@@ -335,7 +339,7 @@ export const spec = {
         arrAllBids.push(thisBid);
       }
     }
-    utils.logInfo('interpretResponse going to return', arrAllBids);
+    utils.logInfo('OZONE: interpretResponse going to return', arrAllBids);
     return arrAllBids;
   },
   // see http://prebid.org/dev-docs/bidder-adaptor.html#registering-user-syncs
@@ -379,15 +383,15 @@ export const spec = {
   findAllUserIds(bidRequest) {
     var ret = {};
     let searchKeysSingle = ['pubcid', 'tdid', 'id5id', 'parrableid', 'idl_env', 'digitrustid', 'criteortus'];
-    utils.logInfo('debug iterating keys');
-    utils.logInfo('debug bidRequest=', bidRequest);
+    utils.logInfo('OZONE: debug iterating keys');
+    utils.logInfo('OZONE: debug bidRequest=', bidRequest);
     if (bidRequest.hasOwnProperty('userId')) {
-      utils.logInfo('debug Looking inside userId element');
+      utils.logInfo('OZONE: debug Looking inside userId element');
       for (let arrayId in searchKeysSingle) {
         let key = searchKeysSingle[arrayId];
-        utils.logInfo('debug key=', key);
+        utils.logInfo('OZONE: debug key=', key);
         if (bidRequest.userId.hasOwnProperty(key)) {
-          utils.logInfo('debug found value : ', key);
+          utils.logInfo('OZONE: debug found value : ', key);
           ret[key] = bidRequest.userId[key];
         }
       }
@@ -402,7 +406,7 @@ export const spec = {
         ret['pubcid'] = pubcid; // if built with old pubCommonId module
       }
     }
-    utils.logInfo('debug going to return: ', ret);
+    utils.logInfo('OZONE: debug going to return: ', ret);
     return ret;
   },
 
@@ -417,10 +421,10 @@ export const spec = {
     let override = new URLSearchParams(document.location.search.substr(1)).get('ozstoredrequest');
     if (override) {
       if (this.isValidPlacementId(override)) {
-        utils.logInfo('using GET ozstoredrequest ' + override + ' to replace placementId');
+        utils.logInfo('OZONE: using GET ozstoredrequest ' + override + ' to replace placementId');
         return override;
       } else {
-        utils.logError('GET ozstoredrequest FAILED VALIDATION - will not use it');
+        utils.logError('OZONE: GET ozstoredrequest FAILED VALIDATION - will not use it');
       }
     }
     return (bidRequest.params.placementId).toString();
