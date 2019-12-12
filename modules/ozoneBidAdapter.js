@@ -26,13 +26,13 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.2.0';
+const OZONEVERSION = '2.1.9';
 
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
   cookieSyncBag: {'publisherId': null, 'siteId': null, 'userIdObject': {}}, // variables we want to make available to cookie sync
-
+  placementIdWasOverridenByGetParam: {'val': 0}, // send GET param ozstoredrequest=12345 to do this
   /**
    * Basic check to see whether required parameters are in the request.
    * @param bid
@@ -143,7 +143,8 @@ export const spec = {
     } else {
       utils.logInfo('OZONE: WILL NOT ADD GDPR info; no bidderRequest.gdprConsent object was present.');
     }
-
+    const getParams = this.getGetParametersAsObject();
+    const ozTestMode = getParams.hasOwnProperty('oztestmode') ? getParams.oztestmode : null; // this can be any string, it's used for testing ads
     ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
@@ -210,14 +211,27 @@ export const spec = {
       obj.ext.ozone.adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
       obj.ext.ozone.transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
       obj.ext.ozone.oz_pb_v = OZONEVERSION;
+      obj.ext.ozone.oz_rw = this.placementIdWasOverridenByGetParam.val;
       if (ozoneBidRequest.params.hasOwnProperty('customData')) {
         obj.ext.ozone.customData = ozoneBidRequest.params.customData;
+      }
+      utils.logInfo('obj.ext.ozone is ', obj.ext.ozone);
+      if (ozTestMode != null) {
+        utils.logInfo('setting ozTestMode to ', ozTestMode);
+        if (obj.ext.ozone.hasOwnProperty('customData')) {
+          for (let i = 0; i < obj.ext.ozone.customData.length; i++) {
+            obj.ext.ozone.customData[i]['targeting']['oztestmode'] = ozTestMode;
+          }
+        } else {
+          obj.ext.ozone.customData = [{'settings': {}, 'targeting': {'oztestmode': ozTestMode}}];
+        }
+      } else {
+        utils.logInfo('no ozTestMode ');
       }
       utils.logInfo('lotameData', ozoneBidRequest, ozoneBidRequest.params.lotameData);
       if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
         obj.ext.ozone.lotameData = ozoneBidRequest.params.lotameData;
-      }
-      else {
+      } else {
         obj.ext.ozone.lotameData = 'Failed to find lotameData';
       }
       let userIds = this.findAllUserIds(ozoneBidRequest);
@@ -229,8 +243,10 @@ export const spec = {
       return obj;
     });
 
+    var userExtEids = this.generateEids(validBidRequests); // generate the UserIDs in the correct format for UserId module
+
     ozoneRequest.site = {'publisher': {'id': htmlParams.publisherId}, 'page': document.location.href};
-    ozoneRequest.test = parseInt(getTestQuerystringValue()); // will be 1 or 0
+    ozoneRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] == 'true') ? 1 : 0;
     // return the single request object OR the array:
     if (singleRequest) {
       utils.logInfo('OZONE: buildRequests starting to generate response for a single request');
@@ -238,6 +254,7 @@ export const spec = {
       ozoneRequest.auctionId = bidderRequest.auctionId; // not sure if this should be here?
       ozoneRequest.imp = tosendtags;
       ozoneRequest.source = {'tid': bidderRequest.auctionId}; // RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
+      utils.deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
       var ret = {
         method: 'POST',
         url: OZONEURI,
@@ -257,6 +274,7 @@ export const spec = {
       ozoneRequestSingle.auctionId = imp.ext.ozone.transactionId; // not sure if this should be here?
       ozoneRequestSingle.imp = [imp];
       ozoneRequestSingle.source = {'tid': imp.ext.ozone.transactionId};
+      utils.deepSetValue(ozoneRequestSingle, 'user.ext.eids', userExtEids);
       utils.logInfo('OZONE: buildRequests ozoneRequestSingle (for non-single) = ', ozoneRequestSingle);
       return {
         method: 'POST',
@@ -418,18 +436,86 @@ export const spec = {
    * @return string
    */
   getPlacementId(bidRequest) {
-    let override = new URLSearchParams(document.location.search.substr(1)).get('ozstoredrequest');
-    if (override) {
-      if (this.isValidPlacementId(override)) {
+    let arr = this.getGetParametersAsObject();
+    this.placementIdWasOverridenByGetParam.val = 0;
+    if (arr.hasOwnProperty('ozstoredrequest')) {
+      if (this.isValidPlacementId(arr.ozstoredrequest)) {
+        let override = arr.ozstoredrequest;
         utils.logInfo('OZONE: using GET ozstoredrequest ' + override + ' to replace placementId');
+        this.placementIdWasOverridenByGetParam.val = 1;
         return override;
       } else {
         utils.logError('OZONE: GET ozstoredrequest FAILED VALIDATION - will not use it');
       }
     }
     return (bidRequest.params.placementId).toString();
+  },
+  /**
+   * Produces external userid object
+   */
+  addExternalUserId(eids, value, source, atype) {
+    if (utils.isStr(value)) {
+      eids.push({
+        source,
+        uids: [{
+          id: value,
+          atype
+        }]
+      });
+    }
+  },
+  /**
+   * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
+   * @param validBidRequests
+   * @return {Array}
+   */
+  generateEids(validBidRequests) {
+    let eids = [];
+    this.handleTTDId(eids, validBidRequests);
+    const bidRequest = validBidRequests[0];
+    if (bidRequest && bidRequest.userId) {
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcommon', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.id5id`), 'id5-sync.com', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteortus.${BIDDER_CODE}.userid`), 'criteortus', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.idl_env`), 'liveramp.com', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lipb.lipbid`), 'liveintent.com', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableid`), 'parrable.com', 1);
+    }
+    return eids;
+  },
+  handleTTDId(eids, validBidRequests) {
+    let ttdId = null;
+    let adsrvrOrgId = config.getConfig('adsrvrOrgId');
+    if (utils.isStr(utils.deepAccess(validBidRequests, '0.userId.tdid'))) {
+      ttdId = validBidRequests[0].userId.tdid;
+    } else if (adsrvrOrgId && utils.isStr(adsrvrOrgId.TDID)) {
+      ttdId = adsrvrOrgId.TDID;
+    }
+    if (ttdId !== null) {
+      eids.push({
+        'source': 'adserver.org',
+        'uids': [{
+          'id': ttdId,
+          'atype': 1,
+          'ext': {
+            'rtiPartner': 'TDID'
+          }
+        }]
+      });
+    }
+  },
+  // Try to use this as the mechanism for reading GET params because it's easy to mock it for tests
+  getGetParametersAsObject() {
+    let items = location.search.substr(1).split('&');
+    let ret = {};
+    let tmp = null;
+    for (let index = 0; index < items.length; index++) {
+      tmp = items[index].split('=');
+      ret[tmp[0]] = tmp[1];
+    }
+    return ret;
   }
-
 }
 /**
  * add a page-level-unique adId element to all server response bids.
@@ -605,23 +691,6 @@ export function ozoneAddStandardProperties(seatBid, defaultWidth, defaultHeight)
   seatBid.currency = 'USD';
   seatBid.ttl = 300;
   return seatBid;
-}
-
-/**
- * we need to add test=1 or test=0 to the get params sent to the server.
- * Get the value set as pbjs_debug= in the url, OR 0.
- * @returns {*}
- */
-export function getTestQuerystringValue() {
-  let searchString = window.location.search.substring(1);
-  let params = searchString.split('&');
-  for (let i = 0; i < params.length; i++) {
-    let val = params[i].split('=');
-    if (val[0] === 'pbjs_debug') {
-      return val[1] === 'true' ? 1 : 0;
-    }
-  }
-  return 0;
 }
 
 function createObjectForInternalVideoRender(bid) {

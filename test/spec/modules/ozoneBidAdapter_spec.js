@@ -3,6 +3,7 @@ import { spec, getWidthAndHeightFromVideoObject, playerSizeIsNestedArray, defaul
 import { config } from 'src/config';
 import {Renderer} from '../../../src/Renderer';
 import {getGranularityKeyName, getGranularityObject} from '../../../modules/ozoneBidAdapter';
+import * as utils from '../../../src/utils';
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const BIDDER_CODE = 'ozone';
 /*
@@ -22,6 +23,21 @@ var validBidRequests = [
     params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'c8ef27a0d4ba771a81159f0d2e792db4', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}], 'ThirdPartyAudience': [{'id': '123', 'name': 'Automobiles'}, {'id': '456', 'name': 'Ages: 30-39'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
     sizes: [[300, 250], [300, 600]],
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
+  }
+];
+var validBidRequestsWithUserIdData = [
+  {
+    adUnitCode: 'div-gpt-ad-1460505748561-0',
+    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
+    bidId: '2899ec066a91ff8',
+    bidRequestsCount: 1,
+    bidder: 'ozone',
+    bidderRequestId: '1c1586b27a1b5c8',
+    crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'c8ef27a0d4ba771a81159f0d2e792db4', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}], 'ThirdPartyAudience': [{'id': '123', 'name': 'Automobiles'}, {'id': '456', 'name': 'Ages: 30-39'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    sizes: [[300, 250], [300, 600]],
+    transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87',
+    userId: {'pubcid': '12345678', 'id5id': 'ID5-someId', 'criteortus': {'ozone': {'userid': 'critId123'}}, 'idl_env': 'liverampId', 'lipb': {'lipbid': 'lipbidId123'}, 'parrableid': 'parrableid123'}
   }
 ];
 var validBidRequestsMinimal = [
@@ -998,6 +1014,70 @@ describe('ozone Adapter', function () {
       const payload = JSON.parse(request.data);
       let firstBid = payload.imp[0].ext.ozone;
       expect(firstBid.pubcid).to.equal(validBidRequests[0]['crumbs']['pubcid']);
+    });
+
+    it('should add a user.ext.eids object to contain user ID data in the new location (Nov 2019)', function() {
+      const request = spec.buildRequests(validBidRequestsWithUserIdData, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(payload.user).to.exist;
+      expect(payload.user.ext).to.exist;
+      expect(payload.user.ext.eids).to.exist;
+      expect(payload.user.ext.eids[0]['source']).to.equal('pubcid');
+      expect(payload.user.ext.eids[0]['uids'][0]['id']).to.equal('12345678');
+      expect(payload.user.ext.eids[1]['source']).to.equal('pubcommon');
+      expect(payload.user.ext.eids[1]['uids'][0]['id']).to.equal('12345678');
+      expect(payload.user.ext.eids[2]['source']).to.equal('id5-sync.com');
+      expect(payload.user.ext.eids[2]['uids'][0]['id']).to.equal('ID5-someId');
+      expect(payload.user.ext.eids[3]['source']).to.equal('criteortus');
+      expect(payload.user.ext.eids[3]['uids'][0]['id']).to.equal('critId123');
+      expect(payload.user.ext.eids[4]['source']).to.equal('liveramp.com');
+      expect(payload.user.ext.eids[4]['uids'][0]['id']).to.equal('liverampId');
+      expect(payload.user.ext.eids[5]['source']).to.equal('liveintent.com');
+      expect(payload.user.ext.eids[5]['uids'][0]['id']).to.equal('lipbidId123');
+      expect(payload.user.ext.eids[6]['source']).to.equal('parrable.com');
+      expect(payload.user.ext.eids[6]['uids'][0]['id']).to.equal('parrableid123');
+    });
+
+    it('should use oztestmode GET value if set', function() {
+      // mock the getGetParametersAsObject function to simulate GET parameters for oztestmode:
+      spec.getGetParametersAsObject = function() {
+        return {'oztestmode': 'mytestvalue_123'};
+      };
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const data = JSON.parse(request.data);
+      expect(data.imp[0].ext.ozone.customData).to.be.an('array');
+      expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
+    });
+    it('should use oztestmode GET value if set, even if there is no customdata in config', function() {
+      // mock the getGetParametersAsObject function to simulate GET parameters for oztestmode:
+      spec.getGetParametersAsObject = function() {
+        return {'oztestmode': 'mytestvalue_123'};
+      };
+      const request = spec.buildRequests(validBidRequestsMinimal, validBidderRequest);
+      const data = JSON.parse(request.data);
+      expect(data.imp[0].ext.ozone.customData).to.be.an('array');
+      expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
+    });
+    var specMock = utils.deepClone(spec);
+    it('should use a valid ozstoredrequest GET value if set to override the placementId values, and set oz_rw if we find it', function() {
+      // mock the getGetParametersAsObject function to simulate GET parameters for ozstoredrequest:
+      specMock.getGetParametersAsObject = function() {
+        return {'ozstoredrequest': '1122334455'}; // 10 digits are valid
+      };
+      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
+      const data = JSON.parse(request.data);
+      expect(data.imp[0].ext.ozone.oz_rw).to.equal(1);
+      expect(data.imp[0].ext.prebid.storedrequest.id).to.equal('1122334455');
+    });
+    it('should NOT use an invalid ozstoredrequest GET value if set to override the placementId values, and set oz_rw to 0', function() {
+      // mock the getGetParametersAsObject function to simulate GET parameters for ozstoredrequest:
+      specMock.getGetParametersAsObject = function() {
+        return {'ozstoredrequest': 'BADVAL'}; // 10 digits are valid
+      };
+      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
+      const data = JSON.parse(request.data);
+      expect(data.imp[0].ext.ozone.oz_rw).to.equal(0);
+      expect(data.imp[0].ext.prebid.storedrequest.id).to.equal('1310000099');
     });
   });
 
