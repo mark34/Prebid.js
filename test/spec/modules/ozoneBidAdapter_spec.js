@@ -968,7 +968,7 @@ describe('ozone Adapter', function () {
       expect(payload.regs.ext.gdpr).to.equal(0);
     });
 
-    it('should put new userIds into auction calls when we use UserId module & individual Systems', function () {
+    it('should not have imp[N].ext.ozone.userId', function () {
       let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
       let bidderRequest = validBidderRequest;
       bidderRequest.gdprConsent = {
@@ -997,23 +997,28 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(bidRequests, bidderRequest);
       const payload = JSON.parse(request.data);
       let firstBid = payload.imp[0].ext.ozone;
-      expect(firstBid.userId.pubcid).to.equal(bidRequests[0]['userId']['pubcid']);
-      expect(firstBid.userId.tdid).to.equal(bidRequests[0]['userId']['tdid']);
-      expect(firstBid.userId.id5id).to.equal(bidRequests[0]['userId']['id5id']);
-      expect(firstBid.userId.parrableid).to.equal(bidRequests[0]['userId']['parrableid']);
-      expect(firstBid.userId.idl_env).to.equal(bidRequests[0]['userId']['idl_env']);
-      expect(firstBid.userId.digitrustid).to.be.an('object');
-      expect(firstBid.userId.criteortus).to.equal(bidRequests[0]['userId']['criteortus']);
-      expect(firstBid.userId.lipb.lipbid).to.equal(bidRequests[0]['userId']['lipb']['lipbid']);
-      expect(firstBid.pubcid).to.equal(bidRequests[0]['userId']['pubcid']);
+      expect(firstBid).to.not.have.property('userId');
       delete validBidRequests[0].userId; // tidy up now, else it will screw with other tests
     });
 
     it('should pick up the value of pubcid when built using the pubCommonId module (not userId)', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      console.log(validBidRequests[0].crumbs);
+      let bidRequests = validBidRequests;
+      // values from http://prebid.org/dev-docs/modules/userId.html#pubcommon-id
+      bidRequests[0]['userId'] = {
+        'criteortus': '1111',
+        'digitrustid': {data: {id: 'DTID', keyv: 4, privacy: {optout: false}, producer: 'ABC', version: 2}},
+        'id5id': '2222',
+        'idl_env': '3333',
+        'lipb': {'lipbid': '4444'},
+        'parrableid': 'eidVersion.encryptionKeyReference.encryptedValue',
+        // 'pubcid': '5555', // remove pubcid from here to emulate the OLD module & cause the failover code to kick in
+        'tdid': '6666'
+      };
+      const request = spec.buildRequests(bidRequests, validBidderRequest);
       const payload = JSON.parse(request.data);
-      let firstBid = payload.imp[0].ext.ozone;
-      expect(firstBid.pubcid).to.equal(validBidRequests[0]['crumbs']['pubcid']);
+      expect(payload.ext.ozone.pubcid).to.equal(bidRequests[0]['crumbs']['pubcid']);
+      delete validBidRequests[0].userId; // tidy up now, else it will screw with other tests
     });
 
     it('should add a user.ext.eids object to contain user ID data in the new location (Nov 2019)', function() {
@@ -1066,7 +1071,7 @@ describe('ozone Adapter', function () {
       };
       const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
       const data = JSON.parse(request.data);
-      expect(data.imp[0].ext.ozone.oz_rw).to.equal(1);
+      expect(data.ext.ozone.oz_rw).to.equal(1);
       expect(data.imp[0].ext.prebid.storedrequest.id).to.equal('1122334455');
     });
     it('should NOT use an invalid ozstoredrequest GET value if set to override the placementId values, and set oz_rw to 0', function() {
@@ -1076,7 +1081,7 @@ describe('ozone Adapter', function () {
       };
       const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
       const data = JSON.parse(request.data);
-      expect(data.imp[0].ext.ozone.oz_rw).to.equal(0);
+      expect(data.ext.ozone.oz_rw).to.equal(0);
       expect(data.imp[0].ext.prebid.storedrequest.id).to.equal('1310000099');
     });
   });

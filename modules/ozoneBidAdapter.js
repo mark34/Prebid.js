@@ -26,7 +26,7 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.1.9';
+const OZONEVERSION = '2.2.0';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -116,16 +116,17 @@ export const spec = {
 
   buildRequests(validBidRequests, bidderRequest) {
     utils.logInfo('OZONE: ozone v' + OZONEVERSION + ' validBidRequests', validBidRequests, 'bidderRequest', bidderRequest);
+    let htmlParams = {'publisherId': '', 'siteId': ''};
     if (validBidRequests.length > 0) {
       this.cookieSyncBag.userIdObject = Object.assign(this.cookieSyncBag.userIdObject, this.findAllUserIds(validBidRequests[0]));
       this.cookieSyncBag.siteId = utils.deepAccess(validBidRequests[0], 'params.siteId');
       this.cookieSyncBag.publisherId = utils.deepAccess(validBidRequests[0], 'params.publisherId');
+      htmlParams = validBidRequests[0].params;
     }
     utils.logInfo('OZONE: cookie sync bag', this.cookieSyncBag);
     let singleRequest = config.getConfig('ozone.singleRequest');
     singleRequest = singleRequest !== false; // undefined & true will be true
     utils.logInfo('OZONE: config ozone.singleRequest : ', singleRequest);
-    let htmlParams = validBidRequests[0].params; // the html page config params will be included in each element
     let ozoneRequest = {}; // we only want to set specific properties on this, not validBidRequests[0].params
     delete ozoneRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
 
@@ -204,14 +205,10 @@ export const spec = {
       }
       // these 3 MUST exist - we check them in the validation method
       obj.placementId = placementId;
-      obj.publisherId = (ozoneBidRequest.params.publisherId).toString();
-      obj.siteId = (ozoneBidRequest.params.siteId).toString();
       // build the imp['ext'] object
       obj.ext = {'prebid': {'storedrequest': {'id': placementId}}, 'ozone': {}};
       obj.ext.ozone.adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
       obj.ext.ozone.transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
-      obj.ext.ozone.oz_pb_v = OZONEVERSION;
-      obj.ext.ozone.oz_rw = this.placementIdWasOverridenByGetParam.val;
       if (ozoneBidRequest.params.hasOwnProperty('customData')) {
         obj.ext.ozone.customData = ozoneBidRequest.params.customData;
       }
@@ -234,25 +231,36 @@ export const spec = {
       } else {
         obj.ext.ozone.lotameData = 'Failed to find lotameData';
       }
-      let userIds = this.findAllUserIds(ozoneBidRequest);
-      obj.ext.ozone.userId = userIds;
-      // maintain backward compatibility, deprecated now we are starting to use UserId module.
-      if (userIds.hasOwnProperty('pubcid')) {
-        obj.ext.ozone.pubcid = userIds.pubcid;
-      }
       return obj;
     });
 
+    // in v 2.0.0 we moved these outside of the individual ad slots
+    let extObj = {'ozone': {'oz_pb_v': OZONEVERSION, 'oz_rw': this.placementIdWasOverridenByGetParam.val}};
+    if (validBidRequests.length > 0) {
+      let userIds = this.findAllUserIds(validBidRequests[0]);
+      if (userIds.hasOwnProperty('pubcid')) {
+        extObj.ozone.pubcid = userIds.pubcid;
+      }
+    }
+
     var userExtEids = this.generateEids(validBidRequests); // generate the UserIDs in the correct format for UserId module
 
-    ozoneRequest.site = {'publisher': {'id': htmlParams.publisherId}, 'page': document.location.href};
+    ozoneRequest.site = {'publisher': {'id': htmlParams.publisherId}, 'page': document.location.href, 'id': htmlParams.siteId};
     ozoneRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] == 'true') ? 1 : 0;
+
+    // this is for 2.2.1
+    // // coppa compliance
+    // if (config.getConfig('coppa') === true) {
+    //   utils.deepSetValue(ozoneRequest, 'regs.coppa', 1);
+    // }
+
     // return the single request object OR the array:
     if (singleRequest) {
       utils.logInfo('OZONE: buildRequests starting to generate response for a single request');
       ozoneRequest.id = bidderRequest.auctionId; // Unique ID of the bid request, provided by the exchange.
       ozoneRequest.auctionId = bidderRequest.auctionId; // not sure if this should be here?
       ozoneRequest.imp = tosendtags;
+      ozoneRequest.ext = extObj;
       ozoneRequest.source = {'tid': bidderRequest.auctionId}; // RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
       utils.deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
       var ret = {
@@ -273,6 +281,7 @@ export const spec = {
       ozoneRequestSingle.id = imp.ext.ozone.transactionId; // Unique ID of the bid request, provided by the exchange.
       ozoneRequestSingle.auctionId = imp.ext.ozone.transactionId; // not sure if this should be here?
       ozoneRequestSingle.imp = [imp];
+      ozoneRequestSingle.ext = extObj;
       ozoneRequestSingle.source = {'tid': imp.ext.ozone.transactionId};
       utils.deepSetValue(ozoneRequestSingle, 'user.ext.eids', userExtEids);
       utils.logInfo('OZONE: buildRequests ozoneRequestSingle (for non-single) = ', ozoneRequestSingle);
@@ -299,7 +308,10 @@ export const spec = {
   interpretResponse(serverResponse, request) {
     utils.logInfo('OZONE: interpretResponse: serverResponse, request', serverResponse, request);
     serverResponse = serverResponse.body || {};
-    if (!serverResponse.hasOwnProperty('seatbid')) { return []; }
+    // note that serverResponse.id value is the auction_id we might want to use for reporting reasons.
+    if (!serverResponse.hasOwnProperty('seatbid')) {
+      return [];
+    }
     if (typeof serverResponse.seatbid !== 'object') { return []; }
     let arrAllBids = [];
     let enhancedAdserverTargeting = config.getConfig('ozone.enhancedAdserverTargeting');
@@ -524,6 +536,7 @@ export const spec = {
  * @returns seatbid object
  */
 export function injectAdIdsIntoAllBidResponses(seatbid) {
+  utils.logInfo('injectAdIdsIntoAllBidResponses', seatbid);
   for (let i = 0; i < seatbid.length; i++) {
     let sb = seatbid[i];
     for (let j = 0; j < sb.bid.length; j++) {
