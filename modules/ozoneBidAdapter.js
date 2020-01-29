@@ -26,7 +26,7 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.2.0';
+const OZONEVERSION = '2.2.0-reach';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -344,10 +344,6 @@ export const spec = {
           utils.logInfo('OZONE: Going to iterate allBidsForThisBidId', allBidsForThisBidid);
           Object.keys(allBidsForThisBidid).forEach(function(bidderName, index, ar2) {
             adserverTargeting['oz_' + bidderName] = bidderName;
-            adserverTargeting['oz_' + bidderName + '_pb'] = String(allBidsForThisBidid[bidderName].price);
-            adserverTargeting['oz_' + bidderName + '_crid'] = String(allBidsForThisBidid[bidderName].crid);
-            adserverTargeting['oz_' + bidderName + '_adv'] = String(allBidsForThisBidid[bidderName].adomain);
-            adserverTargeting['oz_' + bidderName + '_imp_id'] = String(allBidsForThisBidid[bidderName].impid);
             adserverTargeting['oz_' + bidderName + '_adId'] = String(allBidsForThisBidid[bidderName].adId);
             adserverTargeting['oz_' + bidderName + '_pb_r'] = getRoundedBid(allBidsForThisBidid[bidderName].price, allBidsForThisBidid[bidderName].ext.prebid.type);
             if (allBidsForThisBidid[bidderName].hasOwnProperty('dealid')) {
@@ -356,15 +352,8 @@ export const spec = {
           });
         }
         // also add in the winning bid, to be sent to dfp
-        let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(ozoneInternalKey, serverResponse.seatbid);
-        adserverTargeting['oz_auc_id'] = String(request.bidderRequest.auctionId);
+        let {seat: winningSeat} = ozoneGetWinnerForRequestBid(ozoneInternalKey, serverResponse.seatbid);
         adserverTargeting['oz_winner'] = String(winningSeat);
-        adserverTargeting['oz_response_id'] = String(serverResponse.id);
-        if (enhancedAdserverTargeting) {
-          adserverTargeting['oz_winner_auc_id'] = String(winningBid.id);
-          adserverTargeting['oz_winner_imp_id'] = String(winningBid.impid);
-          adserverTargeting['oz_pb_v'] = OZONEVERSION;
-        }
         thisBid.adserverTargeting = adserverTargeting;
         arrAllBids.push(thisBid);
       }
