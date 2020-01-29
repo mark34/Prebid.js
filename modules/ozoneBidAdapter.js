@@ -26,7 +26,7 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.2.0';
+const OZONEVERSION = '2.2.1';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -249,10 +249,10 @@ export const spec = {
     ozoneRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] == 'true') ? 1 : 0;
 
     // this is for 2.2.1
-    // // coppa compliance
-    // if (config.getConfig('coppa') === true) {
-    //   utils.deepSetValue(ozoneRequest, 'regs.coppa', 1);
-    // }
+    // coppa compliance
+    if (config.getConfig('coppa') === true) {
+      utils.deepSetValue(ozoneRequest, 'regs.coppa', 1);
+    }
 
     // return the single request object OR the array:
     if (singleRequest) {

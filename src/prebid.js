@@ -239,6 +239,7 @@ $$PREBID_GLOBAL$$.setTargetingForGPTAsync = function (adUnit, customSlotMatching
 
   // get our ad unit codes
   let targetingSet = targeting.getAllTargeting(adUnit);
+  utils.logInfo('setTargetingForGPTAsync targetingSet', targetingSet, customSlotMatching);
 
   // first reset any old targeting
   targeting.resetPresetTargeting(adUnit);
@@ -257,6 +258,34 @@ $$PREBID_GLOBAL$$.setTargetingForGPTAsync = function (adUnit, customSlotMatching
   // emit event
   events.emit(SET_TARGETING, targetingSet);
 };
+
+// testing for sas
+// $$PREBID_GLOBAL$$.setTargetingForSASAsync = function (adUnit, customSlotMatching) {
+//   utils.logInfo('Invoking $$PREBID_GLOBAL$$.setTargetingForSASAsync', arguments);
+//
+//   // get our ad unit codes
+//   let targetingSet = targeting.getAllTargeting(adUnit);
+//   utils.logInfo('setTargetingForSASAsync targetingSet', targetingSet, customSlotMatching);
+//
+//   // first reset any old targeting
+//   targeting.resetPresetTargeting(adUnit);
+//
+//   utils.logInfo('setTargetingForSASAsync 1');
+//   // now set new targeting keys
+//   targeting.setTargetingForSAS(targetingSet, customSlotMatching);
+//   utils.logInfo('setTargetingForSASAsync 2');
+//
+//   Object.keys(targetingSet).forEach((adUnitCode) => {
+//     Object.keys(targetingSet[adUnitCode]).forEach((targetingKey) => {
+//       if (targetingKey === 'hb_adid') {
+//         auctionManager.setStatusForBids(targetingSet[adUnitCode][targetingKey], CONSTANTS.BID_STATUS.BID_TARGETING_SET);
+//       }
+//     });
+//   });
+//
+//   // emit event
+//   events.emit(SET_TARGETING, targetingSet);
+// };
 
 /**
  * Set query string targeting on all AST (AppNexus Seller Tag) ad units. Note that this function has to be called after all ad units on page are defined. For working example code, see [Using Prebid.js with AppNexus Publisher Ad Server](http://prebid.org/dev-docs/examples/use-prebid-with-appnexus-ad-server.html).
