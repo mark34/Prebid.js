@@ -26,7 +26,7 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.2.0-reach';
+const OZONEVERSION = '2.2.0-reach2';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -344,7 +344,9 @@ export const spec = {
           utils.logInfo('OZONE: Going to iterate allBidsForThisBidId', allBidsForThisBidid);
           Object.keys(allBidsForThisBidid).forEach(function(bidderName, index, ar2) {
             adserverTargeting['oz_' + bidderName] = bidderName;
+            adserverTargeting['oz_' + bidderName + '_crid'] = String(allBidsForThisBidid[bidderName].crid);
             adserverTargeting['oz_' + bidderName + '_adId'] = String(allBidsForThisBidid[bidderName].adId);
+            adserverTargeting['oz_' + bidderName + '_adv'] = String(allBidsForThisBidid[bidderName].adomain);
             adserverTargeting['oz_' + bidderName + '_pb_r'] = getRoundedBid(allBidsForThisBidid[bidderName].price, allBidsForThisBidid[bidderName].ext.prebid.type);
             if (allBidsForThisBidid[bidderName].hasOwnProperty('dealid')) {
               adserverTargeting['oz_' + bidderName + '_dealid'] = String(allBidsForThisBidid[bidderName].dealid);
