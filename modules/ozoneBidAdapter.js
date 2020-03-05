@@ -1,9 +1,10 @@
-import * as utils from '../src/utils';
-import {registerBidder} from '../src/adapters/bidderFactory';
-import {BANNER, NATIVE, VIDEO} from '../src/mediaTypes';
-import {config} from '../src/config';
-import {getPriceBucketString} from '../src/cpmBucketManager';
-import {Renderer} from '../src/Renderer';
+import * as utils from '../src/utils.js';
+import { registerBidder } from '../src/adapters/bidderFactory.js';
+import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
+import {config} from '../src/config.js';
+import {getPriceBucketString} from '../src/cpmBucketManager.js';
+import { Renderer } from '../src/Renderer.js';
+
 /*
 GET parameters:
 'oz_lotameid', 'oz_lotamepid', 'oz_lotametpid' (all 3 must be present if you want to use this override)
@@ -698,8 +699,7 @@ export const spec = {
       if (typeof vendorConsentsObject.purposeConsents != 'object') {
         return true;
       }
-      let acceptedPurposeConsents = Object.values(vendorConsentsObject.purposeConsents).slice(0, 5);
-      if (acceptedPurposeConsents.toString() !== [true, true, true, true, true].toString()) {
+      if (!this.purposeConsentsAreOk((vendorConsentsObject.purposeConsents))) {
         utils.logError('OZONE: gdpr test failed - missing Purposes consent');
         return true;
       }
@@ -709,6 +709,18 @@ export const spec = {
       }
     }
     return false;
+  },
+  /**
+   * Test that vendor purpose consents 1,2,3,4 and 5 are true
+   * This is because we can't use Object.values(vendorConsentsObject.purposeConsents).slice(0, 5)
+   * @param obj
+   * @return {boolean}
+   */
+  purposeConsentsAreOk(obj) {
+    for (let i = 1; i <= 5; i++) {
+      if (!obj.hasOwnProperty(i) || !obj[i]) return false;
+    }
+    return true;
   }
 }
 
