@@ -32,7 +32,7 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.3.0';
+const OZONEVERSION = '2.4.0';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -244,9 +244,9 @@ export const spec = {
       if (ozoneBidRequest.params.hasOwnProperty('customData')) {
         obj.ext.ozone.customData = ozoneBidRequest.params.customData;
       }
-      utils.logInfo('obj.ext.ozone is ', obj.ext.ozone);
+      utils.logInfo('OZONE: obj.ext.ozone is ', obj.ext.ozone);
       if (ozTestMode != null) {
-        utils.logInfo('setting ozTestMode to ', ozTestMode);
+        utils.logInfo('OZONE: setting ozTestMode to ', ozTestMode);
         if (obj.ext.ozone.hasOwnProperty('customData')) {
           for (let i = 0; i < obj.ext.ozone.customData.length; i++) {
             obj.ext.ozone.customData[i]['targeting']['oztestmode'] = ozTestMode;
@@ -255,7 +255,7 @@ export const spec = {
           obj.ext.ozone.customData = [{'settings': {}, 'targeting': {'oztestmode': ozTestMode}}];
         }
       } else {
-        utils.logInfo('no ozTestMode ');
+        utils.logInfo('OZONE: no ozTestMode ');
       }
       // now deal with lotame, including the optional override parameters
       if (Object.keys(arrLotameOverride).length === ALLOWED_LOTAME_PARAMS.length) {
@@ -271,7 +271,7 @@ export const spec = {
         if (this.isLotameDataValid(ozoneBidRequest.params.lotameData)) {
           obj.ext.ozone.lotameData = ozoneBidRequest.params.lotameData;
         } else {
-          utils.logError('INVALID LOTAME DATA FOUND - WILL NOT USE THIS AT ALL ELSE IT MIGHT BREAK THE AUCTION CALL!', ozoneBidRequest.params.lotameData);
+          utils.logError('OZONE: INVALID LOTAME DATA FOUND - WILL NOT USE THIS AT ALL ELSE IT MIGHT BREAK THE AUCTION CALL!', ozoneBidRequest.params.lotameData);
           obj.ext.ozone.lotameData = {};
         }
       }
@@ -286,6 +286,14 @@ export const spec = {
       if (userIds.hasOwnProperty('pubcid')) {
         extObj.ozone.pubcid = userIds.pubcid;
       }
+    }
+
+    let ozOmpFloorDollars = config.getConfig('ozone.oz_omp_floor'); // valid only if a dollar value (typeof == 'number')
+    utils.logInfo('OZONE: oz_omp_floor dollar value = ', ozOmpFloorDollars);
+    if (typeof ozOmpFloorDollars === 'number') {
+      extObj.ozone.oz_omp_floor = ozOmpFloorDollars;
+    } else if (typeof ozOmpFloorDollars !== 'undefined') {
+      utils.logError('OZONE: oz_omp_floor is invalid - IF SET then this must be a number, representing dollar value eg. oz_omp_floor: 1.55. You have it set as a ' + (typeof ozOmpFloorDollars));
     }
 
     var userExtEids = this.generateEids(validBidRequests); // generate the UserIDs in the correct format for UserId module
@@ -372,13 +380,16 @@ export const spec = {
     }
     utils.logInfo('OZONE: enhancedAdserverTargeting', enhancedAdserverTargeting);
     serverResponse.seatbid = injectAdIdsIntoAllBidResponses(serverResponse.seatbid); // we now make sure that each bid in the bidresponse has a unique (within page) adId attribute.
+    let ozOmpFloorDollars = config.getConfig('ozone.oz_omp_floor'); // valid only if a dollar value (typeof == 'number')
+    let addOzOmpFloorDollars = typeof ozOmpFloorDollars === 'number';
+    let ozWhitelistAdserverKeys = config.getConfig('ozone.oz_whitelist_adserver_keys');
+    let useOzWhitelistAdserverKeys = utils.isArray(ozWhitelistAdserverKeys) && ozWhitelistAdserverKeys.length > 0;
+
     for (let i = 0; i < serverResponse.seatbid.length; i++) {
       let sb = serverResponse.seatbid[i];
       for (let j = 0; j < sb.bid.length; j++) {
         const {defaultWidth, defaultHeight} = defaultSize(request.bidderRequest.bids[j]);
         let thisBid = ozoneAddStandardProperties(sb.bid[j], defaultWidth, defaultHeight);
-
-        // from https://github.com/prebid/Prebid.js/pull/1082
         if (utils.deepAccess(thisBid, 'ext.prebid.type') === VIDEO) {
           utils.logInfo('OZONE: going to attach a renderer to:', j);
           let renderConf = createObjectForInternalVideoRender(thisBid);
@@ -386,7 +397,6 @@ export const spec = {
         } else {
           utils.logInfo('OZONE: bid is not a video, will not attach a renderer: ', j);
         }
-
         let ozoneInternalKey = thisBid.bidId;
         let adserverTargeting = {};
         if (enhancedAdserverTargeting) {
@@ -404,7 +414,16 @@ export const spec = {
             if (allBidsForThisBidid[bidderName].hasOwnProperty('dealid')) {
               adserverTargeting['oz_' + bidderName + '_dealid'] = String(allBidsForThisBidid[bidderName].dealid);
             }
+            if (addOzOmpFloorDollars) {
+              adserverTargeting['oz_' + bidderName + '_omp'] = allBidsForThisBidid[bidderName].price >= ozOmpFloorDollars ? '1' : '0';
+            }
           });
+        } else {
+          if (useOzWhitelistAdserverKeys) {
+            utils.logWarn('OZONE: You have set a whitelist of adserver keys but this will be ignored because ozone.enhancedAdserverTargeting is set to false. No per-bid keys will be sent to adserver.');
+          } else {
+            utils.logInfo('OZONE: ozone.enhancedAdserverTargeting is set to false, so no per-bid keys will be sent to adserver.');
+          }
         }
         // also add in the winning bid, to be sent to dfp
         let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(ozoneInternalKey, serverResponse.seatbid);
@@ -415,6 +434,10 @@ export const spec = {
           adserverTargeting['oz_winner_auc_id'] = String(winningBid.id);
           adserverTargeting['oz_winner_imp_id'] = String(winningBid.impid);
           adserverTargeting['oz_pb_v'] = OZONEVERSION;
+        }
+        if (useOzWhitelistAdserverKeys) { // delete any un-whitelisted keys
+          utils.logInfo('OZONE: Going to filter out adserver targeting keys not in the whitelist: ', ozWhitelistAdserverKeys);
+          Object.keys(adserverTargeting).forEach(function(key) { if (ozWhitelistAdserverKeys.indexOf(key) === -1) { delete adserverTargeting[key]; } });
         }
         thisBid.adserverTargeting = adserverTargeting;
         arrAllBids.push(thisBid);
@@ -496,7 +519,7 @@ export const spec = {
    */
   getLotameOverrideParams() {
     const arrGet = this.getGetParametersAsObject();
-    utils.logInfo('getLotameOverrideParams - arrGet', arrGet);
+    utils.logInfo('OZONE: getLotameOverrideParams - arrGet', arrGet);
     let arrRet = {};
     for (let i in ALLOWED_LOTAME_PARAMS) {
       if (arrGet.hasOwnProperty(ALLOWED_LOTAME_PARAMS[i])) {
@@ -533,7 +556,7 @@ export const spec = {
   makeLotameObjectFromOverride(objOverride, lotameData) {
     if ((lotameData.hasOwnProperty('Profile') && Object.keys(lotameData.Profile).length < 3) ||
       (!lotameData.hasOwnProperty('Profile'))) { // bad or empty lotame object (should contain pid, tpid & Audiences object) - build a total replacement
-      utils.logInfo('makeLotameObjectFromOverride', 'will return a full default lotame object');
+      utils.logInfo('OZONE: makeLotameObjectFromOverride', 'will return a full default lotame object');
       return {
         'Profile': {
           'tpid': objOverride['oz_lotametpid'],
@@ -543,11 +566,11 @@ export const spec = {
       };
     }
     if (utils.deepAccess(lotameData, 'Profile.Audiences.Audience')) {
-      utils.logInfo('makeLotameObjectFromOverride', 'will return the existing lotame object with updated Audience by oz_lotameid');
+      utils.logInfo('OZONE: makeLotameObjectFromOverride', 'will return the existing lotame object with updated Audience by oz_lotameid');
       lotameData.Profile.Audiences.Audience = [{'id': objOverride['oz_lotameid'], 'abbr': objOverride['oz_lotameid']}];
       return lotameData;
     }
-    utils.logInfo('makeLotameObjectFromOverride', 'Weird error - failed to find Profile.Audiences.Audience in lotame object. Will return the object as-is');
+    utils.logInfo('OZONE: makeLotameObjectFromOverride', 'Weird error - failed to find Profile.Audiences.Audience in lotame object. Will return the object as-is');
     return lotameData;
   },
   /**
@@ -729,7 +752,7 @@ export const spec = {
  * @returns seatbid object
  */
 export function injectAdIdsIntoAllBidResponses(seatbid) {
-  utils.logInfo('injectAdIdsIntoAllBidResponses', seatbid);
+  utils.logInfo('OZONE: injectAdIdsIntoAllBidResponses', seatbid);
   for (let i = 0; i < seatbid.length; i++) {
     let sb = seatbid[i];
     for (let j = 0; j < sb.bid.length; j++) {
@@ -913,7 +936,7 @@ function onOutstreamRendererLoaded(bid) {
   try {
     bid.renderer.setRender(outstreamRender);
   } catch (err) {
-    utils.logWarn('Prebid Error calling setRender on renderer', err)
+    utils.logWarn('OZONE: Prebid Error calling setRender on renderer', err)
   }
 }
 

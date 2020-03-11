@@ -1194,6 +1194,21 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(payload, 'regs.coppa')).to.be.undefined;
       config.resetConfig();
     });
+    it('should handle oz_omp_floor correctly', function () {
+      config.setConfig({'ozone': {'oz_omp_floor': 1.56}});
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(utils.deepAccess(payload, 'ext.ozone.oz_omp_floor')).to.equal(1.56);
+      config.resetConfig();
+    });
+    it('should ignore invalid oz_omp_floor values', function () {
+      config.setConfig({'ozone': {'oz_omp_floor': '1.56'}});
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      console.log(utils.deepAccess(payload, 'ext.ozone.oz_omp_floor'));
+      expect(utils.deepAccess(payload, 'ext.ozone.oz_omp_floor')).to.be.undefined;
+      config.resetConfig();
+    });
   });
 
   describe('interpretResponse', function () {
@@ -1256,6 +1271,50 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       expect(result[0].ttl).to.equal(300);
+    });
+
+    it('should handle oz_omp_floor_dollars correctly, inserting 1 as necessary', function () {
+      config.setConfig({'ozone': {'oz_omp_floor': 0.01}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_omp')).to.equal('1');
+      config.resetConfig();
+    });
+    it('should handle oz_omp_floor_dollars correctly, inserting 0 as necessary', function () {
+      config.setConfig({'ozone': {'oz_omp_floor': 2.50}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_omp')).to.equal('0');
+      config.resetConfig();
+    });
+    it('should handle missing oz_omp_floor_dollars correctly, inserting nothing', function () {
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_omp')).to.be.undefined;
+    });
+    it('should handle a valid whitelist, removing items not on the list & leaving others', function () {
+      config.setConfig({'ozone': {'oz_whitelist_adserver_keys': ['oz_appnexus_crid', 'oz_appnexus_imp_id']}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adv')).to.be.undefined;
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_imp_id')).to.equal('2899ec066a91ff8');
+      config.resetConfig();
+    });
+    it('should ignore a whitelist if enhancedAdserverTargeting is false', function () {
+      config.setConfig({'ozone': {'oz_whitelist_adserver_keys': ['oz_appnexus_crid', 'oz_appnexus_imp_id'], 'enhancedAdserverTargeting': false}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adv')).to.be.undefined;
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_imp_id')).to.be.undefined;
+      config.resetConfig();
+    });
+    it('should correctly handle enhancedAdserverTargeting being false', function () {
+      config.setConfig({'ozone': {'enhancedAdserverTargeting': false}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adv')).to.be.undefined;
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_imp_id')).to.be.undefined;
+      config.resetConfig();
     });
   });
 
