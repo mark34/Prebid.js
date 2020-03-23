@@ -487,15 +487,15 @@ export const spec = {
   findAllUserIds(bidRequest) {
     var ret = {};
     let searchKeysSingle = ['pubcid', 'tdid', 'id5id', 'parrableid', 'idl_env', 'digitrustid', 'criteortus'];
-    utils.logInfo('OZONE: debug iterating keys');
-    utils.logInfo('OZONE: debug bidRequest=', bidRequest);
+    utils.logInfo('OZONE: findAllUserIds iterating keys');
+    utils.logInfo('OZONE: findAllUserIds bidRequest=', bidRequest);
     if (bidRequest.hasOwnProperty('userId')) {
-      utils.logInfo('OZONE: debug Looking inside userId element');
+      utils.logInfo('OZONE: findAllUserIds Looking inside userId element');
       for (let arrayId in searchKeysSingle) {
         let key = searchKeysSingle[arrayId];
-        utils.logInfo('OZONE: debug key=', key);
+        utils.logInfo('OZONE: findAllUserIds key=', key);
         if (bidRequest.userId.hasOwnProperty(key)) {
-          utils.logInfo('OZONE: debug found value : ', key);
+          utils.logInfo('OZONE: findAllUserIds found value : ', key);
           ret[key] = bidRequest.userId[key];
         }
       }
