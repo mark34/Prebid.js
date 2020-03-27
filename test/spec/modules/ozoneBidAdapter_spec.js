@@ -25,6 +25,34 @@ var validBidRequests = [
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
 ];
+var validBidRequestsMulti = [
+  {
+    testId: 1,
+    adUnitCode: 'div-gpt-ad-1460505748561-0',
+    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
+    bidId: '2899ec066a91ff8',
+    bidRequestsCount: 1,
+    bidder: 'ozone',
+    bidderRequestId: '1c1586b27a1b5c8',
+    crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'c8ef27a0d4ba771a81159f0d2e792db4', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}], 'ThirdPartyAudience': [{'id': '123', 'name': 'Automobiles'}, {'id': '456', 'name': 'Ages: 30-39'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    sizes: [[300, 250], [300, 600]],
+    transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
+  },
+  {
+    testId: 2,
+    adUnitCode: 'div-gpt-ad-1460505748561-1',
+    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
+    bidId: '2899ec066a91ff0',
+    bidRequestsCount: 1,
+    bidder: 'ozone',
+    bidderRequestId: '1c1586b27a1b5c0',
+    crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'c8ef27a0d4ba771a81159f0d2e792db4', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}], 'ThirdPartyAudience': [{'id': '123', 'name': 'Automobiles'}, {'id': '456', 'name': 'Ages: 30-39'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    sizes: [[300, 250], [300, 600]],
+    transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
+  }
+];
 var validBidRequestsWithUserIdData = [
   {
     adUnitCode: 'div-gpt-ad-1460505748561-0',
@@ -279,6 +307,92 @@ var validResponse = {
             }
           }
         ],
+        'seat': 'appnexus'
+      }
+    ],
+    'cur': 'GBP', /* NOTE - this is where cur is, not in the seatbids. */
+    'ext': {
+      'responsetimemillis': {
+        'appnexus': 47,
+        'openx': 30
+      }
+    },
+    'timing': {
+      'start': 1536848078.089177,
+      'end': 1536848078.142203,
+      'TimeTaken': 0.05302619934082031
+    }
+  },
+  'headers': {}
+};
+var validResponse2Bids = {
+  'body': {
+    'id': 'd6198807-7a53-4141-b2db-d2cb754d68ba',
+    'seatbid': [
+      {
+        'bid': [
+          {
+            'id': '677903815252395017',
+            'impid': '2899ec066a91ff8',
+            'price': 0.5,
+            'adm': '<script src="https://fra1-ib.adnxs.com/ab?e=wqT_3QLXB6DXAwAAAwDWAAUBCNDh6dwFENjt4vTs9Y6bWhjxtI3siuOTmREqNgkAAAECCOA_EQEHNAAA4D8ZAAAAgOtR4D8hERIAKREJADERG6gwsqKiBjjtSEDtSEgCUI3J-y5YnPFbYABotc95eMuOBYABAYoBA1VTRJIBAQbwUpgBrAKgAdgEqAEBsAEAuAECwAEDyAEC0AEA2AEA4AEA8AEAigI7dWYoJ2EnLCAyNTI5ODg1LCAxNTM2ODQ4MDgwKTt1ZigncicsIDk4NDkzNTgxNh4A8JySAv0BIWJ6YWpPQWl1c0s0S0VJM0oteTRZQUNDYzhWc3dBRGdBUUFSSTdVaFFzcUtpQmxnQVlQX19fXzhQYUFCd0FYZ0JnQUVCaUFFQmtBRUJtQUVCb0FFQnFBRURzQUVBdVFFcGk0aURBQURnUDhFQktZdUlnd0FBNERfSkFUMDR0TTFxYXZFXzJRRUFBQUFBQUFEd1AtQUJBUFVCBQ8oSmdDQUtBQ0FMVUMFEARMMAkI8FBNQUNBY2dDQWRBQ0FkZ0NBZUFDQU9nQ0FQZ0NBSUFEQVpBREFKZ0RBYWdEcnJDdUNyb0RDVVpTUVRFNk16WTROT0FER2cuLpoCPSFLQXVvRkE2AAFwblBGYklBUW9BRG9KUmxKQk1Ub3pOamcwUUJwSkENAfBAOEQ4LsICL2h0dHA6Ly9wcmViaWQub3JnL2Rldi1kb2NzL2dldHRpbmctc3RhcnRlZC5odG1s2AIA4AKtmEjqAiINOthkZW1vLnRoZS1vem9uZS1wcm9qZWN0LmNvbS_yAhMKD0NVU1RPTV9NT0RFTF9JRBIA8gIaChZDLhYAIExFQUZfTkFNRQEdCB4KGjIzAPCHTEFTVF9NT0RJRklFRBIAgAMAiAMBkAMAmAMUoAMBqgMAwAOsAsgDANgDAOADAOgDAPgDA4AEAJIECS9vcGVucnRiMpgEAKIECTEyNy4wLjAuMagEALIEDAgAEAAYACAAMAA4ALgEAMAEAMgEANIEDjkzMjUjRlJBMTozNjg02gQCCAHgBADwBEHvIIgFAZgFAKAF_xEBsAGqBSRkNjE5ODgwNy03YTUzLTQxNDEtYjJkYi1kMmNiNzU0ZDY4YmHABQDJBWlQFPA_0gUJCQkMpAAA2AUB4AUB8AWZ9CH6BQQIABAAkAYAmAYAuAYAwQYAAAAAAAAAAMgGAA..&s=ab84b182eef7d9b4e58c74fe8987705c25ed803c&referrer=http%3A%2F%2Fdemo.the-ozone-project.com%2F&pp=${AUCTION_PRICE}"></script>',
+            'adid': '98493581',
+            'adomain': [
+              'http://prebid.org'
+            ],
+            'iurl': 'https://fra1-ib.adnxs.com/cr?id=98493581',
+            'cid': '9325',
+            'crid': '98493581',
+            'cat': [
+              'IAB3-1'
+            ],
+            'w': 300,
+            'h': 600,
+            'ext': {
+              'prebid': {
+                'type': 'banner'
+              },
+              'bidder': {
+                'appnexus': {
+                  'brand_id': 555545,
+                  'auction_id': 6500448734132353000,
+                  'bidder_id': 2,
+                  'bid_ad_type': 0
+                }
+              }
+            }
+          },
+          {
+            'id': '677903815252395010',
+            'impid': '2899ec066a91ff0',
+            'price': 0.9,
+            'adm': '<script src="test"></script>',
+            'adid': '98493580',
+            'adomain': [
+              'http://prebid.org'
+            ],
+            'iurl': 'https://fra1-ib.adnxs.com/cr?id=98493581',
+            'cid': '9320',
+            'crid': '98493580',
+            'cat': [
+              'IAB3-1'
+            ],
+            'w': 300,
+            'h': 600,
+            'ext': {
+              'prebid': {
+                'type': 'banner'
+              },
+              'bidder': {
+                'appnexus': {
+                  'brand_id': 555540,
+                  'auction_id': 6500448734132353000,
+                  'bidder_id': 2,
+                  'bid_ad_type': 0
+                }
+              }
+            }
+          } ],
         'seat': 'appnexus'
       }
     ],
@@ -1205,9 +1319,17 @@ describe('ozone Adapter', function () {
       config.setConfig({'ozone': {'oz_omp_floor': '1.56'}});
       const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
       const payload = JSON.parse(request.data);
-      console.log(utils.deepAccess(payload, 'ext.ozone.oz_omp_floor'));
       expect(utils.deepAccess(payload, 'ext.ozone.oz_omp_floor')).to.be.undefined;
       config.resetConfig();
+    });
+    it('should should contain a unique page view id in the auction request which persists across calls', function () {
+      let request = spec.buildRequests(validBidRequests, validBidderRequest);
+      let payload = JSON.parse(request.data);
+      expect(utils.deepAccess(payload, 'ext.ozone.pv')).to.be.a('string');
+      request = spec.buildRequests(validBidRequestsWithNonBannerMediaTypesAndValidOutstreamVideo, validBidderRequest);
+      let payload2 = JSON.parse(request.data);
+      expect(utils.deepAccess(payload2, 'ext.ozone.pv')).to.be.a('string');
+      expect(utils.deepAccess(payload2, 'ext.ozone.pv')).to.equal(utils.deepAccess(payload, 'ext.ozone.pv'));
     });
   });
 
@@ -1555,6 +1677,28 @@ describe('ozone Adapter', function () {
       let obj = {'Profile': {'tpid': '', 'pid': '', 'Audiences': {'Audience': [{'abbr': 'marktest'}]}}};
       let result = spec.isLotameDataValid(obj);
       expect(result).to.be.false;
+    });
+  });
+  describe('getPageId', function() {
+    it('should return the same Page ID for multiple calls', function () {
+      let result = spec.getPageId();
+      expect(result).to.be.a('string');
+      let result2 = spec.getPageId();
+      expect(result2).to.equal(result);
+    });
+  });
+  describe('getBidRequestForBidId', function() {
+    it('should locate a bid inside a bid array', function () {
+      let result = spec.getBidRequestForBidId('2899ec066a91ff8', validBidRequestsMulti);
+      expect(result.testId).to.equal(1);
+      result = spec.getBidRequestForBidId('2899ec066a91ff0', validBidRequestsMulti);
+      expect(result.testId).to.equal(2);
+    });
+  });
+  describe('getVideoContextForBidId', function() {
+    it('should locate the video context inside a bid', function () {
+      let result = spec.getVideoContextForBidId('2899ec066a91ff8', validBidRequestsWithNonBannerMediaTypesAndValidOutstreamVideo);
+      expect(result).to.equal('outstream');
     });
   });
 });
