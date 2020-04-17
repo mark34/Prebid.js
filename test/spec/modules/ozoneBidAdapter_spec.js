@@ -11,6 +11,7 @@ const BIDDER_CODE = 'ozone';
 NOTE - use firefox console to deep copy the objects to use here
 
  */
+var originalPropertyBag = {'lotameWasOverridden': 0, 'pageId': null};
 var validBidRequests = [
   {
     adUnitCode: 'div-gpt-ad-1460505748561-0',
@@ -987,7 +988,7 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
-      expect(data.imp[0].ext.ozone.lotameData).to.be.an('object');
+      expect(data.ext.ozone.lotameData).to.be.an('object');
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(request).not.to.have.key('lotameData');
       expect(request).not.to.have.key('customData');
@@ -999,7 +1000,7 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
-      expect(data.imp[0].ext.ozone.lotameData).to.be.an('object');
+      expect(data.ext.ozone.lotameData).to.be.an('object');
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(data.imp[0].ext.ozone.ozoneData).to.be.undefined;
       expect(request).not.to.have.key('lotameData');
@@ -1253,7 +1254,7 @@ describe('ozone Adapter', function () {
       };
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const payload = JSON.parse(request.data);
-      expect(payload.imp[0].ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
+      expect(payload.ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
       expect(payload.ext.ozone.oz_lot_rw).to.equal(1);
     });
     it('should pick up the value of valid lotame override parameters when there is an empty lotame object', function () {
@@ -1264,9 +1265,9 @@ describe('ozone Adapter', function () {
       };
       const request = spec.buildRequests(nolotameBidReq, validBidderRequest);
       const payload = JSON.parse(request.data);
-      expect(payload.imp[0].ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
-      expect(payload.imp[0].ext.ozone.lotameData.Profile.tpid).to.equal('123eeetpid');
-      expect(payload.imp[0].ext.ozone.lotameData.Profile.pid).to.equal('pid123');
+      expect(payload.ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
+      expect(payload.ext.ozone.lotameData.Profile.tpid).to.equal('123eeetpid');
+      expect(payload.ext.ozone.lotameData.Profile.pid).to.equal('pid123');
       expect(payload.ext.ozone.oz_lot_rw).to.equal(1);
     });
     it('should pick up the value of valid lotame override parameters when there is NO "lotame" key at all', function () {
@@ -1277,14 +1278,16 @@ describe('ozone Adapter', function () {
       };
       const request = spec.buildRequests(nolotameBidReq, validBidderRequest);
       const payload = JSON.parse(request.data);
-      expect(payload.imp[0].ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
-      expect(payload.imp[0].ext.ozone.lotameData.Profile.tpid).to.equal('123eeetpid');
-      expect(payload.imp[0].ext.ozone.lotameData.Profile.pid).to.equal('pid123');
+      expect(payload.ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
+      expect(payload.ext.ozone.lotameData.Profile.tpid).to.equal('123eeetpid');
+      expect(payload.ext.ozone.lotameData.Profile.pid).to.equal('pid123');
       expect(payload.ext.ozone.oz_lot_rw).to.equal(1);
+      spec.propertyBag = originalPropertyBag; // tidy up
     });
     // NOTE - only one negative test case;
     // you can't send invalid lotame params to buildRequests because 'validate' will have rejected them
     it('should not use lotame override parameters if they dont exist', function () {
+      expect(spec.propertyBag.lotameWasOverridden).to.equal(0);
       spec.getGetParametersAsObject = function() {
         return {}; //  no lotame override params
       };
@@ -1701,4 +1704,22 @@ describe('ozone Adapter', function () {
       expect(result).to.equal('outstream');
     });
   });
+  describe('getLotameOverrideParams', function() {
+    it('should get 3 valid lotame params that exist in GET params', function () {
+      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
+      spec.getGetParametersAsObject = function() {
+        return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': 'tpid123'};
+      };
+      let result = spec.getLotameOverrideParams();
+      expect(Object.keys(result).length).to.equal(3);
+    });
+    it('should get only 1 valid lotame param that exists in GET params', function () {
+      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
+      spec.getGetParametersAsObject = function() {
+        return {'oz_lotameid': '123abc', 'xoz_lotamepid': 'pid123', 'xoz_lotametpid': 'tpid123'};
+      };
+      let result = spec.getLotameOverrideParams();
+      expect(Object.keys(result).length).to.equal(1);
+    });
+  })
 });

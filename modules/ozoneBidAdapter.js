@@ -38,6 +38,8 @@ export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
   cookieSyncBag: {'publisherId': null, 'siteId': null, 'userIdObject': {}}, // variables we want to make available to cookie sync
+  propertyBag: {'lotameWasOverridden': 0, 'pageId': null}, /* allow us to store vars in instance scope - needs to be an object to be mutable */
+
   /**
    * Basic check to see whether required parameters are in the request.
    * @param bid
@@ -101,7 +103,7 @@ export const spec = {
     }
     if (bid.hasOwnProperty('mediaTypes') && bid.mediaTypes.hasOwnProperty(VIDEO)) {
       if (!bid.mediaTypes[VIDEO].hasOwnProperty('context')) {
-        utils.logError('OZONE: No context key/value in bid. Rejecting bid: ', bid);
+        utils.logError('OZONE: No video context key/value in bid. Rejecting bid: ', bid);
         return false;
       }
       if (bid.mediaTypes[VIDEO].context === 'instream') {
@@ -177,8 +179,7 @@ export const spec = {
     const ozTestMode = getParams.hasOwnProperty('oztestmode') ? getParams.oztestmode : null; // this can be any string, it's used for testing ads
     ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
     let placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
-    let arrLotameOverride = this.getLotameOverrideParams();
-    let lotameIdsOverride = 0;
+    let lotameDataSingle = {}; // we will capture lotame data once & send it to the server as ext.ozone.lotameData
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
@@ -258,36 +259,23 @@ export const spec = {
         utils.logInfo('OZONE: no ozTestMode ');
       }
       // now deal with lotame, including the optional override parameters
-      if (Object.keys(arrLotameOverride).length === ALLOWED_LOTAME_PARAMS.length) {
-        // all override params are present, override lotame object:
-        if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
-          obj.ext.ozone.lotameData = this.makeLotameObjectFromOverride(arrLotameOverride, ozoneBidRequest.params.lotameData);
-        } else {
-          obj.ext.ozone.lotameData = this.makeLotameObjectFromOverride(arrLotameOverride, {});
-        }
-        lotameIdsOverride = 1;
-      } else if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
-        // no lotame override, use it as-is
-        if (this.isLotameDataValid(ozoneBidRequest.params.lotameData)) {
-          obj.ext.ozone.lotameData = ozoneBidRequest.params.lotameData;
-        } else {
-          utils.logError('OZONE: INVALID LOTAME DATA FOUND - WILL NOT USE THIS AT ALL ELSE IT MIGHT BREAK THE AUCTION CALL!', ozoneBidRequest.params.lotameData);
-          obj.ext.ozone.lotameData = {};
-        }
+      if (Object.keys(lotameDataSingle).length === 0) { // we've not yet found lotameData, see if we can get it from this bid request object
+        lotameDataSingle = this.tryGetLotameData(ozoneBidRequest);
       }
       // otherwise don't set obj.ext.ozone.lotameData
       return obj;
     });
 
     // in v 2.0.0 we moved these outside of the individual ad slots
-    let extObj = {'ozone': {'oz_pb_v': OZONEVERSION, 'oz_rw': placementIdOverrideFromGetParam ? 1 : 0, 'oz_lot_rw': lotameIdsOverride}};
+    let extObj = {'ozone': {'oz_pb_v': OZONEVERSION, 'oz_rw': placementIdOverrideFromGetParam ? 1 : 0, 'oz_lot_rw': this.propertyBag.lotameWasOverridden}};
     if (validBidRequests.length > 0) {
       let userIds = this.findAllUserIds(validBidRequests[0]);
       if (userIds.hasOwnProperty('pubcid')) {
         extObj.ozone.pubcid = userIds.pubcid;
       }
     }
-
+    extObj.ozone.pv = this.getPageId(); // attach the page ID that will be common to all auciton calls for this page if refresh() is called
+    extObj.ozone.lotameData = lotameDataSingle; // 2.4.0 moved lotameData out of bid objects into the single ext.ozone area to remove duplication
     let ozOmpFloorDollars = config.getConfig('ozone.oz_omp_floor'); // valid only if a dollar value (typeof == 'number')
     utils.logInfo('OZONE: oz_omp_floor dollar value = ', ozOmpFloorDollars);
     if (typeof ozOmpFloorDollars === 'number') {
@@ -295,6 +283,9 @@ export const spec = {
     } else if (typeof ozOmpFloorDollars !== 'undefined') {
       utils.logError('OZONE: oz_omp_floor is invalid - IF SET then this must be a number, representing dollar value eg. oz_omp_floor: 1.55. You have it set as a ' + (typeof ozOmpFloorDollars));
     }
+    let ozWhitelistAdserverKeys = config.getConfig('ozone.oz_whitelist_adserver_keys');
+    let useOzWhitelistAdserverKeys = utils.isArray(ozWhitelistAdserverKeys) && ozWhitelistAdserverKeys.length > 0;
+    extObj.ozone.oz_kvp_rw = useOzWhitelistAdserverKeys ? 1 : 0;
 
     var userExtEids = this.generateEids(validBidRequests); // generate the UserIDs in the correct format for UserId module
 
@@ -390,10 +381,15 @@ export const spec = {
       for (let j = 0; j < sb.bid.length; j++) {
         const {defaultWidth, defaultHeight} = defaultSize(request.bidderRequest.bids[j]);
         let thisBid = ozoneAddStandardProperties(sb.bid[j], defaultWidth, defaultHeight);
+        let videoContext = null;
+        let isVideo = false;
         if (utils.deepAccess(thisBid, 'ext.prebid.type') === VIDEO) {
           utils.logInfo('OZONE: going to attach a renderer to:', j);
           let renderConf = createObjectForInternalVideoRender(thisBid);
           thisBid.renderer = Renderer.install(renderConf);
+          // check whether this was instream or outstream (currently it will ONLY be outstream but this will probably change)
+          videoContext = this.getVideoContextForBidId(thisBid.bidId, request.bidderRequest.bids); // should be instream or outstream (or null if error)
+          isVideo = true;
         } else {
           utils.logInfo('OZONE: bid is not a video, will not attach a renderer: ', j);
         }
@@ -416,6 +412,9 @@ export const spec = {
             }
             if (addOzOmpFloorDollars) {
               adserverTargeting['oz_' + bidderName + '_omp'] = allBidsForThisBidid[bidderName].price >= ozOmpFloorDollars ? '1' : '0';
+            }
+            if (isVideo) {
+              adserverTargeting['oz_' + bidderName + '_vid'] = videoContext; // outstream [or instream (future)]
             }
           });
         } else {
@@ -479,7 +478,33 @@ export const spec = {
       }];
     }
   },
-
+  /**
+   * Find the bid matching the bidId in the request object
+   * get instream or outstream if this was a video request else null
+   * @return object|null
+   */
+  getBidRequestForBidId(bidId, arrBids) {
+    for (let i = 0; i < arrBids.length; i++) {
+      if (arrBids[i].bidId === bidId) { // bidId in the request comes back as impid in the seatbid bids
+        return arrBids[i];
+      }
+    }
+    return null;
+  },
+  /**
+   * Locate the bid inside the arrBids for this bidId, then discover the video context, and return it.
+   * IF the bid cannot be found return null, else return a string.
+   * @param bidId
+   * @param arrBids
+   * @return string|null
+   */
+  getVideoContextForBidId(bidId, arrBids) {
+    let requestBid = this.getBidRequestForBidId(bidId, arrBids);
+    if (requestBid != null) {
+      return utils.deepAccess(requestBid, 'mediaTypes.video.context', 'unknown')
+    }
+    return null;
+  },
   /**
    *  Look for pubcid & all the other IDs according to http://prebid.org/dev-docs/modules/userId.html
    *  @return map
@@ -550,6 +575,9 @@ export const spec = {
   },
   /**
    * Use the arrOverride keys/vals to update the arrExisting lotame object.
+   * Ideally we will only be using the oz_lotameid value to update the audiences id, but in the event of bad/missing
+   * pid & tpid we will also have to use substitute values for those too.
+   *
    * @param objOverride object will contain all the ALLOWED_LOTAME_PARAMS parameters
    * @param lotameData object might be {} or contain the lotame data
    */
@@ -674,13 +702,13 @@ export const spec = {
     // if there is an ozone.oz_request = false then quit now.
     let ozRequest = config.getConfig('ozone.oz_request');
     if (typeof ozRequest == 'boolean' && !ozRequest) {
-      utils.logError('OZONE: Will not allow auction : ozone.oz_request is set to false');
+      utils.logWarn('OZONE: Will not allow auction : ozone.oz_request is set to false');
       return true;
     }
     // is there ozone.oz_enforceGdpr == true (ANYTHING else means don't enforce GDPR))
     let ozEnforce = config.getConfig('ozone.oz_enforceGdpr');
     if (typeof ozEnforce != 'boolean' || !ozEnforce) { // ozEnforce is false by default
-      utils.logError('OZONE: Will not validate GDPR on the client : oz_enforceGdpr is not set to true');
+      utils.logWarn('OZONE: Will not validate GDPR on the client : oz_enforceGdpr is not set to true');
       return false;
     }
     // maybe the module was built without consentManagement module so we won't find any gdpr information
@@ -692,7 +720,7 @@ export const spec = {
     //
     // If there is indeterminate GDPR (gdprConsent.consentString == undefined or not a string), we will DITCH this:
     if (typeof bidderRequest.gdprConsent.consentString !== 'string') {
-      utils.logError('OZONE: Will block the request - bidderRequest.gdprConsent.consentString is not a string');
+      utils.logError('OZONE: Will block the request - bidderRequest.gdprConsent.consentString is not a string!');
       return true;
     }
     // IF the consentManagement module sends through the CMP information and user has refused all permissions:
@@ -721,11 +749,11 @@ export const spec = {
         return true;
       }
       if (!this.purposeConsentsAreOk((vendorConsentsObject.purposeConsents))) {
-        utils.logError('OZONE: gdpr test failed - missing Purposes consent');
+        utils.logWarn('OZONE: gdpr test failed - lacking some required Purposes consent(s)');
         return true;
       }
       if (!vendorConsentsObject.vendorConsents[524]) {
-        utils.logError('OZONE: gdpr test failed - missing Vendor ID consent');
+        utils.logWarn('OZONE: gdpr test failed - missing Vendor ID consent');
         return true;
       }
     }
@@ -742,8 +770,51 @@ export const spec = {
       if (!obj.hasOwnProperty(i) || !obj[i]) return false;
     }
     return true;
+  },
+  /**
+   * This returns a random ID for this page. It starts off with the current ms timestamp then appends a random component
+   * @return {string}
+   */
+  getPageId: function() {
+    if (this.propertyBag.pageId == null) {
+      let randPart = '';
+      let allowable = '0123456789abcdefghijklmnopqrstuvwxyz';
+      for (let i = 20; i > 0; i--) {
+        randPart += allowable[Math.floor(Math.random() * 36)];
+      }
+      this.propertyBag.pageId = new Date().getTime() + '_' + randPart;
+    }
+    return this.propertyBag.pageId;
+  },
+  /**
+   * handle the complexity of there possibly being lotameData override (may be valid/invalid) & there may or may not be lotameData present in the bidRequest
+   * NOTE THAT this will also set this.propertyBag.lotameWasOverridden=1 if we use lotame override
+   * @param ozoneBidRequest
+   * @return object representing the absolute lotameData we need to use.
+   */
+  tryGetLotameData: function(ozoneBidRequest) {
+    const arrLotameOverride = this.getLotameOverrideParams();
+    let ret = {};
+    if (Object.keys(arrLotameOverride).length === ALLOWED_LOTAME_PARAMS.length) {
+      // all override params are present, override lotame object:
+      if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
+        ret = this.makeLotameObjectFromOverride(arrLotameOverride, ozoneBidRequest.params.lotameData);
+      } else {
+        ret = this.makeLotameObjectFromOverride(arrLotameOverride, {});
+      }
+      this.propertyBag.lotameWasOverridden = 1;
+    } else if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
+      // no lotame override, use it as-is
+      if (this.isLotameDataValid(ozoneBidRequest.params.lotameData)) {
+        ret = ozoneBidRequest.params.lotameData;
+      } else {
+        utils.logError('OZONE: INVALID LOTAME DATA FOUND - WILL NOT USE THIS AT ALL ELSE IT MIGHT BREAK THE AUCTION CALL!', ozoneBidRequest.params.lotameData);
+        ret = {};
+      }
+    }
+    return ret;
   }
-}
+};
 
 /**
  * add a page-level-unique adId element to all server response bids.
