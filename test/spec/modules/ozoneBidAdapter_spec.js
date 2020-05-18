@@ -1334,6 +1334,25 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(payload2, 'ext.ozone.pv')).to.be.a('string');
       expect(utils.deepAccess(payload2, 'ext.ozone.pv')).to.equal(utils.deepAccess(payload, 'ext.ozone.pv'));
     });
+    it('should indicate that the whitelist was used when it contains valid data', function () {
+      config.setConfig({'ozone': {'oz_whitelist_adserver_keys': ['oz_ozappnexus_pb', 'oz_ozappnexus_imp_id']}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(payload.ext.ozone.oz_kvp_rw).to.equal(1);
+      config.resetConfig();
+    });
+    it('should indicate that the whitelist was not used when it contains no data', function () {
+      config.setConfig({'ozone': {'oz_whitelist_adserver_keys': []}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(payload.ext.ozone.oz_kvp_rw).to.equal(0);
+      config.resetConfig();
+    });
+    it('should indicate that the whitelist was not used when it is not set in the config', function () {
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(payload.ext.ozone.oz_kvp_rw).to.equal(0);
+    });
   });
 
   describe('interpretResponse', function () {

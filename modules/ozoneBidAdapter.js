@@ -32,7 +32,7 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.4.0';
+const OZONEVERSION = '2.4.1';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -385,7 +385,7 @@ export const spec = {
         let isVideo = false;
         if (utils.deepAccess(thisBid, 'ext.prebid.type') === VIDEO) {
           utils.logInfo('OZONE: going to attach a renderer to:', j);
-          let renderConf = createObjectForInternalVideoRender(thisBid);
+          let renderConf = createObjectForInternalVideoRender(thisBid, this.getBidRequestForBidId(thisBid.bidId, request.bidderRequest.bids));
           thisBid.renderer = Renderer.install(renderConf);
           // check whether this was instream or outstream (currently it will ONLY be outstream but this will probably change)
           videoContext = this.getVideoContextForBidId(thisBid.bidId, request.bidderRequest.bids); // should be instream or outstream (or null if error)
@@ -995,11 +995,21 @@ export function ozoneAddStandardProperties(seatBid, defaultWidth, defaultHeight)
   return seatBid;
 }
 
-function createObjectForInternalVideoRender(bid) {
-  let obj = {
-    url: OZONE_RENDERER_URL,
-    callback: () => onOutstreamRendererLoaded(bid)
+/**
+ *
+ * @param bid object = the seatbid (response) bid
+ * @param requestBid = the matching request bid (on bidId)
+ * @return {{callback: (function(): void), url: string}}
+ */
+function createObjectForInternalVideoRender(bid, requestBid) {
+  let qs = '';
+  if (typeof requestBid == 'object') {
+    qs = `?publisherId=${utils.deepAccess(requestBid, 'params.publisherId')}&siteId=${utils.deepAccess(requestBid, 'params.siteId')}&placementId=${utils.deepAccess(requestBid, 'params.placementId')}`;
   }
+  let obj = {
+    url: OZONE_RENDERER_URL + qs,
+    callback: () => onOutstreamRendererLoaded(bid)
+  };
   return obj;
 }
 
