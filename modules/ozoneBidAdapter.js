@@ -379,7 +379,9 @@ export const spec = {
     for (let i = 0; i < serverResponse.seatbid.length; i++) {
       let sb = serverResponse.seatbid[i];
       for (let j = 0; j < sb.bid.length; j++) {
-        const {defaultWidth, defaultHeight} = defaultSize(request.bidderRequest.bids[j]);
+        let thisRequestBid = this.getBidRequestForBidId(sb.bid[j].impid, request.bidderRequest.bids);
+        utils.logInfo('Ozone Going to set default w h for seatbid/bidRequest', sb.bid[j], thisRequestBid);
+        const {defaultWidth, defaultHeight} = defaultSize(thisRequestBid);
         let thisBid = ozoneAddStandardProperties(sb.bid[j], defaultWidth, defaultHeight);
         let videoContext = null;
         let isVideo = false;
