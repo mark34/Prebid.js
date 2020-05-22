@@ -30,10 +30,12 @@ const ALLOWED_LOTAME_PARAMS = ['oz_lotameid', 'oz_lotamepid', 'oz_lotametpid'];
 // *** PROD ***
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'http://localhost:9876/ozone-renderer-switch.js';
+const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-switch.js';
 
-const OZONEVERSION = '2.4.0';
-
+const OZONEVERSION = '2.4.0x - not to be used';
+console.log('local');
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
@@ -379,11 +381,15 @@ export const spec = {
     for (let i = 0; i < serverResponse.seatbid.length; i++) {
       let sb = serverResponse.seatbid[i];
       for (let j = 0; j < sb.bid.length; j++) {
-        const {defaultWidth, defaultHeight} = defaultSize(request.bidderRequest.bids[j]);
+        let thisRequestBid = this.getBidRequestForBidId(sb.bid[j].impid, request.bidderRequest.bids);
+        utils.logInfo('Ozone Going to set default w h for seatbid/bidRequest', sb.bid[j], thisRequestBid);
+        const {defaultWidth, defaultHeight} = defaultSize(thisRequestBid);
         let thisBid = ozoneAddStandardProperties(sb.bid[j], defaultWidth, defaultHeight);
         let videoContext = null;
         let isVideo = false;
-        if (utils.deepAccess(thisBid, 'ext.prebid.type') === VIDEO) {
+        let bidType = utils.deepAccess(thisBid, 'ext.prebid.type');
+        utils.logInfo('OZONE: this bid type is : ', bidType);
+        if (bidType === VIDEO) {
           utils.logInfo('OZONE: going to attach a renderer to:', j);
           let renderConf = createObjectForInternalVideoRender(thisBid);
           thisBid.renderer = Renderer.install(renderConf);
@@ -999,19 +1005,30 @@ function createObjectForInternalVideoRender(bid) {
   let obj = {
     url: OZONE_RENDERER_URL,
     callback: () => onOutstreamRendererLoaded(bid)
-  }
+    // , loaded: window.hasOwnProperty('ozoneVideo')
+//    , loaded: true
+  };
   return obj;
 }
 
 function onOutstreamRendererLoaded(bid) {
+  utils.logInfo('OZONE onOutstreamRendererLoaded going to setRender with bid (cloned snapshot) ', JSON.stringify(bid));
+  utils.logInfo('OZONE onOutstreamRendererLoaded going to setRender with bid (cloned snapshot) ', JSON.stringify(outstreamRender));
+  utils.logInfo('OZONE onOutstreamRendererLoaded window.ozoneVideo SHOULD BE the renderer object. ', utils.deepAccess(window, 'ozoneVideo'));
   try {
     bid.renderer.setRender(outstreamRender);
+    utils.logInfo('OZONE onOutstreamRendererLoaded Successsfully set Render callback');
   } catch (err) {
-    utils.logWarn('OZONE: Prebid Error calling setRender on renderer', err)
+    utils.logWarn('OZONE onOutstreamRendererLoaded Error calling setRender on renderer', err);
   }
 }
 
 function outstreamRender(bid) {
+  if (window.hasOwnProperty('ozoneVideo')) {
+    utils.logInfo('Ozone : outstreamRender window.ozoneVideo is :', window.ozoneVideo);
+  } else {
+    utils.logError('Ozone : outstreamRender window.ozoneVideo DOES NOT EXIST ');
+  }
   window.ozoneVideo.outstreamRender(bid);
 }
 

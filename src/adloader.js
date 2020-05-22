@@ -31,9 +31,11 @@ export function loadExternalScript(url, moduleCode, callback) {
     if (callback && typeof callback === 'function') {
       if (_requestCache[url].loaded) {
         // invokeCallbacks immediately
+        console.log('going to invokeCallbacks immediately - we think its loaded');
         callback();
       } else {
         // queue the callback
+        console.log('going to cache the callback for later - we think its not loaded');
         _requestCache[url].callbacks.push(callback);
       }
     }

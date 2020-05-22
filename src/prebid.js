@@ -331,78 +331,83 @@ function emitAdRenderFail({ reason, message, bid, id }) {
  * @alias module:pbjs.renderAd
  */
 $$PREBID_GLOBAL$$.renderAd = function (doc, id) {
-  utils.logInfo('Invoking $$PREBID_GLOBAL$$.renderAd', arguments);
-  utils.logMessage('Calling renderAd with adId :' + id);
+  setTimeout(function() {
 
-  if (doc && id) {
-    try {
-      // lookup ad by ad Id
-      const bid = auctionManager.findBidByAdId(id);
-      utils.logMessage('renderAd found bid :', bid);
+    utils.logInfo('Invoking $$PREBID_GLOBAL$$.renderAd', arguments);
+    utils.logMessage('Calling renderAd with adId :' + id);
 
-      if (bid) {
-        // replace macros according to openRTB with price paid = bid.cpm
-        bid.ad = utils.replaceAuctionPrice(bid.ad, bid.cpm);
-        bid.adUrl = utils.replaceAuctionPrice(bid.adUrl, bid.cpm);
-        // save winning bids
-        auctionManager.addWinningBid(bid);
+    if (doc && id) {
+      try {
+        // lookup ad by ad Id
+        const bid = auctionManager.findBidByAdId(id);
+        utils.logMessage('renderAd found bid :', bid);
 
-        // emit 'bid won' event here
-        events.emit(BID_WON, bid);
+        if (bid) {
+          // replace macros according to openRTB with price paid = bid.cpm
+          bid.ad = utils.replaceAuctionPrice(bid.ad, bid.cpm);
+          bid.adUrl = utils.replaceAuctionPrice(bid.adUrl, bid.cpm);
+          // save winning bids
+          auctionManager.addWinningBid(bid);
 
-        const { height, width, ad, mediaType, adUrl, renderer } = bid;
+          // emit 'bid won' event here
+          events.emit(BID_WON, bid);
 
-        const creativeComment = document.createComment(`Creative ${bid.creativeId} served by ${bid.bidder} Prebid.js Header Bidding`);
-        utils.insertElement(creativeComment, doc, 'body');
+          const {height, width, ad, mediaType, adUrl, renderer} = bid;
 
-        if (isRendererRequired(renderer)) {
-          utils.logMessage('renderAd inside isRendererRequired');
-          executeRenderer(renderer, bid);
-        } else if ((doc === document && !utils.inIframe()) || mediaType === 'video') {
-          const message = `Error trying to write ad. Ad render call ad id ${id} was prevented from writing to the main document.`;
-          emitAdRenderFail({ reason: PREVENT_WRITING_ON_MAIN_DOCUMENT, message, bid, id });
-        } else if (ad) {
-          // will check if browser is firefox and below version 67, if so execute special doc.open()
-          // for details see: https://github.com/prebid/Prebid.js/pull/3524
-          // TODO remove this browser specific code at later date (when Firefox < 67 usage is mostly gone)
-          if (navigator.userAgent && navigator.userAgent.toLowerCase().indexOf('firefox/') > -1) {
-            const firefoxVerRegx = /firefox\/([\d\.]+)/;
-            let firefoxVer = navigator.userAgent.toLowerCase().match(firefoxVerRegx)[1]; // grabs the text in the 1st matching group
-            if (firefoxVer && parseInt(firefoxVer, 10) < 67) {
-              doc.open('text/html', 'replace');
+          const creativeComment = document.createComment(`Creative ${bid.creativeId} served by ${bid.bidder} Prebid.js Header Bidding`);
+          utils.insertElement(creativeComment, doc, 'body');
+
+          if (isRendererRequired(renderer)) {
+            utils.logMessage('OZONE renderAd inside isRendererRequired, with bid ', JSON.parse(JSON.stringify(bid)));
+            utils.logMessage('OZONE renderAd inside isRendererRequired - renderer = ', JSON.parse(JSON.stringify(renderer)));
+            utils.logMessage('OZONE renderAd will call executeRenderer in a timeout...');
+            executeRenderer(renderer, bid);
+          } else if ((doc === document && !utils.inIframe()) || mediaType === 'video') {
+            const message = `Error trying to write ad. Ad render call ad id ${id} was prevented from writing to the main document.`;
+            emitAdRenderFail({reason: PREVENT_WRITING_ON_MAIN_DOCUMENT, message, bid, id});
+          } else if (ad) {
+            // will check if browser is firefox and below version 67, if so execute special doc.open()
+            // for details see: https://github.com/prebid/Prebid.js/pull/3524
+            // TODO remove this browser specific code at later date (when Firefox < 67 usage is mostly gone)
+            if (navigator.userAgent && navigator.userAgent.toLowerCase().indexOf('firefox/') > -1) {
+              const firefoxVerRegx = /firefox\/([\d\.]+)/;
+              let firefoxVer = navigator.userAgent.toLowerCase().match(firefoxVerRegx)[1]; // grabs the text in the 1st matching group
+              if (firefoxVer && parseInt(firefoxVer, 10) < 67) {
+                doc.open('text/html', 'replace');
+              }
             }
-          }
-          doc.write(ad);
-          doc.close();
-          setRenderSize(doc, width, height);
-          utils.callBurl(bid);
-        } else if (adUrl) {
-          const iframe = utils.createInvisibleIframe();
-          iframe.height = height;
-          iframe.width = width;
-          iframe.style.display = 'inline';
-          iframe.style.overflow = 'hidden';
-          iframe.src = adUrl;
+            doc.write(ad);
+            doc.close();
+            setRenderSize(doc, width, height);
+            utils.callBurl(bid);
+          } else if (adUrl) {
+            const iframe = utils.createInvisibleIframe();
+            iframe.height = height;
+            iframe.width = width;
+            iframe.style.display = 'inline';
+            iframe.style.overflow = 'hidden';
+            iframe.src = adUrl;
 
-          utils.insertElement(iframe, doc, 'body');
-          setRenderSize(doc, width, height);
-          utils.callBurl(bid);
+            utils.insertElement(iframe, doc, 'body');
+            setRenderSize(doc, width, height);
+            utils.callBurl(bid);
+          } else {
+            const message = `Error trying to write ad. No ad for bid response id: ${id}`;
+            emitAdRenderFail({reason: NO_AD, message, bid, id});
+          }
         } else {
-          const message = `Error trying to write ad. No ad for bid response id: ${id}`;
-          emitAdRenderFail({ reason: NO_AD, message, bid, id });
+          const message = `Error trying to write ad. Cannot find ad by given id : ${id}`;
+          emitAdRenderFail({reason: CANNOT_FIND_AD, message, id});
         }
-      } else {
-        const message = `Error trying to write ad. Cannot find ad by given id : ${id}`;
-        emitAdRenderFail({ reason: CANNOT_FIND_AD, message, id });
+      } catch (e) {
+        const message = `Error trying to write ad Id :${id} to the page:${e.message}`;
+        emitAdRenderFail({reason: EXCEPTION, message, id});
       }
-    } catch (e) {
-      const message = `Error trying to write ad Id :${id} to the page:${e.message}`;
-      emitAdRenderFail({ reason: EXCEPTION, message, id });
+    } else {
+      const message = `Error trying to write ad Id :${id} to the page. Missing document or adId`;
+      emitAdRenderFail({reason: MISSING_DOC_OR_ADID, message, id});
     }
-  } else {
-    const message = `Error trying to write ad Id :${id} to the page. Missing document or adId`;
-    emitAdRenderFail({ reason: MISSING_DOC_OR_ADID, message, id });
-  }
+  }, 500);
 };
 
 /**

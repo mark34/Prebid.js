@@ -28,6 +28,7 @@ export function Renderer(options) {
       utils.logError('Commands given to Renderer.push must be wrapped in a function');
       return;
     }
+    console.log('ARDM : loaded is : ' + (this.loaded ? 'true' : 'false') );
     this.loaded ? func.call() : this.cmd.push(func);
   };
 
@@ -46,6 +47,7 @@ export function Renderer(options) {
 }
 
 Renderer.install = function({ url, config, id, callback, loaded, adUnitCode }) {
+  console.log(['OZONE : Renderer.install got callback fn: ', callback]);
   return new Renderer({ url, config, id, callback, loaded, adUnitCode });
 };
 
@@ -54,7 +56,11 @@ Renderer.prototype.getConfig = function() {
 };
 
 Renderer.prototype.setRender = function(fn) {
+  console.log(['OZONE Renderer.prototype.setRender', fn]);
+  console.log(['OZONE Renderer.prototype.setRender', typeof fn]);
+  console.log(['OZONE Renderer.prototype.setRender', JSON.stringify(this), this]);
   this.render = fn;
+  console.log(['OZONE Renderer.prototype.setRender - after setting render fn', JSON.stringify(this), this]);
 };
 
 Renderer.prototype.setEventHandlers = function(handlers) {
@@ -98,7 +104,7 @@ export function isRendererRequired(renderer) {
  * @param {Object} bid Bid response
  */
 export function executeRenderer(renderer, bid) {
-  utils.logInfo('executeRenderer', renderer, typeof renderer, bid);
+  utils.logInfo('OZONE executeRenderer', JSON.stringify(this), JSON.stringify(renderer), typeof renderer, JSON.stringify(bid));
   renderer.render(bid);
 }
 
