@@ -385,10 +385,16 @@ export const spec = {
         let thisBid = ozoneAddStandardProperties(sb.bid[j], defaultWidth, defaultHeight);
         let videoContext = null;
         let isVideo = false;
-        if (utils.deepAccess(thisBid, 'ext.prebid.type') === VIDEO) {
+        let bidType = utils.deepAccess(thisBid, 'ext.prebid.type');
+        utils.logInfo('OZONE: this bid type is : ', bidType);
+        if (bidType === VIDEO) {
           utils.logInfo('OZONE: going to attach a renderer to:', j);
           let renderConf = createObjectForInternalVideoRender(thisBid);
           thisBid.renderer = Renderer.install(renderConf);
+          // fix for refreshed video bids
+          if (window.hasOwnProperty('ozoneVideo') && window.ozoneVideo.hasOwnProperty('outstreamRender')) {
+            thisBid.renderer.setRender(outstreamRender);
+          }
           // check whether this was instream or outstream (currently it will ONLY be outstream but this will probably change)
           videoContext = this.getVideoContextForBidId(thisBid.bidId, request.bidderRequest.bids); // should be instream or outstream (or null if error)
           isVideo = true;
