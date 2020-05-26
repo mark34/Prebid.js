@@ -39,10 +39,12 @@ export function Renderer(options) {
   });
 
   if (!isRendererDefinedOnAdUnit(adUnitCode)) {
+    console.log('OZONE: isRendererDefinedOnAdUnit = false');
     // we expect to load a renderer url once only so cache the request to load script
     loadExternalScript(url, moduleCode, this.callback);
   } else {
     utils.logWarn(`External Js not loaded by Renderer since renderer url and callback is already defined on adUnit ${adUnitCode}`);
+    console.log('OZONE: isRendererDefinedOnAdUnit = true');
   }
 }
 
@@ -104,7 +106,7 @@ export function isRendererRequired(renderer) {
  * @param {Object} bid Bid response
  */
 export function executeRenderer(renderer, bid) {
-  utils.logInfo('OZONE executeRenderer', JSON.stringify(this), JSON.stringify(renderer), typeof renderer, JSON.stringify(bid));
+  utils.logInfo('OZONE executeRenderer', JSON.parse(JSON.stringify(renderer)), typeof renderer, JSON.parse(JSON.stringify(bid)));
   renderer.render(bid);
 }
 

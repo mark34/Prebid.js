@@ -360,6 +360,7 @@ $$PREBID_GLOBAL$$.renderAd = function (doc, id) {
           if (isRendererRequired(renderer)) {
             utils.logMessage('OZONE renderAd inside isRendererRequired, with bid ', JSON.parse(JSON.stringify(bid)));
             utils.logMessage('OZONE renderAd inside isRendererRequired - renderer = ', JSON.parse(JSON.stringify(renderer)));
+            utils.logMessage('OZONE renderAd inside isRendererRequired - renderer by reference = ', renderer);
             utils.logMessage('OZONE renderAd will call executeRenderer in a timeout...');
             executeRenderer(renderer, bid);
           } else if ((doc === document && !utils.inIframe()) || mediaType === 'video') {
@@ -407,7 +408,7 @@ $$PREBID_GLOBAL$$.renderAd = function (doc, id) {
       const message = `Error trying to write ad Id :${id} to the page. Missing document or adId`;
       emitAdRenderFail({reason: MISSING_DOC_OR_ADID, message, id});
     }
-  }, 500);
+  }, 300);
 };
 
 /**
