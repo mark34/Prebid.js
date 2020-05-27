@@ -30,7 +30,9 @@ const ALLOWED_LOTAME_PARAMS = ['oz_lotameid', 'oz_lotamepid', 'oz_lotametpid'];
 // *** PROD ***
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+//const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+ const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh.js'; // video testing local
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js'; // video testing
 
 const OZONEVERSION = '2.4.0';
 
@@ -389,7 +391,7 @@ export const spec = {
         utils.logInfo('OZONE: this bid type is : ', bidType);
         if (bidType === VIDEO) {
           utils.logInfo('OZONE: going to attach a renderer to:', j);
-          let renderConf = createObjectForInternalVideoRender(thisBid, this.getBidRequestForBidId(thisBid.bidId, request.bidderRequest.bids));
+          let renderConf = createObjectForInternalVideoRender(thisBid, thisRequestBid);
           thisBid.renderer = Renderer.install(renderConf);
           // fix for refreshed video bids
           if (window.hasOwnProperty('ozoneVideo') && window.ozoneVideo.hasOwnProperty('outstreamRender')) {
