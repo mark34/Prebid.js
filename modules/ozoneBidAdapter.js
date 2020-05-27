@@ -379,14 +379,22 @@ export const spec = {
     for (let i = 0; i < serverResponse.seatbid.length; i++) {
       let sb = serverResponse.seatbid[i];
       for (let j = 0; j < sb.bid.length; j++) {
-        const {defaultWidth, defaultHeight} = defaultSize(request.bidderRequest.bids[j]);
+        let thisRequestBid = this.getBidRequestForBidId(sb.bid[j].impid, request.bidderRequest.bids);
+        utils.logInfo('Ozone Going to set default w h for seatbid/bidRequest', sb.bid[j], thisRequestBid);
+        const {defaultWidth, defaultHeight} = defaultSize(thisRequestBid);
         let thisBid = ozoneAddStandardProperties(sb.bid[j], defaultWidth, defaultHeight);
         let videoContext = null;
         let isVideo = false;
-        if (utils.deepAccess(thisBid, 'ext.prebid.type') === VIDEO) {
+        let bidType = utils.deepAccess(thisBid, 'ext.prebid.type');
+        utils.logInfo('OZONE: this bid type is : ', bidType);
+        if (bidType === VIDEO) {
           utils.logInfo('OZONE: going to attach a renderer to:', j);
           let renderConf = createObjectForInternalVideoRender(thisBid, this.getBidRequestForBidId(thisBid.bidId, request.bidderRequest.bids));
           thisBid.renderer = Renderer.install(renderConf);
+          // fix for refreshed video bids
+          if (window.hasOwnProperty('ozoneVideo') && window.ozoneVideo.hasOwnProperty('outstreamRender')) {
+            thisBid.renderer.setRender(outstreamRender);
+          }
           // check whether this was instream or outstream (currently it will ONLY be outstream but this will probably change)
           videoContext = this.getVideoContextForBidId(thisBid.bidId, request.bidderRequest.bids); // should be instream or outstream (or null if error)
           isVideo = true;
