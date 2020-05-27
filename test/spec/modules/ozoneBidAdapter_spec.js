@@ -412,6 +412,94 @@ var validResponse2Bids = {
   },
   'headers': {}
 };
+
+var validResponse2BidsOzappnexus = {
+  'body': {
+    'id': 'd6198807-7a53-4141-b2db-d2cb754d68ba',
+    'seatbid': [
+      {
+        'bid': [
+          {
+            'id': '677903815252395017',
+            'impid': '2899ec066a91ff8',
+            'price': 0.5,
+            'adm': '<script src="https://fra1-ib.adnxs.com/ab?e=wqT_3QLXB6DXAwAAAwDWAAUBCNDh6dwFENjt4vTs9Y6bWhjxtI3siuOTmREqNgkAAAECCOA_EQEHNAAA4D8ZAAAAgOtR4D8hERIAKREJADERG6gwsqKiBjjtSEDtSEgCUI3J-y5YnPFbYABotc95eMuOBYABAYoBA1VTRJIBAQbwUpgBrAKgAdgEqAEBsAEAuAECwAEDyAEC0AEA2AEA4AEA8AEAigI7dWYoJ2EnLCAyNTI5ODg1LCAxNTM2ODQ4MDgwKTt1ZigncicsIDk4NDkzNTgxNh4A8JySAv0BIWJ6YWpPQWl1c0s0S0VJM0oteTRZQUNDYzhWc3dBRGdBUUFSSTdVaFFzcUtpQmxnQVlQX19fXzhQYUFCd0FYZ0JnQUVCaUFFQmtBRUJtQUVCb0FFQnFBRURzQUVBdVFFcGk0aURBQURnUDhFQktZdUlnd0FBNERfSkFUMDR0TTFxYXZFXzJRRUFBQUFBQUFEd1AtQUJBUFVCBQ8oSmdDQUtBQ0FMVUMFEARMMAkI8FBNQUNBY2dDQWRBQ0FkZ0NBZUFDQU9nQ0FQZ0NBSUFEQVpBREFKZ0RBYWdEcnJDdUNyb0RDVVpTUVRFNk16WTROT0FER2cuLpoCPSFLQXVvRkE2AAFwblBGYklBUW9BRG9KUmxKQk1Ub3pOamcwUUJwSkENAfBAOEQ4LsICL2h0dHA6Ly9wcmViaWQub3JnL2Rldi1kb2NzL2dldHRpbmctc3RhcnRlZC5odG1s2AIA4AKtmEjqAiINOthkZW1vLnRoZS1vem9uZS1wcm9qZWN0LmNvbS_yAhMKD0NVU1RPTV9NT0RFTF9JRBIA8gIaChZDLhYAIExFQUZfTkFNRQEdCB4KGjIzAPCHTEFTVF9NT0RJRklFRBIAgAMAiAMBkAMAmAMUoAMBqgMAwAOsAsgDANgDAOADAOgDAPgDA4AEAJIECS9vcGVucnRiMpgEAKIECTEyNy4wLjAuMagEALIEDAgAEAAYACAAMAA4ALgEAMAEAMgEANIEDjkzMjUjRlJBMTozNjg02gQCCAHgBADwBEHvIIgFAZgFAKAF_xEBsAGqBSRkNjE5ODgwNy03YTUzLTQxNDEtYjJkYi1kMmNiNzU0ZDY4YmHABQDJBWlQFPA_0gUJCQkMpAAA2AUB4AUB8AWZ9CH6BQQIABAAkAYAmAYAuAYAwQYAAAAAAAAAAMgGAA..&s=ab84b182eef7d9b4e58c74fe8987705c25ed803c&referrer=http%3A%2F%2Fdemo.the-ozone-project.com%2F&pp=${AUCTION_PRICE}"></script>',
+            'adid': '98493581',
+            'adomain': [
+              'http://prebid.org'
+            ],
+            'iurl': 'https://fra1-ib.adnxs.com/cr?id=98493581',
+            'cid': '9325',
+            'crid': '98493581',
+            'cat': [
+              'IAB3-1'
+            ],
+            'w': 300,
+            'h': 600,
+            'ext': {
+              'prebid': {
+                'type': 'banner'
+              },
+              'bidder': {
+                'appnexus': {
+                  'brand_id': 555545,
+                  'auction_id': 6500448734132353000,
+                  'bidder_id': 2,
+                  'bid_ad_type': 0
+                }
+              }
+            }
+          },
+          {
+            'id': '677903815252395010',
+            'impid': '2899ec066a91ff0',
+            'price': 0.9,
+            'adm': '<script src="test"></script>',
+            'adid': '98493580',
+            'adomain': [
+              'http://prebid.org'
+            ],
+            'iurl': 'https://fra1-ib.adnxs.com/cr?id=98493581',
+            'cid': '9320',
+            'crid': '98493580',
+            'cat': [
+              'IAB3-1'
+            ],
+            'w': 300,
+            'h': 600,
+            'ext': {
+              'prebid': {
+                'type': 'banner'
+              },
+              'bidder': {
+                'appnexus': {
+                  'brand_id': 555540,
+                  'auction_id': 6500448734132353000,
+                  'bidder_id': 2,
+                  'bid_ad_type': 0
+                }
+              }
+            }
+          } ],
+        'seat': 'ozappnexus'
+      }
+    ],
+    'cur': 'GBP', /* NOTE - this is where cur is, not in the seatbids. */
+    'ext': {
+      'responsetimemillis': {
+        'appnexus': 47,
+        'openx': 30
+      }
+    },
+    'timing': {
+      'start': 1536848078.089177,
+      'end': 1536848078.142203,
+      'TimeTaken': 0.05302619934082031
+    }
+  },
+  'headers': {}
+};
+
 var validOutstreamResponse = {
   'body': {
     'id': 'd6198807-7a53-4141-b2db-d2cb754d68ba',
@@ -1459,6 +1547,21 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adv')).to.be.undefined;
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_imp_id')).to.be.undefined;
       config.resetConfig();
+    });
+    it('should add flr into ads request if it exists in the auction response', function () {
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      let validres = JSON.parse(JSON.stringify(validResponse2Bids));
+      validres.body.seatbid[0].bid[0].ext.bidder.ozone = {'floor': 1};
+      const result = spec.interpretResponse(validres, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_flr')).to.equal(1);
+      expect(utils.deepAccess(result[1].adserverTargeting, 'oz_appnexus_flr', '')).to.equal('');
+    });
+    it('should add oz_ozappnexus_sid (cid value) for all appnexus bids', function () {
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      let validres = JSON.parse(JSON.stringify(validResponse2BidsOzappnexus));
+      const result = spec.interpretResponse(validres, request);
+      console.log(result[0].adserverTargeting);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_ozappnexus_sid')).to.equal(result[0].cid);
     });
   });
 

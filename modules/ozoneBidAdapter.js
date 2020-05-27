@@ -32,7 +32,7 @@ const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.4.1';
+const OZONEVERSION = '2.4.0';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -423,6 +423,13 @@ export const spec = {
             }
             if (isVideo) {
               adserverTargeting['oz_' + bidderName + '_vid'] = videoContext; // outstream [or instream (future)]
+            }
+            let flr = utils.deepAccess(allBidsForThisBidid[bidderName], 'ext.bidder.ozone.floor');
+            if (flr) {
+              adserverTargeting['oz_' + bidderName + '_flr'] = flr;
+            }
+            if (bidderName == 'ozappnexus') {
+              adserverTargeting['oz_' + bidderName + '_sid'] = String(allBidsForThisBidid[bidderName].cid);
             }
           });
         } else {
