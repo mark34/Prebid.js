@@ -31,7 +31,7 @@ const ALLOWED_LOTAME_PARAMS = ['oz_lotameid', 'oz_lotamepid', 'oz_lotametpid'];
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 // const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
-// const OZONE_RENDERER_URL = 'http://localhost:9876/ozone-renderer-handle-refresh.js';
+// const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh.js';
 const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js';
 
 const OZONEVERSION = '2.4.0x - not to be used';
