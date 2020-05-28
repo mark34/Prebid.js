@@ -120,7 +120,7 @@ var validBidRequestsWithNonBannerMediaTypesAndValidOutstreamVideo = [
     bidderRequestId: '1c1586b27a1b5c8',
     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
     params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'c8ef27a0d4ba771a81159f0d2e792db4', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}], 'ThirdPartyAudience': [{'id': '123', 'name': 'Automobiles'}, {'id': '456', 'name': 'Ages: 30-39'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, video: {skippable: true, playback_method: ['auto_play_sound_off'], targetDiv: 'some-different-div-id-to-my-adunitcode'} } ] },
-    mediaTypes: {video: {mimes: ['video/mp4'], 'context': 'outstream', 'sizes': [640, 480]}, native: {info: 'dummy data'}},
+    mediaTypes: {video: {mimes: ['video/mp4'], 'context': 'outstream', 'sizes': [640, 480], playerSize: [640, 480]}, native: {info: 'dummy data'}},
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
 ];
@@ -1441,6 +1441,20 @@ describe('ozone Adapter', function () {
       const payload = JSON.parse(request.data);
       expect(payload.ext.ozone.oz_kvp_rw).to.equal(0);
     });
+    it('should have openrtb video params', function() {
+      if (spec.isOpenRtbCompliantMode()) {
+        let allowed = ['mimes', 'minduration', 'maxduration', 'protocols', 'w', 'h', 'startdelay', 'placement', 'linearity', 'skip', 'skipmin', 'skipafter', 'sequence', 'battr', 'maxextended', 'minbitrate', 'maxbitrate', 'boxingallowed', 'playbackmethod', 'playbackend', 'delivery', 'pos', 'companionad', 'api', 'companiontype', 'ext'];
+        const request = spec.buildRequests(validBidRequestsWithNonBannerMediaTypesAndValidOutstreamVideo, validBidderRequest);
+        const payload = JSON.parse(request.data);
+        const vid = (payload.imp[0].video);
+        const keys = Object.keys(vid);
+        console.log(keys);
+        for (let i = 0; i < keys.length; i++) {
+          expect(allowed).to.include(keys[i]);
+        }
+        expect(payload.imp[0].video.ext).to.include({'context': 'outstream'});
+      }
+    });
   });
 
   describe('interpretResponse', function () {
@@ -1548,7 +1562,7 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_imp_id')).to.be.undefined;
       config.resetConfig();
     });
-    it('should add flr into ads request if it exists in the auction response', function () {
+    it('should add flr into ads request if floor exists in the auction response', function () {
       const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
       let validres = JSON.parse(JSON.stringify(validResponse2Bids));
       validres.body.seatbid[0].bid[0].ext.bidder.ozone = {'floor': 1};
@@ -1556,11 +1570,18 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_flr')).to.equal(1);
       expect(utils.deepAccess(result[1].adserverTargeting, 'oz_appnexus_flr', '')).to.equal('');
     });
+    it('should add rid into ads request if ruleId exists in the auction response', function () {
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      let validres = JSON.parse(JSON.stringify(validResponse2Bids));
+      validres.body.seatbid[0].bid[0].ext.bidder.ozone = {'ruleId': 123};
+      const result = spec.interpretResponse(validres, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_rid')).to.equal(123);
+      expect(utils.deepAccess(result[1].adserverTargeting, 'oz_appnexus_rid', '')).to.equal('');
+    });
     it('should add oz_ozappnexus_sid (cid value) for all appnexus bids', function () {
       const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
       let validres = JSON.parse(JSON.stringify(validResponse2BidsOzappnexus));
       const result = spec.interpretResponse(validres, request);
-      console.log(result[0].adserverTargeting);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_ozappnexus_sid')).to.equal(result[0].cid);
     });
   });
@@ -1843,5 +1864,40 @@ describe('ozone Adapter', function () {
       let result = spec.getLotameOverrideParams();
       expect(Object.keys(result).length).to.equal(1);
     });
-  })
+  });
+  describe('unpackVideoConfigIntoIABformat', function() {
+    it('should correctly unpack a usual video config', function () {
+      let obj = {
+        playerSize: [640, 480],
+        mimes: ['video/mp4'],
+        context: 'outstream',
+      };
+      let result = spec.unpackVideoConfigIntoIABformat(obj);
+      expect(result.mimes).to.be.an('array').that.includes('video/mp4');
+      expect(result.ext.context).to.equal('outstream');
+    });
+  });
+  describe('addVideoDefaults', function() {
+    it('should correctly add video defaults', function () {
+      let obj = {
+        playerSize: [640, 480],
+        mimes: ['video/mp4'],
+        context: 'outstream',
+      };
+      let result = spec.addVideoDefaults({}, obj);
+      expect(result.placement).to.equal(3);
+      expect(result.skip).to.equal(0);
+    });
+    it('should correctly add video defaults including skippable', function () {
+      let obj = {
+        playerSize: [640, 480],
+        mimes: ['video/mp4'],
+        context: 'outstream',
+        skippable: true
+      };
+      let result = spec.addVideoDefaults({}, obj);
+      expect(result.placement).to.equal(3);
+      expect(result.skip).to.equal(1);
+    });
+  });
 });

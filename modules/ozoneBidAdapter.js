@@ -12,6 +12,7 @@ pbjs_debug=true
  */
 const BIDDER_CODE = 'ozone';
 const ALLOWED_LOTAME_PARAMS = ['oz_lotameid', 'oz_lotamepid', 'oz_lotametpid'];
+const OPENRTB_COMPLIANT = true; // 2020-05-28 video change - send non rtb params to ext
 
 // testing fake endpoint for cookie sync new code with postMessage
 // const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
@@ -30,10 +31,10 @@ const ALLOWED_LOTAME_PARAMS = ['oz_lotameid', 'oz_lotamepid', 'oz_lotametpid'];
 // *** PROD ***
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh.js'; // video testing local
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-switch.js'; // video testing local
-// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js'; // video testing
+const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js'; // video testing
 
 const OZONEVERSION = '2.4.0';
 
@@ -166,9 +167,8 @@ export const spec = {
 
     if (bidderRequest && bidderRequest.gdprConsent) {
       utils.logInfo('OZONE: ADDING GDPR info');
-      ozoneRequest.regs = {};
-      ozoneRequest.regs.ext = {}; // setting default values in case there is no additional information, like for the Mirror
-      ozoneRequest.regs.ext.gdpr = bidderRequest.gdprConsent.gdprApplies ? 1 : 0;
+      // setting default values in case there is no additional information, like for the Mirror
+      ozoneRequest.regs = {ext: {gdpr: bidderRequest.gdprConsent.gdprApplies ? 1 : 0}};
       if (ozoneRequest.regs.ext.gdpr) {
         ozoneRequest.user = ozoneRequest.user || {};
         ozoneRequest.user.ext = {'consent': bidderRequest.gdprConsent.consentString};
@@ -183,6 +183,7 @@ export const spec = {
     ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
     let placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
     let lotameDataSingle = {}; // we will capture lotame data once & send it to the server as ext.ozone.lotameData
+    // build the array of params to attach to `imp`
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
@@ -204,7 +205,20 @@ export const spec = {
           utils.logInfo('OZONE: setting banner size from the mediaTypes.banner element for bidId ' + obj.id + ': ', arrBannerSizes);
         }
         if (ozoneBidRequest.mediaTypes.hasOwnProperty(VIDEO) && ozoneBidRequest.mediaTypes[VIDEO].context === 'outstream') {
-          obj.video = ozoneBidRequest.mediaTypes[VIDEO];
+          if (!OPENRTB_COMPLIANT) {
+            // old code :
+            obj.video = ozoneBidRequest.mediaTypes[VIDEO];
+            utils.logInfo('OZONE: ** NOT openrtb 2.5 compliant video **');
+          } else {
+            utils.logInfo('OZONE: in openrtb 2.5 compliant video mode');
+            // new code:
+            // examine all the video attributes in the config, and either put them into obj.video if allowed by IAB2.5 or else in to obj.video.ext
+            if (typeof ozoneBidRequest.mediaTypes[VIDEO] == 'object') {
+              obj.video = this.unpackVideoConfigIntoIABformat(ozoneBidRequest.mediaTypes[VIDEO]);
+              obj.video = this.addVideoDefaults(obj.video, ozoneBidRequest.mediaTypes[VIDEO]);
+            }
+          }
+          utils.logInfo('OZONE: Video renderer URL = ' + OZONE_RENDERER_URL );
           // we need to duplicate some of the video values
           let wh = getWidthAndHeightFromVideoObject(obj.video);
           utils.logInfo('OZONE: setting video object from the mediaTypes.video element: ' + obj.id + ':', obj.video, 'wh=', wh);
@@ -213,13 +227,21 @@ export const spec = {
             obj.video.h = wh['h'];
             if (playerSizeIsNestedArray(obj.video)) { // this should never happen; it was in the original spec for this change though.
               utils.logInfo('OZONE: setting obj.video.format to be an array of objects');
-              obj.video.format = [wh];
+              if (OPENRTB_COMPLIANT) {
+                obj.video.ext.format = [wh];
+              } else {
+                obj.video.format = [wh];
+              }
             } else {
               utils.logInfo('OZONE: setting obj.video.format to be an object');
-              obj.video.format = wh;
+              if (OPENRTB_COMPLIANT) {
+                obj.video.ext.format = wh;
+              } else {
+                obj.video.format = wh;
+              }
             }
           } else {
-            utils.logInfo('OZONE: cannot set w, h & format values for video; the config is not right');
+            utils.logWarn('OZONE: cannot set w, h & format values for video; the config is not right');
           }
         }
         // Native integration is not complete yet
@@ -429,7 +451,11 @@ export const spec = {
             }
             let flr = utils.deepAccess(allBidsForThisBidid[bidderName], 'ext.bidder.ozone.floor');
             if (flr) {
-              adserverTargeting['oz_' + bidderName + '_flr'] = flr;
+              adserverTargeting['oz_' + bidderName + '_flr'] = flr ? 1 : 0;
+            }
+            let rid = utils.deepAccess(allBidsForThisBidid[bidderName], 'ext.bidder.ozone.ruleId');
+            if (rid) {
+              adserverTargeting['oz_' + bidderName + '_rid'] = rid;
             }
             if (bidderName == 'ozappnexus') {
               adserverTargeting['oz_' + bidderName + '_sid'] = String(allBidsForThisBidid[bidderName].cid);
@@ -831,6 +857,36 @@ export const spec = {
       }
     }
     return ret;
+  },
+  unpackVideoConfigIntoIABformat(videoConfig) {
+    let ret = {'ext': {}};
+    let arrVideoKeysAllowed = ['mimes', 'minduration', 'maxduration', 'protocols', 'w', 'h', 'startdelay', 'placement', 'linearity', 'skip', 'skipmin', 'skipafter', 'sequence', 'battr', 'maxextended', 'minbitrate', 'maxbitrate', 'boxingallowed', 'playbackmethod', 'playbackend', 'delivery', 'pos', 'companionad', 'api', 'companiontype', 'ext'];
+    for (const key in videoConfig) {
+      var found = false;
+      arrVideoKeysAllowed.forEach(function(arg) {
+        if (arg === key) {
+          ret[arg] = videoConfig[key];
+          found = true;
+        }
+      });
+      if (!found) {
+        ret.ext[key] = videoConfig[key];
+      }
+    }
+    return ret;
+  },
+  addVideoDefaults(objRet, videoConfig) {
+    // add inferred values & any default values we want.
+    let context = utils.deepAccess(videoConfig, 'context');
+    if (context === 'outstream') {
+      objRet.placement = 3;
+    }
+    let skippable = utils.deepAccess(videoConfig, 'skippable');
+    objRet.skip = skippable ? 1 : 0;
+    return objRet;
+  },
+  isOpenRtbCompliantMode() {
+    return OPENRTB_COMPLIANT;
   }
 };
 
@@ -1090,11 +1146,14 @@ export function playerSizeIsNestedArray(objVideo) {
  */
 function getPlayerSizeFromObject(objVideo) {
   utils.logInfo('OZONE: getPlayerSizeFromObject received object', objVideo);
-  if (!objVideo.hasOwnProperty('playerSize')) {
-    utils.logError('OZONE: getPlayerSizeFromObject FAILED: no playerSize in video object', objVideo);
+  let playerSize = utils.deepAccess(objVideo, 'playerSize');
+  if (!playerSize) {
+    playerSize = utils.deepAccess(objVideo, 'ext.playerSize');
+  }
+  if (!playerSize) {
+    utils.logError('OZONE: getPlayerSizeFromObject FAILED: no playerSize in video object or ext', objVideo);
     return null;
   }
-  let playerSize = objVideo.playerSize;
   if (typeof playerSize !== 'object') {
     utils.logError('OZONE: getPlayerSizeFromObject FAILED: playerSize is not an object/array', objVideo);
     return null;
