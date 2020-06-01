@@ -32,9 +32,9 @@ const OPENRTB_COMPLIANT = true; // 2020-05-28 video change - send non rtb params
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 // const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
-// const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh.js'; // video testing local
+const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh.js'; // video testing local
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-switch.js'; // video testing local
-const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js'; // video testing
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js'; // video testing
 
 const OZONEVERSION = '2.4.0';
 
@@ -214,11 +214,12 @@ export const spec = {
             // new code:
             // examine all the video attributes in the config, and either put them into obj.video if allowed by IAB2.5 or else in to obj.video.ext
             if (typeof ozoneBidRequest.mediaTypes[VIDEO] == 'object') {
-              obj.video = this.unpackVideoConfigIntoIABformat(ozoneBidRequest.mediaTypes[VIDEO]);
-              obj.video = this.addVideoDefaults(obj.video, ozoneBidRequest.mediaTypes[VIDEO]);
+              let childConfig = utils.deepAccess(ozoneBidRequest, 'params.video');
+              obj.video = this.unpackVideoConfigIntoIABformat(ozoneBidRequest.mediaTypes[VIDEO], childConfig);
+              obj.video = this.addVideoDefaults(obj.video, ozoneBidRequest.mediaTypes[VIDEO], childConfig);
             }
           }
-          utils.logInfo('OZONE: Video renderer URL = ' + OZONE_RENDERER_URL );
+          utils.logInfo('OZONE: Video renderer URL = ' + OZONE_RENDERER_URL);
           // we need to duplicate some of the video values
           let wh = getWidthAndHeightFromVideoObject(obj.video);
           utils.logInfo('OZONE: setting video object from the mediaTypes.video element: ' + obj.id + ':', obj.video, 'wh=', wh);
@@ -858,31 +859,63 @@ export const spec = {
     }
     return ret;
   },
-  unpackVideoConfigIntoIABformat(videoConfig) {
+  unpackVideoConfigIntoIABformat(videoConfig, childConfig) {
     let ret = {'ext': {}};
+    ret = this._unpackVideoConfigIntoIABformat(ret, videoConfig);
+    ret = this._unpackVideoConfigIntoIABformat(ret, childConfig);
+    return ret;
+  },
+  /**
+   *
+   * look in ONE object to get video config (we need to call this multiple times, so child settings override parent)
+   * @param ret
+   * @param objConfig
+   * @return {*}
+   * @private
+   */
+  _unpackVideoConfigIntoIABformat(ret, objConfig) {
     let arrVideoKeysAllowed = ['mimes', 'minduration', 'maxduration', 'protocols', 'w', 'h', 'startdelay', 'placement', 'linearity', 'skip', 'skipmin', 'skipafter', 'sequence', 'battr', 'maxextended', 'minbitrate', 'maxbitrate', 'boxingallowed', 'playbackmethod', 'playbackend', 'delivery', 'pos', 'companionad', 'api', 'companiontype', 'ext'];
-    for (const key in videoConfig) {
+    for (const key in objConfig) {
       var found = false;
       arrVideoKeysAllowed.forEach(function(arg) {
         if (arg === key) {
-          ret[arg] = videoConfig[key];
+          ret[key] = objConfig[key];
           found = true;
         }
       });
       if (!found) {
-        ret.ext[key] = videoConfig[key];
+        ret.ext[key] = objConfig[key];
       }
     }
     return ret;
   },
-  addVideoDefaults(objRet, videoConfig) {
+  addVideoDefaults(objRet, videoConfig, childConfig) {
+    objRet = this._addVideoDefaults(objRet, videoConfig, false);
+    objRet = this._addVideoDefaults(objRet, childConfig, true); // child config will override parent config
+    return objRet;
+  },
+  /**
+   * modify objRet, adding in default values
+   * @param objRet
+   * @param objConfig
+   * @param addIfMissing
+   * @return {*}
+   * @private
+   */
+  _addVideoDefaults(objRet, objConfig, addIfMissing) {
     // add inferred values & any default values we want.
-    let context = utils.deepAccess(videoConfig, 'context');
+    let context = utils.deepAccess(objConfig, 'context');
     if (context === 'outstream') {
       objRet.placement = 3;
     }
-    let skippable = utils.deepAccess(videoConfig, 'skippable');
-    objRet.skip = skippable ? 1 : 0;
+    let skippable = utils.deepAccess(objConfig, 'skippable', null);
+    if (skippable == null) {
+      if (addIfMissing && !objRet.hasOwnProperty('skip')) {
+        objRet.skip = skippable ? 1 : 0;
+      }
+    } else {
+      objRet.skip = skippable ? 1 : 0;
+    }
     return objRet;
   },
   isOpenRtbCompliantMode() {

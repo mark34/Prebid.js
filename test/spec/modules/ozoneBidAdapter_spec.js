@@ -1867,35 +1867,69 @@ describe('ozone Adapter', function () {
   });
   describe('unpackVideoConfigIntoIABformat', function() {
     it('should correctly unpack a usual video config', function () {
-      let obj = {
+      let mediaTypes = {
         playerSize: [640, 480],
         mimes: ['video/mp4'],
         context: 'outstream',
+        testKey: 'parent value'
       };
-      let result = spec.unpackVideoConfigIntoIABformat(obj);
+      let bid_params_video = {
+        skippable: true,
+        playback_method: ['auto_play_sound_off'],
+        playbackmethod: 2, /* start on load, no sound */
+        minduration: 5,
+        maxduration: 60,
+        skipmin: 5,
+        skipafter: 5,
+        testKey: 'child value'
+      };
+      let result = spec.unpackVideoConfigIntoIABformat(mediaTypes, bid_params_video);
       expect(result.mimes).to.be.an('array').that.includes('video/mp4');
       expect(result.ext.context).to.equal('outstream');
+      expect(result.ext.skippable).to.be.true; // note - we add skip in a different step: addVideoDefaults
+      expect(result.ext.testKey).to.equal('child value');
     });
   });
   describe('addVideoDefaults', function() {
     it('should correctly add video defaults', function () {
-      let obj = {
+      let mediaTypes = {
         playerSize: [640, 480],
         mimes: ['video/mp4'],
         context: 'outstream',
       };
-      let result = spec.addVideoDefaults({}, obj);
+      let bid_params_video = {
+        skippable: true,
+        playback_method: ['auto_play_sound_off'],
+        playbackmethod: 2, /* start on load, no sound */
+        minduration: 5,
+        maxduration: 60,
+        skipmin: 5,
+        skipafter: 5,
+        testKey: 'child value'
+      };
+      let result = spec.addVideoDefaults({}, mediaTypes, mediaTypes);
       expect(result.placement).to.equal(3);
       expect(result.skip).to.equal(0);
+      result = spec.addVideoDefaults({}, mediaTypes, bid_params_video);
+      expect(result.skip).to.equal(1);
     });
-    it('should correctly add video defaults including skippable', function () {
-      let obj = {
+    it('should correctly add video defaults including skippable in parent', function () {
+      let mediaTypes = {
         playerSize: [640, 480],
         mimes: ['video/mp4'],
         context: 'outstream',
         skippable: true
       };
-      let result = spec.addVideoDefaults({}, obj);
+      let bid_params_video = {
+        playback_method: ['auto_play_sound_off'],
+        playbackmethod: 2, /* start on load, no sound */
+        minduration: 5,
+        maxduration: 60,
+        skipmin: 5,
+        skipafter: 5,
+        testKey: 'child value'
+      };
+      let result = spec.addVideoDefaults({}, mediaTypes, bid_params_video);
       expect(result.placement).to.equal(3);
       expect(result.skip).to.equal(1);
     });
