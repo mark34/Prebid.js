@@ -1,4 +1,4 @@
-import { formatQS } from './url.js';
+import { formatQS } from './utils.js';
 import { targeting } from './targeting.js';
 
 // Adserver parent class
@@ -30,7 +30,6 @@ export function dfpAdserver(options, urlComponents) {
 
   adserver.appendQueryParams = function() {
     var bid = adserver.getWinningBidByCode();
-    console.log(['appendQueryParams bid   is', bid]);
     if (bid) {
       this.urlComponents.search.description_url = encodeURIComponent(bid.vastUrl);
       this.urlComponents.search.cust_params = getCustomParams(bid.adserverTargeting);
@@ -75,7 +74,6 @@ export function sasAdserver(options, urlComponents) {
 
   adserver.appendQueryParams = function() {
     var bid = adserver.getWinningBidByCode();
-    console.log(['appendQueryParams bid   is', bid]);
     if (bid) {
       this.urlComponents.search.description_url = encodeURIComponent(bid.vastUrl);
       this.urlComponents.search.cust_params = getCustomParams(bid.adserverTargeting);

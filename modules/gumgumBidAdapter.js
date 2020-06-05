@@ -1,9 +1,13 @@
 import * as utils from '../src/utils.js'
 
-import { config } from '../src/config.js'
 import { BANNER, VIDEO } from '../src/mediaTypes.js';
-import includes from 'core-js/library/fn/array/includes.js';
+
+import { config } from '../src/config.js'
+import { getStorageManager } from '../src/storageManager.js';
+import includes from 'core-js-pure/features/array/includes';
 import { registerBidder } from '../src/adapters/bidderFactory.js'
+
+const storage = getStorageManager();
 
 const BIDDER_CODE = 'gumgum'
 const ALIAS_BIDDER_CODE = ['gg']
@@ -55,9 +59,9 @@ function _getBrowserParams(topWindowUrl) {
     sw: topScreen.width,
     sh: topScreen.height,
     pu: topUrl,
-    ce: utils.cookiesAreEnabled(),
+    ce: storage.cookiesAreEnabled(),
     dpr: topWindow.devicePixelRatio || 1,
-    jcsi: JSON.stringify({ t: 0, rq: 8 }),
+    jcsi: encodeURIComponent(JSON.stringify({ t: 0, rq: 8 })),
     ogu: getOgURL()
   }
 
@@ -139,6 +143,8 @@ function isBidRequestValid (bid) {
     case !!(params.inSlot): break;
     case !!(params.ICV): break;
     case !!(params.video): break;
+    case !!(params.inVideo): break;
+
     default:
       utils.logWarn(`[GumGum] No product selected for the placement ${adUnitCode}, please check your implementation.`);
       return false;
@@ -238,7 +244,11 @@ function buildRequests (validBidRequests, bidderRequest) {
       data.t = params.video;
       data.pi = 7;
     }
-
+    if (params.inVideo) {
+      data = Object.assign(data, _getVidParams(mediaTypes.video));
+      data.t = params.inVideo;
+      data.pi = 6;
+    }
     if (gdprConsent) {
       data.gdprApplies = gdprConsent.gdprApplies ? 1 : 0;
     }
@@ -319,6 +329,7 @@ function interpretResponse (serverResponse, bidRequest) {
       // referrer: REFERER,
       ...(product === 7 && { vastXml: markup }),
       ad: wrapper ? getWrapperCode(wrapper, Object.assign({}, serverResponseBody, { bidRequest })) : markup,
+      ...(product === 6 && {ad: markup}),
       cpm: isTestUnit ? 0.1 : cpm,
       creativeId,
       currency: cur || 'USD',

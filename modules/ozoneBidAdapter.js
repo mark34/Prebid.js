@@ -4,6 +4,7 @@ import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
+import {loadExternalScript} from '../src/adloader.js';
 
 /*
 GET parameters:
@@ -22,6 +23,7 @@ const OPENRTB_COMPLIANT = true; // 2020-05-28 video change - send non rtb params
 // const OZONEURI = 'https://test.ozpr.net/openrtb2/auction';
 // const OZONECOOKIESYNC = 'https://test.ozpr.net/static/load-cookie.html';
 // const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js'; // video testing
 
 // *** DEV-afsheen
 // const OZONEURI = 'http://afsheen-dev.the-ozone-project.com/openrtb2/auction';
@@ -31,12 +33,14 @@ const OPENRTB_COMPLIANT = true; // 2020-05-28 video change - send non rtb params
 // *** PROD ***
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-via-gpt.js'; // video testing
+const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
 // const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
-const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh.js'; // video testing local
+// const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-via-gpt.js'; // video testing local
+// const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js'; // video testing local for guardian
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-switch.js'; // video testing local
-// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js'; // video testing
 
-const OZONEVERSION = '2.4.0';
+const OZONEVERSION = '2.4.0-timing-fix';
 
 export const spec = {
   code: BIDDER_CODE,
@@ -205,7 +209,7 @@ export const spec = {
           utils.logInfo('OZONE: setting banner size from the mediaTypes.banner element for bidId ' + obj.id + ': ', arrBannerSizes);
         }
         if (ozoneBidRequest.mediaTypes.hasOwnProperty(VIDEO) && ozoneBidRequest.mediaTypes[VIDEO].context === 'outstream') {
-          if (!OPENRTB_COMPLIANT) {
+          if (!this.isOpenRtbCompliantMode()) {
             // old code :
             obj.video = ozoneBidRequest.mediaTypes[VIDEO];
             utils.logInfo('OZONE: ** NOT openrtb 2.5 compliant video **');
@@ -228,14 +232,14 @@ export const spec = {
             obj.video.h = wh['h'];
             if (playerSizeIsNestedArray(obj.video)) { // this should never happen; it was in the original spec for this change though.
               utils.logInfo('OZONE: setting obj.video.format to be an array of objects');
-              if (OPENRTB_COMPLIANT) {
+              if (this.isOpenRtbCompliantMode()) {
                 obj.video.ext.format = [wh];
               } else {
                 obj.video.format = [wh];
               }
             } else {
               utils.logInfo('OZONE: setting obj.video.format to be an object');
-              if (OPENRTB_COMPLIANT) {
+              if (this.isOpenRtbCompliantMode()) {
                 obj.video.ext.format = wh;
               } else {
                 obj.video.format = wh;
@@ -406,7 +410,7 @@ export const spec = {
       let sb = serverResponse.seatbid[i];
       for (let j = 0; j < sb.bid.length; j++) {
         let thisRequestBid = this.getBidRequestForBidId(sb.bid[j].impid, request.bidderRequest.bids);
-        utils.logInfo('Ozone Going to set default w h for seatbid/bidRequest', sb.bid[j], thisRequestBid);
+        utils.logInfo('OZONE Going to set default w h for seatbid/bidRequest', sb.bid[j], thisRequestBid);
         const {defaultWidth, defaultHeight} = defaultSize(thisRequestBid);
         let thisBid = ozoneAddStandardProperties(sb.bid[j], defaultWidth, defaultHeight);
         let videoContext = null;
@@ -416,7 +420,10 @@ export const spec = {
         if (bidType === VIDEO) {
           utils.logInfo('OZONE: going to attach a renderer to:', j);
           let renderConf = createObjectForInternalVideoRender(thisBid, thisRequestBid);
-          thisBid.renderer = Renderer.install(renderConf);
+          utils.logInfo('OZONE: going to try to load renderer independently');
+          loadExternalScript(renderConf.url, 'outstream', renderConf.callback);
+          thisBid.renderer = Renderer.install(renderConf); // note - we are no longer relying on the callback to set the render method on the renderer.
+          thisBid.renderer.setRender(outstreamRender); // set immediately & let the render function decide whether to wait.
           // fix for refreshed video bids
           if (window.hasOwnProperty('ozoneVideo') && window.ozoneVideo.hasOwnProperty('outstreamRender')) {
             thisBid.renderer.setRender(outstreamRender);
@@ -787,17 +794,22 @@ export const spec = {
         utils.logError('OZONE: gdpr test failed - bidderRequest.gdprConsent.vendorData is not an array');
         return true;
       }
-      if (!vendorConsentsObject.hasOwnProperty('purposeConsents')) {
+      let vendorPurposeConsents, vendorVendorConsents;
+      if (bidderRequest.gdprConsent.apiVersion === 2) { // cater for TCF2.0 and also 1.1
+        vendorPurposeConsents = utils.deepAccess(vendorConsentsObject, 'purpose.consents');
+        vendorVendorConsents = utils.deepAccess(vendorConsentsObject, 'vendor.consents');
+      } else {
+        vendorPurposeConsents = utils.deepAccess(vendorConsentsObject, 'purposeConsents');
+        vendorVendorConsents = utils.deepAccess(vendorConsentsObject, 'vendorConsents');
+      }
+      if (typeof vendorPurposeConsents != 'object') {
         return true;
       }
-      if (typeof vendorConsentsObject.purposeConsents != 'object') {
+      if (!this.purposeConsentsAreOk((vendorPurposeConsents))) {
+        utils.logWarn('OZONE: gdpr test failed - lacking some required Purposes consent(s): consents=', vendorPurposeConsents);
         return true;
       }
-      if (!this.purposeConsentsAreOk((vendorConsentsObject.purposeConsents))) {
-        utils.logWarn('OZONE: gdpr test failed - lacking some required Purposes consent(s)');
-        return true;
-      }
-      if (!vendorConsentsObject.vendorConsents[524]) {
+      if (!vendorVendorConsents[524]) {
         utils.logWarn('OZONE: gdpr test failed - missing Vendor ID consent');
         return true;
       }
@@ -919,6 +931,10 @@ export const spec = {
     return objRet;
   },
   isOpenRtbCompliantMode() {
+    let match = document.location.search.match('openrtb=(true|false)');
+    if (match) {
+      return match[1] === 'true' ? true : match[1] === 'false' ? false : OPENRTB_COMPLIANT;
+    }
     return OPENRTB_COMPLIANT;
   }
 };
@@ -1120,16 +1136,45 @@ function createObjectForInternalVideoRender(bid, requestBid) {
   return obj;
 }
 
+// this caused all kinds of problems with timing; renderer not loaded when the ad needed to be rendered.
+// function onOutstreamRendererLoaded(bid) {
+//   utils.logInfo('onOutstreamRendererLoaded');
+//   try {
+//     bid.renderer.setRender(outstreamRender);
+//   } catch (err) {
+//     utils.logWarn('OZONE: Prebid Error calling setRender on renderer', err);
+//   }
+// }
+/**
+ * Simple reporting only now.
+ * @param bid
+ */
 function onOutstreamRendererLoaded(bid) {
-  try {
-    bid.renderer.setRender(outstreamRender);
-  } catch (err) {
-    utils.logWarn('OZONE: Prebid Error calling setRender on renderer', err)
-  }
+  utils.logInfo(`OZONE: onOutstreamRendererLoaded for bid: ${bid}`);
 }
 
+/**
+ * This can be called early - it's intelligent now & can retry if the renderer is not yet loaded into the page
+ * @param bid
+ */
 function outstreamRender(bid) {
-  window.ozoneVideo.outstreamRender(bid);
+  if (window.hasOwnProperty('ozoneVideo')) {
+    utils.logInfo('OZONE: outstreamRender rendering immediately');
+    window.ozoneVideo.outstreamRender(bid);
+  } else {
+    utils.logInfo('OZONE: outstreamRender deferring the render...');
+    ozTryLocateRenderer(bid, 20, 200);
+  }
+}
+function ozTryLocateRenderer(bid, count, ms) {
+  utils.logInfo(`OZONE: outstreamRender trying to locate the render... ${count} attempts left, wait=${ms}ms`);
+  if (window.hasOwnProperty('ozoneVideo')) {
+    window.ozoneVideo.outstreamRender(bid);
+    return;
+  }
+  if (count > 0) {
+    setTimeout(function() { ozTryLocateRenderer(bid, --count, ms); }, ms);
+  }
 }
 
 /**

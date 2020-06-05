@@ -1448,7 +1448,6 @@ describe('ozone Adapter', function () {
         const payload = JSON.parse(request.data);
         const vid = (payload.imp[0].video);
         const keys = Object.keys(vid);
-        console.log(keys);
         for (let i = 0; i < keys.length; i++) {
           expect(allowed).to.include(keys[i]);
         }
