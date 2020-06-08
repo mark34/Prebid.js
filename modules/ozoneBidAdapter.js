@@ -33,7 +33,8 @@ const OPENRTB_COMPLIANT = true; // 2020-05-28 video change - send non rtb params
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 // const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-via-gpt.js'; // video testing
-const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
+const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt-delay.php';
 // const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-via-gpt.js'; // video testing local
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js'; // video testing local for guardian
@@ -41,7 +42,7 @@ const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-
 
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
-const OZONEVERSION = '2.4.0-queue-fix';
+const OZONEVERSION = '2.4.0-queue-fix-delay';
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
@@ -152,7 +153,7 @@ export const spec = {
   buildRequests(validBidRequests, bidderRequest) {
     utils.logInfo('OZONE: ozone v' + OZONEVERSION + ' validBidRequests', validBidRequests, 'bidderRequest', bidderRequest);
     // First check - is there any config to block this request?
-    if (this.blockTheRequest(bidderRequest)) {
+    if (this.blockTheRequest()) {
       return [];
     }
     let htmlParams = {'publisherId': '', 'siteId': ''};
@@ -737,87 +738,17 @@ export const spec = {
     return ret;
   },
   /**
-   * This will be called IF we want to enforce gdpr on the client
-   * Do we have to block this request? Could be due to config values & gdpr permissions etc
+   * Do we have to block this request? Could be due to config values (no longer checking gdpr)
    * @return {boolean|*[]} true = block the request, else false
    */
-  blockTheRequest(bidderRequest) {
+  blockTheRequest() {
     // if there is an ozone.oz_request = false then quit now.
     let ozRequest = config.getConfig('ozone.oz_request');
     if (typeof ozRequest == 'boolean' && !ozRequest) {
       utils.logWarn('OZONE: Will not allow auction : ozone.oz_request is set to false');
       return true;
     }
-    // is there ozone.oz_enforceGdpr == true (ANYTHING else means don't enforce GDPR))
-    let ozEnforce = config.getConfig('ozone.oz_enforceGdpr');
-    if (typeof ozEnforce != 'boolean' || !ozEnforce) { // ozEnforce is false by default
-      utils.logWarn('OZONE: Will not validate GDPR on the client : oz_enforceGdpr is not set to true');
-      return false;
-    }
-    // maybe the module was built without consentManagement module so we won't find any gdpr information
-    if (!bidderRequest.hasOwnProperty('gdprConsent')) {
-      return false;
-    }
-    //
-    // FROM HERE ON : WE ARE DOING GDPR CHECKS
-    //
-    // If there is indeterminate GDPR (gdprConsent.consentString == undefined or not a string), we will DITCH this:
-    if (typeof bidderRequest.gdprConsent.consentString !== 'string') {
-      utils.logError('OZONE: Will block the request - bidderRequest.gdprConsent.consentString is not a string!');
-      return true;
-    }
-    // IF the consentManagement module sends through the CMP information and user has refused all permissions:
-    if (this.failsGdprCheck(bidderRequest)) {
-      return true;
-    }
     return false;
-  },
-  /**
-   * Examine the gdpr information inside the bidderRequest and return the boolean answer to the question
-   * @param bidderRequest
-   * @return {boolean}
-   */
-  failsGdprCheck(bidderRequest) {
-    let consentRequired = (typeof bidderRequest.gdprConsent.gdprApplies === 'boolean') ? bidderRequest.gdprConsent.gdprApplies : true;
-    if (consentRequired) {
-      let vendorConsentsObject = utils.deepAccess(bidderRequest.gdprConsent, 'vendorData');
-      if (!vendorConsentsObject || typeof vendorConsentsObject !== 'object') {
-        utils.logError('OZONE: gdpr test failed - bidderRequest.gdprConsent.vendorData is not an array');
-        return true;
-      }
-      let vendorPurposeConsents, vendorVendorConsents;
-      if (bidderRequest.gdprConsent.apiVersion === 2) { // cater for TCF2.0 and also 1.1
-        vendorPurposeConsents = utils.deepAccess(vendorConsentsObject, 'purpose.consents');
-        vendorVendorConsents = utils.deepAccess(vendorConsentsObject, 'vendor.consents');
-      } else {
-        vendorPurposeConsents = utils.deepAccess(vendorConsentsObject, 'purposeConsents');
-        vendorVendorConsents = utils.deepAccess(vendorConsentsObject, 'vendorConsents');
-      }
-      if (typeof vendorPurposeConsents != 'object') {
-        return true;
-      }
-      if (!this.purposeConsentsAreOk((vendorPurposeConsents))) {
-        utils.logWarn('OZONE: gdpr test failed - lacking some required Purposes consent(s): consents=', vendorPurposeConsents);
-        return true;
-      }
-      if (!vendorVendorConsents[524]) {
-        utils.logWarn('OZONE: gdpr test failed - missing Vendor ID consent');
-        return true;
-      }
-    }
-    return false;
-  },
-  /**
-   * Test that vendor purpose consents 1,2,3,4 and 5 are true
-   * This is because we can't use Object.values(vendorConsentsObject.purposeConsents).slice(0, 5)
-   * @param obj
-   * @return {boolean}
-   */
-  purposeConsentsAreOk(obj) {
-    for (let i = 1; i <= 5; i++) {
-      if (!obj.hasOwnProperty(i) || !obj[i]) return false;
-    }
-    return true;
   },
   /**
    * This returns a random ID for this page. It starts off with the current ms timestamp then appends a random component

@@ -1150,7 +1150,7 @@ describe('ozone Adapter', function () {
     });
 
     // mirror
-    it('should add gdpr consent information to the request when ozone.oz_enforceGdpr is false and vendorData is missing vendorConsents (Mirror)', function () {
+    it('should add gdpr consent information to the request when vendorData is missing vendorConsents (Mirror)', function () {
       let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
       let bidderRequest = validBidderRequest;
       bidderRequest.gdprConsent = {
@@ -1167,40 +1167,6 @@ describe('ozone Adapter', function () {
       expect(payload.regs.ext.gdpr).to.equal(1);
       expect(payload.user.ext.consent).to.equal(consentString);
     });
-    it('should add gdpr consent information to the request when ozone.oz_enforceGdpr is NOT PRESENT and vendorData is missing vendorConsents (Mirror)', function () {
-      let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
-      let bidderRequest = validBidderRequest;
-      bidderRequest.gdprConsent = {
-        consentString: consentString,
-        gdprApplies: true,
-        vendorData: {
-          metadata: consentString,
-          gdprApplies: true
-        }
-      }
-      const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.regs.ext.gdpr).to.equal(1);
-      expect(payload.user.ext.consent).to.equal(consentString);
-      config.resetConfig();
-    });
-    it('should kill the auction request when ozone.oz_enforceGdpr is true & vendorData is missing vendorConsents (Mirror)', function () {
-      let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
-      let bidderRequest = validBidderRequest;
-      bidderRequest.gdprConsent = {
-        consentString: consentString,
-        gdprApplies: true,
-        vendorData: {
-          metadata: consentString,
-          gdprApplies: true
-        }
-      }
-      config.setConfig({'ozone': {'oz_enforceGdpr': true}});
-      const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
-      expect(request.length).to.equal(0);
-      config.resetConfig();
-    });
-
     it('should set regs.ext.gdpr flag to 0 when gdprApplies is false', function () {
       let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
       let bidderRequest = validBidderRequest;
@@ -1476,7 +1442,6 @@ describe('ozone Adapter', function () {
       let validBR = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
       validBR.gdprConsent = {'gdprApplies': 1, 'consentString': 'This is the gdpr consent string'};
       const request = spec.buildRequests(validBidRequests, validBR); // works the old way, with GDPR not enforced by default
-      // const request = spec.buildRequests(validBidRequests, bidderRequestWithFullGdpr); // works with oz_enforceGdpr true by default
       const result = spec.interpretResponse(validResponse, request);
       expect(result.length).to.equal(1);
     });
@@ -1709,83 +1674,7 @@ describe('ozone Adapter', function () {
       expect(result).to.be.false;
       config.resetConfig();
     });
-    it('should return true if oz_enforceGdpr is true and consentString is undefined', function() {
-      config.setConfig({'ozone': {'oz_enforceGdpr': true}});
-      let req = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
-      delete req.gdprConsent.consentString;
-      let result = spec.blockTheRequest(req);
-      expect(result).to.be.true;
-      config.resetConfig();
-    });
-    it('should return false if oz_enforceGdpr is false and consentString is undefined', function() {
-      config.setConfig({'ozone': {'oz_enforceGdpr': false}});
-      let req = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
-      delete req.gdprConsent.consentString;
-      let result = spec.blockTheRequest(req);
-      expect(result).to.be.false;
-      config.resetConfig();
-    });
-    it('should return false if oz_enforceGdpr is NOT SET (default) and consentString is undefined', function() {
-      let req = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
-      delete req.gdprConsent.consentString;
-      let result = spec.blockTheRequest(req);
-      expect(result).to.be.false;
-    });
-    it('should return false if gdprApplies is false', function() {
-      config.setConfig({'ozone': {'oz_request': true}});
-      let req = {'gdprConsent': {'gdprApplies': false}};
-      let result = spec.blockTheRequest(req);
-      expect(result).to.be.false;
-      config.resetConfig();
-    });
-    it('should return false if gdprConsent key does not exist', function() {
-      let req = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
-      config.setConfig({'ozone': {'oz_enforceGdpr': true}});
-      delete req.gdprConsent;
-      let result = spec.blockTheRequest(req);
-      expect(result).to.be.false;
-      config.resetConfig();
-    });
-    it('should return false if gdpr is set, and all is ok', function() {
-      let req = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
-      config.setConfig({'ozone': {'oz_enforceGdpr': true}});
-      let result = spec.blockTheRequest(req);
-      expect(result).to.be.false;
-      config.resetConfig();
-    });
   });
-
-  describe('failsGdprCheck', function() {
-    it('should return false for a a fully accepted user', function () {
-      let result = spec.failsGdprCheck(bidderRequestWithFullGdpr);
-      expect(result).to.be.false;
-    });
-    it('should return false if gdprConsent is not present on the bidder object', function () {
-      let result = spec.failsGdprCheck(validBidderRequest);
-      expect(result).to.be.false;
-    });
-    it('should return true if gdpr applies and vendorData is not an array', function () {
-      let req = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
-      req.gdprConsent.vendorData = null;
-      let result = spec.failsGdprCheck(req);
-      expect(result).to.be.true;
-    });
-    it('should return true if gdpr applies and purposeConsents do not contain all the required true values', function () {
-      let req = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
-      req.gdprConsent.vendorData.purposeConsents[1] = false;
-      let result = spec.failsGdprCheck(req);
-      expect(result).to.be.true;
-    });
-    it('should return true if gdpr applies and vendorConsents[524] is not true', function () {
-      config.setConfig({'ozone': {'oz_enforceGdpr': true}});
-      let req = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
-      req.gdprConsent.vendorData.vendorConsents[524] = false;
-      let result = spec.failsGdprCheck(req);
-      expect(result).to.be.true;
-      config.resetConfig();
-    });
-  });
-
   describe('makeLotameObjectFromOverride', function() {
     it('should update an object with valid lotame data', function () {
       let objLotameOverride = {'oz_lotametpid': '1234', 'oz_lotameid': '12345', 'oz_lotamepid': '123456'};
