@@ -41,7 +41,7 @@ const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.ht
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-switch.js'; // video testing local
 
 // 20200605 - test js renderer
-const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 const OZONEVERSION = '2.4.0-timing-fix';
 export const spec = {
   code: BIDDER_CODE,
