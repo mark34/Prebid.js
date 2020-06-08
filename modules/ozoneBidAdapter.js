@@ -4,7 +4,6 @@ import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
-import {loadExternalScript} from '../src/adloader.js';
 
 /*
 GET parameters:
@@ -34,7 +33,7 @@ const OPENRTB_COMPLIANT = true; // 2020-05-28 video change - send non rtb params
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 // const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-via-gpt.js'; // video testing
-// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
+const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
 // const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-via-gpt.js'; // video testing local
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js'; // video testing local for guardian
@@ -42,7 +41,7 @@ const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.ht
 
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
-const OZONEVERSION = '2.4.0-timing-fix';
+const OZONEVERSION = '2.4.0-queue-fix';
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
@@ -420,16 +419,7 @@ export const spec = {
         utils.logInfo('OZONE: this bid type is : ', bidType);
         if (bidType === VIDEO) {
           utils.logInfo('OZONE: going to attach a renderer to:', j);
-          let renderConf = createObjectForInternalVideoRender(thisBid, thisRequestBid);
-          utils.logInfo('OZONE: going to try to load renderer independently');
-          loadExternalScript(renderConf.url, 'outstream', renderConf.callback);
-          thisBid.renderer = Renderer.install(renderConf); // note - we are no longer relying on the callback to set the render method on the renderer.
-          thisBid.renderer.setRender(outstreamRender); // set immediately & let the render function decide whether to wait.
-          // fix for refreshed video bids
-          if (window.hasOwnProperty('ozoneVideo') && window.ozoneVideo.hasOwnProperty('outstreamRender')) {
-            thisBid.renderer.setRender(outstreamRender);
-          }
-          // check whether this was instream or outstream (currently it will ONLY be outstream but this will probably change)
+          thisBid.renderer = newRenderer(thisBid.bidId);
           videoContext = this.getVideoContextForBidId(thisBid.bidId, request.bidderRequest.bids); // should be instream or outstream (or null if error)
           isVideo = true;
         } else {
@@ -1121,65 +1111,6 @@ export function ozoneAddStandardProperties(seatBid, defaultWidth, defaultHeight)
 
 /**
  *
- * @param bid object = the seatbid (response) bid
- * @param requestBid = the matching request bid (on bidId)
- * @return {{callback: (function(): void), url: string}}
- */
-function createObjectForInternalVideoRender(bid, requestBid) {
-  let qs = '';
-  if (typeof requestBid == 'object') {
-    qs = `?publisherId=${utils.deepAccess(requestBid, 'params.publisherId')}&siteId=${utils.deepAccess(requestBid, 'params.siteId')}&placementId=${utils.deepAccess(requestBid, 'params.placementId')}`;
-  }
-  let obj = {
-    url: OZONE_RENDERER_URL + qs,
-    callback: () => onOutstreamRendererLoaded(bid)
-  };
-  return obj;
-}
-
-// this caused all kinds of problems with timing; renderer not loaded when the ad needed to be rendered.
-// function onOutstreamRendererLoaded(bid) {
-//   utils.logInfo('onOutstreamRendererLoaded');
-//   try {
-//     bid.renderer.setRender(outstreamRender);
-//   } catch (err) {
-//     utils.logWarn('OZONE: Prebid Error calling setRender on renderer', err);
-//   }
-// }
-/**
- * Simple reporting only now.
- * @param bid
- */
-function onOutstreamRendererLoaded(bid) {
-  utils.logInfo(`OZONE: onOutstreamRendererLoaded for bid: ${bid}`);
-}
-
-/**
- * This can be called early - it's intelligent now & can retry if the renderer is not yet loaded into the page
- * @param bid
- */
-function outstreamRender(bid) {
-  if (window.hasOwnProperty('ozoneVideo')) {
-    utils.logInfo('OZONE: outstreamRender rendering immediately');
-    window.ozoneVideo.outstreamRender(bid);
-  } else {
-    utils.logInfo('OZONE: outstreamRender deferring the render...');
-    ozTryLocateRenderer(bid, 20, 200);
-  }
-}
-function ozTryLocateRenderer(bid, count, ms) {
-  utils.logInfo(`OZONE: outstreamRender trying to locate the render... ${count} attempts left, wait=${ms}ms`);
-  if (window.hasOwnProperty('ozoneVideo')) {
-    window.ozoneVideo.outstreamRender(bid);
-    return;
-  }
-  if (count > 0) {
-    setTimeout(function() { ozTryLocateRenderer(bid, --count, ms); }, ms);
-  }
-}
-
-/**
- *
  * @param objVideo will be like {"playerSize":[640,480],"mimes":["video/mp4"],"context":"outstream"} or POSSIBLY {"playerSize":[[640,480]],"mimes":["video/mp4"],"context":"outstream"}
  * @return object {w,h} or null
  */
@@ -1238,6 +1169,31 @@ function getPlayerSizeFromObject(objVideo) {
     return null;
   }
   return playerSize;
+}
+/*
+  Rendering video ads - create a renderer instance, mark it as not loaded, set a renderer function.
+  The renderer function will not assume that the renderer script is loaded - it will push() the ultimate render function call
+ */
+function newRenderer(adUnitCode, rendererOptions = {}) {
+  const renderer = Renderer.install({
+    url: OZONE_RENDERER_URL,
+    config: rendererOptions,
+    loaded: false,
+    adUnitCode
+  });
+  try {
+    renderer.setRender(outstreamRender);
+  } catch (err) {
+    utils.logWarn('OZONE Prebid Error calling setRender on renderer', err);
+  }
+  return renderer;
+}
+function outstreamRender(bid) {
+  utils.logInfo('OZONE: outstreamRender called. Going to push the call to window.ozoneVideo.outstreamRender(bid) bid =', bid);
+  // push to render queue because ozoneVideo may not be loaded yet
+  bid.renderer.push(() => {
+    window.ozoneVideo.outstreamRender(bid);
+  });
 }
 
 registerBidder(spec);
