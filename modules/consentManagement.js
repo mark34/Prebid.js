@@ -95,7 +95,7 @@ function lookupIabConsent(cmpSuccess, cmpError, hookConfig) {
   }
 
   function v2CmpResponseCallback(tcfData, success) {
-    utils.logInfo('Received a response from CMP', tcfData);
+    utils.logInfo('v2CmpResponseCallback Received a response from CMP', tcfData, success);
     if (success) {
       if (tcfData.eventStatus === 'tcloaded' || tcfData.eventStatus === 'useractioncomplete') {
         cmpSuccess(tcfData, hookConfig);
@@ -108,6 +108,7 @@ function lookupIabConsent(cmpSuccess, cmpError, hookConfig) {
   }
 
   function handleV1CmpResponseCallbacks() {
+    utils.logInfo('v1CmpResponseCallback called');
     const cmpResponse = {};
 
     function afterEach() {
@@ -266,7 +267,7 @@ export function requestBidsHook(fn, reqBidsConfigObj) {
     utils.logWarn(`CMP framework (${userCMP}) is not a supported framework.  Aborting consentManagement module and resuming auction.`);
     return hookConfig.nextFn.apply(hookConfig.context, hookConfig.args);
   }
-
+  utils.logInfo('going to call : ', cmpCallMap, userCMP, [userCMP], this, processCmpData, cmpFailed, hookConfig);
   cmpCallMap[userCMP].call(this, processCmpData, cmpFailed, hookConfig);
 
   // only let this code run if module is still active (ie if the callbacks used by CMPs haven't already finished)
@@ -287,6 +288,7 @@ export function requestBidsHook(fn, reqBidsConfigObj) {
  * @param {object} hookConfig contains module related variables (see comment in requestBidsHook function)
  */
 function processCmpData(consentObject, hookConfig) {
+  utils.logInfo('processCmpData', consentObject, hookConfig);
   function checkV1Data(consentObject) {
     let gdprApplies = consentObject && consentObject.getConsentData && consentObject.getConsentData.gdprApplies;
     return !!(
@@ -321,7 +323,7 @@ function processCmpData(consentObject, hookConfig) {
 
   // determine which set of checks to run based on cmpVersion
   let checkFn = (cmpVersion === 1) ? checkV1Data : (cmpVersion === 2) ? checkV2Data : null;
-
+  utils.logInfo('processCmpData checkFn:', checkFn);
   if (utils.isFn(checkFn)) {
     if (checkFn(consentObject)) {
       cmpFailed(`CMP returned unexpected value during lookup process.`, hookConfig, consentObject);
