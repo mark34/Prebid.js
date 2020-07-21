@@ -621,6 +621,7 @@ export const spec = {
    * Boolean function to check that this lotame data is valid (check Audience.id)
    */
   isLotameDataValid(lotameObj) {
+    utils.logInfo('OZONE isLotameDataValid with ', JSON.parse(JSON.stringify(lotameObj)));
     if (!lotameObj.hasOwnProperty('Profile')) return false;
     let prof = lotameObj.Profile;
     if (!prof.hasOwnProperty('tpid')) return false;
