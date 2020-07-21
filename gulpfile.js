@@ -382,3 +382,5 @@ gulp.task(bundleToStdout);
 gulp.task('bundle', gulpBundle.bind(null, false)); // used for just concatenating pre-built files with no build step
 
 module.exports = nodeBundle;
+
+console.log('\n\nNOTE : FOR RELEASE : php removecomments.php - creates 2 files in this directory without the comments.\n\n');
