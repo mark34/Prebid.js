@@ -6,6 +6,7 @@ import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
 const BIDDER_CODE = 'ozone';
 const ALLOWED_LOTAME_PARAMS = ['oz_lotameid', 'oz_lotamepid', 'oz_lotametpid'];
+const ALLOWED_LOTAME_LIGHTNING_PARAMS = ['oz_lotame_audiences'];
 // --- START REMOVE FOR RELEASE
 /*
 GET parameters:
@@ -54,7 +55,7 @@ const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.4.0';
+const OZONEVERSION = '2.5.0';
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
@@ -132,21 +133,37 @@ export const spec = {
         return false;
       }
     }
-    // guard against hacks in GET parameters that we might allow
-    const arrLotameOverride = this.getLotameOverrideParams();
+    // guard against hacks in lotame override GET parameters that we might allow
+    let arrLotameOverride = this.getLotameOverrideParams(ALLOWED_LOTAME_PARAMS);
     // lotame override, test params. All 3 must be present, or none.
     let lotameKeys = Object.keys(arrLotameOverride);
     if (lotameKeys.length === ALLOWED_LOTAME_PARAMS.length) {
       utils.logInfo('OZONE: VALIDATION : arrLotameOverride', arrLotameOverride);
       for (let i in lotameKeys) {
-        if (!arrLotameOverride[ALLOWED_LOTAME_PARAMS[i]].toString().match(/^[0-9a-zA-Z]+$/)) {
-          utils.logError('OZONE: Only letters & numbers allowed in lotame override: ' + i.toString() + ': ' + arrLotameOverride[ALLOWED_LOTAME_PARAMS[i]].toString() + '. Rejecting bid: ', bid);
+        if (!arrLotameOverride[ALLOWED_LOTAME_PARAMS[i]].toString().match(/^[0-9a-zA-Z\-]+$/)) {
+          utils.logError('OZONE: Only letters & numbers & - allowed in lotame override: ' + i.toString() + ': ' + arrLotameOverride[ALLOWED_LOTAME_PARAMS[i]].toString() + '. Rejecting bid: ', bid);
           return false;
         }
       }
     } else if (lotameKeys.length > 0) {
       utils.logInfo('OZONE: VALIDATION : arrLotameOverride', arrLotameOverride);
-      utils.logError('OZONE: lotame override params are incomplete. You must set all ' + ALLOWED_LOTAME_PARAMS.length + ': ' + JSON.stringify(ALLOWED_LOTAME_PARAMS) + ', . Rejecting bid: ', bid);
+      utils.logError('OZONE: lotame override params are incomplete. You must set exactly ' + ALLOWED_LOTAME_PARAMS.length + ': ' + JSON.stringify(ALLOWED_LOTAME_PARAMS) + ', . Rejecting bid: ', bid);
+      return false;
+    }
+    arrLotameOverride = this.getLotameOverrideParams(ALLOWED_LOTAME_LIGHTNING_PARAMS);
+    // lotame override, test params. All 3 must be present, or none.
+    lotameKeys = Object.keys(arrLotameOverride);
+    if (lotameKeys.length === ALLOWED_LOTAME_LIGHTNING_PARAMS.length) {
+      utils.logInfo('OZONE: VALIDATION : arrLotameOverride', arrLotameOverride);
+      for (let i in lotameKeys) {
+        if (!arrLotameOverride[ALLOWED_LOTAME_LIGHTNING_PARAMS[i]].toString().match(/^[0-9a-zA-Z\-,]+$/)) {
+          utils.logError('OZONE: Only letters & numbers & - , allowed in lotame lightning override: ' + i.toString() + ': ' + arrLotameOverride[ALLOWED_LOTAME_LIGHTNING_PARAMS[i]].toString() + '. Rejecting bid: ', bid);
+          return false;
+        }
+      }
+    } else if (lotameKeys.length > 0) {
+      utils.logInfo('OZONE: VALIDATION : arrLotameOverride', arrLotameOverride);
+      utils.logError('OZONE: lotame override params are incomplete. You must set exactly ' + ALLOWED_LOTAME_LIGHTNING_PARAMS.length + ': ' + JSON.stringify(ALLOWED_LOTAME_PARAMS) + ', . Rejecting bid: ', bid);
       return false;
     }
     return true;
@@ -603,25 +620,29 @@ export const spec = {
     return ret;
   },
   /**
-   * get all the lotame override keys/values from the querystring.
+   * get all the lotame override keys/values from the querystring for NON-lightning only
+   * @param array arrLotameParams - either ALLOWED_LOTAME_PARAMS or ALLOWED_LOTAME_LIGHTNING_PARAMS
    * @return object containing zero or more keys/values
    */
-  getLotameOverrideParams() {
+  getLotameOverrideParams(arrLotameParams) {
     const arrGet = this.getGetParametersAsObject();
-    utils.logInfo('OZONE: getLotameOverrideParams - arrGet=', arrGet);
     let arrRet = {};
-    for (let i in ALLOWED_LOTAME_PARAMS) {
-      if (arrGet.hasOwnProperty(ALLOWED_LOTAME_PARAMS[i])) {
-        arrRet[ALLOWED_LOTAME_PARAMS[i]] = arrGet[ALLOWED_LOTAME_PARAMS[i]];
+    for (let i in arrLotameParams) {
+      if (arrGet.hasOwnProperty(arrLotameParams[i])) {
+        arrRet[arrLotameParams[i]] = arrGet[arrLotameParams[i]];
       }
     }
     return arrRet;
   },
   /**
-   * Boolean function to check that this lotame data is valid (check Audience.id)
+   * Boolean function to check that this lotame data is valid
+   * Check for classic & also lightning (simple array)
    */
   isLotameDataValid(lotameObj) {
     utils.logInfo('OZONE isLotameDataValid with ', JSON.parse(JSON.stringify(lotameObj)));
+    if (utils.isArray(lotameObj)) {
+      return true; // lightning
+    }
     if (!lotameObj.hasOwnProperty('Profile')) return false;
     let prof = lotameObj.Profile;
     if (!prof.hasOwnProperty('tpid')) return false;
@@ -632,11 +653,11 @@ export const spec = {
     }
     for (var i = 0; i < audiences.length; i++) {
       let aud = audiences[i];
-      if (!aud.hasOwnProperty('id')) {
+      if (!aud.hasOwnProperty('id') && !aud.hasOwnProperty('abbr')) {
         return false;
       }
     }
-    return true; // All Audiences objects have an 'id' key
+    return true; // All Audiences objects have an 'id' key or 'abbr' key (changed from requiring 'id' in 2.5.0)
   },
   /**
    * Use the arrOverride keys/vals to update the arrExisting lotame object.
@@ -659,6 +680,7 @@ export const spec = {
       };
     }
     if (utils.deepAccess(lotameData, 'Profile.Audiences.Audience')) {
+      // @todo - do i change this?
       lotameData.Profile.Audiences.Audience = [{'id': objOverride['oz_lotameid'], 'abbr': objOverride['oz_lotameid']}];
       utils.logInfo('OZONE: makeLotameObjectFromOverride will return the existing lotame object with updated Audience by oz_lotameid: ', lotameData);
       return lotameData;
@@ -723,6 +745,7 @@ export const spec = {
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.idl_env`), 'liveramp.com', 1);
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lipb.lipbid`), 'liveintent.com', 1);
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableid`), 'parrable.com', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lotamepanoramaid`), 'lotame', 1);
     }
     return eids;
   },
@@ -789,11 +812,13 @@ export const spec = {
   /**
    * handle the complexity of there possibly being lotameData override (may be valid/invalid) & there may or may not be lotameData present in the bidRequest
    * NOTE THAT this will also set this.propertyBag.lotameWasOverridden=1 if we use lotame override
+   * ALSO handle the new lightning format
    * @param ozoneBidRequest
    * @return object representing the absolute lotameData we need to use.
    */
   tryGetLotameData: function(ozoneBidRequest) {
-    const arrLotameOverride = this.getLotameOverrideParams();
+    // see if there are classic lotame override GET values
+    let arrLotameOverride = this.getLotameOverrideParams(ALLOWED_LOTAME_PARAMS);
     let ret = {};
     if (Object.keys(arrLotameOverride).length === ALLOWED_LOTAME_PARAMS.length) {
       // all override params are present, override lotame object:
@@ -803,8 +828,20 @@ export const spec = {
         ret = this.makeLotameObjectFromOverride(arrLotameOverride, {});
       }
       this.propertyBag.lotameWasOverridden = 1;
-    } else if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
-      // no lotame override, use it as-is
+      utils.logInfo('lotame override : classic params used');
+      return ret;
+    }
+    // see if there are lotame lightning override GET values
+    arrLotameOverride = this.getLotameOverrideParams(ALLOWED_LOTAME_LIGHTNING_PARAMS);
+    ret = {};
+    if (Object.keys(arrLotameOverride).length === ALLOWED_LOTAME_LIGHTNING_PARAMS.length) {
+      // all override params are present, override lotame object:
+      this.propertyBag.lotameWasOverridden = 1;
+      utils.logInfo('lotame override : lightning params used');
+      return arrLotameOverride[ALLOWED_LOTAME_LIGHTNING_PARAMS[0]].split(','); // unconditional & simple - turn comma separated string into array
+    }
+    // no override. check the lotameData object is valid & if so return it.
+    if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
       if (this.isLotameDataValid(ozoneBidRequest.params.lotameData)) {
         ret = ozoneBidRequest.params.lotameData;
       } else {

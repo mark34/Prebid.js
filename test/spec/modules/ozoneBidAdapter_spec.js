@@ -6,6 +6,10 @@ import {getGranularityKeyName, getGranularityObject} from '../../../modules/ozon
 import * as utils from '../../../src/utils.js';
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const BIDDER_CODE = 'ozone';
+
+const ALLOWED_LOTAME_PARAMS = ['oz_lotameid', 'oz_lotamepid', 'oz_lotametpid'];
+const ALLOWED_LOTAME_LIGHTNING_PARAMS = ['oz_lotame_audiences'];
+
 /*
 
 NOTE - use firefox console to deep copy the objects to use here
@@ -1938,28 +1942,42 @@ describe('ozone Adapter', function () {
       expect(spec.isBidRequestValid(instreamVid)).to.equal(true);
     });
     // validate lotame override parameters
-    it('should validate lotame override params', function () {
+    it('should validate lotame classic override params', function () {
       // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
       spec.getGetParametersAsObject = function() {
         return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': 'tpid123'};
       };
       expect(spec.isBidRequestValid(validBidReq)).to.equal(true);
     });
-    it('should validate missing lotame override params', function () {
+    it('should validate lotame lightning override params', function () {
+      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
+      spec.getGetParametersAsObject = function() {
+        return {'oz_lotame_audiences': '123abc,pd-123,all-good-here'};
+      };
+      expect(spec.isBidRequestValid(validBidReq)).to.equal(true);
+    });
+    it('should validate missing lotame classic override params', function () {
       // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
       spec.getGetParametersAsObject = function() {
         return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123'};
       };
       expect(spec.isBidRequestValid(validBidReq)).to.equal(false);
     });
-    it('should validate invalid lotame override params', function () {
+    it('should validate invalid lotame classic override params', function () {
       // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
       spec.getGetParametersAsObject = function() {
         return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': '123 "this ain\\t right!" eee'};
       };
       expect(spec.isBidRequestValid(validBidReq)).to.equal(false);
     });
-    it('should validate no lotame override params', function () {
+    it('should validate invalid lotame lightning override params', function () {
+      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
+      spec.getGetParametersAsObject = function() {
+        return {'oz_lotame_audiences': '123abc,this is _ not good!'};
+      };
+      expect(spec.isBidRequestValid(validBidReq)).to.equal(false);
+    });
+    it('should validate no lotame override params at all', function () {
       // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
       spec.getGetParametersAsObject = function() {
         return {};
@@ -1995,10 +2013,22 @@ describe('ozone Adapter', function () {
       expect(request).not.to.have.key('customData');
     });
 
+    it('adds all parameters inside the ext object only - lightning', function () {
+      let localBidReq = JSON.parse(JSON.stringify(validBidRequests));
+      localBidReq[0].params.lotameData = ['123', '456'];
+      const request = spec.buildRequests(localBidReq, validBidderRequest.bidderRequest);
+      expect(request.data).to.be.a('string');
+      var data = JSON.parse(request.data);
+      expect(data.ext.ozone.lotameData).to.be.an('array');
+      expect(data.imp[0].ext.ozone.customData).to.be.an('array');
+      expect(request).not.to.have.key('lotameData');
+      expect(request).not.to.have.key('customData');
+    });
+
     it('ignores ozoneData in & after version 2.1.1', function () {
-      let validBidRequestsWithOzoneData = validBidRequests;
+      let validBidRequestsWithOzoneData = JSON.parse(JSON.stringify(validBidRequests));
       validBidRequestsWithOzoneData[0].params.ozoneData = {'networkID': '3048', 'dfpSiteID': 'd.thesun', 'sectionID': 'homepage', 'path': '/', 'sec_id': 'null', 'sec': 'sec', 'topics': 'null', 'kw': 'null', 'aid': 'null', 'search': 'null', 'article_type': 'null', 'hide_ads': '', 'article_slug': 'null'};
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequestsWithOzoneData, validBidderRequest.bidderRequest);
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
       expect(data.ext.ozone.lotameData).to.be.an('object');
@@ -2707,8 +2737,13 @@ describe('ozone Adapter', function () {
       let result = spec.isLotameDataValid(obj);
       expect(result).to.be.true;
     });
-    it('should disallow a lotame object without an Audience.id', function() {
+    it('should allow a lotame object without an Audience.id but with abbr', function() {
       let obj = {'Profile': {'tpid': '', 'pid': '', 'Audiences': {'Audience': [{'abbr': 'marktest'}]}}};
+      let result = spec.isLotameDataValid(obj);
+      expect(result).to.be.true;
+    });
+    it('should disallow a lotame object without an Audience.id or abbr', function() {
+      let obj = {'Profile': {'tpid': '', 'pid': '', 'Audiences': {'Audience': [{'bad': 'marktest', 'badagain': 'somethingelse bad'}]}}};
       let result = spec.isLotameDataValid(obj);
       expect(result).to.be.false;
     });
@@ -2736,20 +2771,28 @@ describe('ozone Adapter', function () {
     });
   });
   describe('getLotameOverrideParams', function() {
-    it('should get 3 valid lotame params that exist in GET params', function () {
+    it('should get 3 valid lotame classic params that exist in GET params', function () {
       // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
       spec.getGetParametersAsObject = function() {
         return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': 'tpid123'};
       };
-      let result = spec.getLotameOverrideParams();
+      let result = spec.getLotameOverrideParams(ALLOWED_LOTAME_PARAMS);
       expect(Object.keys(result).length).to.equal(3);
     });
-    it('should get only 1 valid lotame param that exists in GET params', function () {
+    it('should get only 1 valid lotame classic param that exists in GET params', function () {
       // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
       spec.getGetParametersAsObject = function() {
         return {'oz_lotameid': '123abc', 'xoz_lotamepid': 'pid123', 'xoz_lotametpid': 'tpid123'};
       };
-      let result = spec.getLotameOverrideParams();
+      let result = spec.getLotameOverrideParams(ALLOWED_LOTAME_PARAMS);
+      expect(Object.keys(result).length).to.equal(1);
+    });
+    it('should get only 1 valid lotame lightning param that exists in GET params', function () {
+      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
+      spec.getGetParametersAsObject = function() {
+        return {'oz_lotame_audiences': '123abc,pe-3455,999'};
+      };
+      let result = spec.getLotameOverrideParams(ALLOWED_LOTAME_LIGHTNING_PARAMS);
       expect(Object.keys(result).length).to.equal(1);
     });
   });
