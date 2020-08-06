@@ -58,6 +58,9 @@ var validBidRequestsMulti = [
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
 ];
+// use 'pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId', 'criteortus', 'lotamePanoramaId'
+// NOTE THAT criteortus is no longer referenced anywhere - should be removed asap
+// see http://prebid.org/dev-docs/modules/userId.html
 var validBidRequestsWithUserIdData = [
   {
     adUnitCode: 'div-gpt-ad-1460505748561-0',
@@ -70,7 +73,17 @@ var validBidRequestsWithUserIdData = [
     params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'lotame_tpid_from_page', 'pid': 'lotame_pid_from_page', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
     sizes: [[300, 250], [300, 600]],
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87',
-    userId: {'pubcid': '12345678', 'id5id': 'ID5-someId', 'criteortus': {'ozone': {'userid': 'critId123'}}, 'idl_env': 'liverampId', 'lipb': {'lipbid': 'lipbidId123'}, 'parrableid': 'parrableid123'}
+    userId: {
+      'pubcid': '12345678',
+      'tdid': '1111tdid',
+      'id5id': 'ID5-someId',
+      'criteortus': {'ozone': {'userid': 'critId123'}},
+      'criteoId': '1111criteoId',
+      'idl_env': 'liverampId',
+      'lipb': {'lipbid': 'lipbidId123'},
+      'parrableId': {'eid': '01.5678.parrableid'},
+      'lotamePanoramaId': '1234556789LotamePanorama'
+    }
   }
 ];
 var validBidRequestsMinimal = [
@@ -2181,26 +2194,46 @@ describe('ozone Adapter', function () {
       delete validBidRequests[0].userId; // tidy up now, else it will screw with other tests
     });
 
-    it('should add a user.ext.eids object to contain user ID data in the new location (Nov 2019)', function() {
+    it('should add a user.ext.eids object to contain user ID data in the new location (Nov 2019) Updated Aug 2020', function() {
       const request = spec.buildRequests(validBidRequestsWithUserIdData, validBidderRequest.bidderRequest);
+      /*
+      'pubcid': '12345678',
+      'tdid': '1111tdid',
+      'id5id': 'ID5-someId',
+      'criteortus': {'ozone': {'userid': 'critId123'}},
+      'criteoId': '1111criteoId',
+      'idl_env': 'liverampId',
+      'lipb': {'lipbid': 'lipbidId123'},
+      'parrableId': {'eid': '01.5678.parrableid'},
+      'lotamePanoramaId': '1234556789LotamePanorama'
+       */
+
       const payload = JSON.parse(request.data);
       expect(payload.user).to.exist;
       expect(payload.user.ext).to.exist;
       expect(payload.user.ext.eids).to.exist;
-      expect(payload.user.ext.eids[0]['source']).to.equal('pubcid');
-      expect(payload.user.ext.eids[0]['uids'][0]['id']).to.equal('12345678');
-      expect(payload.user.ext.eids[1]['source']).to.equal('pubcommon');
+      expect(payload.user.ext.eids[0]['source']).to.equal('adserver.org');
+      expect(payload.user.ext.eids[0]['uids'][0]['id']).to.equal('1111tdid');
+      expect(payload.user.ext.eids[1]['source']).to.equal('pubcid'); // this is deprecated
       expect(payload.user.ext.eids[1]['uids'][0]['id']).to.equal('12345678');
-      expect(payload.user.ext.eids[2]['source']).to.equal('id5-sync.com');
-      expect(payload.user.ext.eids[2]['uids'][0]['id']).to.equal('ID5-someId');
-      expect(payload.user.ext.eids[3]['source']).to.equal('criteortus');
-      expect(payload.user.ext.eids[3]['uids'][0]['id']).to.equal('critId123');
-      expect(payload.user.ext.eids[4]['source']).to.equal('liveramp.com');
-      expect(payload.user.ext.eids[4]['uids'][0]['id']).to.equal('liverampId');
-      expect(payload.user.ext.eids[5]['source']).to.equal('liveintent.com');
-      expect(payload.user.ext.eids[5]['uids'][0]['id']).to.equal('lipbidId123');
-      expect(payload.user.ext.eids[6]['source']).to.equal('parrable.com');
-      expect(payload.user.ext.eids[6]['uids'][0]['id']).to.equal('parrableid123');
+      expect(payload.user.ext.eids[2]['source']).to.equal('pubcommon'); // this is deprecated
+      expect(payload.user.ext.eids[2]['uids'][0]['id']).to.equal('12345678');
+      expect(payload.user.ext.eids[3]['source']).to.equal('pubcid.org');
+      expect(payload.user.ext.eids[3]['uids'][0]['id']).to.equal('12345678');
+      expect(payload.user.ext.eids[4]['source']).to.equal('id5-sync.com');
+      expect(payload.user.ext.eids[4]['uids'][0]['id']).to.equal('ID5-someId');
+      expect(payload.user.ext.eids[5]['source']).to.equal('criteortus'); // this is deprecated
+      expect(payload.user.ext.eids[5]['uids'][0]['id']).to.equal('critId123');
+      expect(payload.user.ext.eids[6]['source']).to.equal('criteo');
+      expect(payload.user.ext.eids[6]['uids'][0]['id']).to.equal('1111criteoId');
+      expect(payload.user.ext.eids[7]['source']).to.equal('liveramp.com');
+      expect(payload.user.ext.eids[7]['uids'][0]['id']).to.equal('liverampId');
+      expect(payload.user.ext.eids[8]['source']).to.equal('liveintent.com');
+      expect(payload.user.ext.eids[8]['uids'][0]['id']).to.equal('lipbidId123');
+      expect(payload.user.ext.eids[9]['source']).to.equal('parrable.com');
+      expect(payload.user.ext.eids[9]['uids'][0]['id']['eid']).to.equal('01.5678.parrableid');
+      expect(payload.user.ext.eids[10]['source']).to.equal('crwdcntrl.net');
+      expect(payload.user.ext.eids[10]['uids'][0]['id']).to.equal('1234556789LotamePanorama');
     });
 
     it('should use oztestmode GET value if set', function() {

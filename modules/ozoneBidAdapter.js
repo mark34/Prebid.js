@@ -594,11 +594,12 @@ export const spec = {
   },
   /**
    *  Look for pubcid & all the other IDs according to http://prebid.org/dev-docs/modules/userId.html
+   *  NOTE that criteortus is deprecated & should be removed asap
    *  @return map
    */
   findAllUserIds(bidRequest) {
     var ret = {};
-    let searchKeysSingle = ['pubcid', 'tdid', 'id5id', 'parrableid', 'idl_env', 'digitrustid', 'criteortus'];
+    let searchKeysSingle = ['pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId', 'criteortus', 'lotamePanoramaId'];
     if (bidRequest.hasOwnProperty('userId')) {
       for (let arrayId in searchKeysSingle) {
         let key = searchKeysSingle[arrayId];
@@ -718,7 +719,8 @@ export const spec = {
    * Produces external userid object
    */
   addExternalUserId(eids, value, source, atype) {
-    if (utils.isStr(value)) {
+    utils.logInfo('MMMMM', eids, value, source, atype);
+    if (typeof value == 'object' || (typeof value == 'string' && value.length > 0)) {
       eids.push({
         source,
         uids: [{
@@ -729,7 +731,10 @@ export const spec = {
     }
   },
   /**
+   *
+   * @todo - change this to simply return validBidRequests[0].userId
    * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
+   * http://prebid.org/dev-docs/modules/userId.html
    * @param validBidRequests
    * @return {Array}
    */
@@ -738,14 +743,16 @@ export const spec = {
     this.handleTTDId(eids, validBidRequests);
     const bidRequest = validBidRequests[0];
     if (bidRequest && bidRequest.userId) {
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid', 1); // need to find out if I can remove these
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcommon', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid.org', 1); // this is the current one 20200803
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.id5id`), 'id5-sync.com', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteortus.${BIDDER_CODE}.userid`), 'criteortus', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteortus.${BIDDER_CODE}.userid`), 'criteortus', 1); // deprecated & should be removed asap
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteoId`), 'criteo', 1);
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.idl_env`), 'liveramp.com', 1);
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lipb.lipbid`), 'liveintent.com', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableid`), 'parrable.com', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lotamepanoramaid`), 'lotame', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableId`), 'parrable.com', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lotamePanoramaId`), 'crwdcntrl.net', 1);
     }
     return eids;
   },
