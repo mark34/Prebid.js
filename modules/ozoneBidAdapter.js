@@ -41,7 +41,9 @@ pbjs_debug=true
 // *** PROD ***
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-20200812/ozone-renderer-moat.js';
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/moat/20200813/ozone-renderer-moat.js';
+// const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js'; // production url
 
 // --- START REMOVE FOR RELEASE
 // const OZONEURI = 'https://www.betalyst.com/test/20200622-auction-2-bids.php'; // fake auction response with 2 bids from the same bidder for an adslot
@@ -55,7 +57,7 @@ const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.0';
+const OZONEVERSION = '2.5.0-moat-test';
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
