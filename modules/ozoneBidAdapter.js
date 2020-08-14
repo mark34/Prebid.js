@@ -40,6 +40,7 @@ pbjs_debug=true
 // *** PROD ***
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/moat/20200814/ozone-renderer-moat-charles.js?abcd';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
 // --- START REMOVE FOR RELEASE
@@ -54,6 +55,7 @@ const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
+// const OZONEVERSION = '2.4.0-moat-renderer';
 const OZONEVERSION = '2.4.0';
 export const spec = {
   code: BIDDER_CODE,
