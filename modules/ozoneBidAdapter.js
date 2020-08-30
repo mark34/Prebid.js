@@ -41,8 +41,9 @@ pbjs_debug=true
 // *** PROD ***
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-20200812/ozone-renderer-moat.js';
-// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/moat/20200813/ozone-renderer-moat.js';
+// const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-integration-20200825B/ozone-renderer-moat.min.js';
+// const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-integration-20200820B/ozone-renderer-moat-works-for-wrapper.js';
+const OZONE_RENDERER_URL = 'https://www.ardm.io/moat/renderer/20200827/ozone-renderer-moat.js';
 // const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js'; // production url
 
 // --- START REMOVE FOR RELEASE
@@ -55,6 +56,7 @@ const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-202008
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-switch.js'; // video testing local
 
 // 20200605 - test js renderer
+
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
 const OZONEVERSION = '2.5.0-moat-test';
