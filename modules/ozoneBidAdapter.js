@@ -41,12 +41,16 @@ pbjs_debug=true
 // *** PROD ***
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
-// const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-integration-20200825B/ozone-renderer-moat.min.js';
-// const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-integration-20200820B/ozone-renderer-moat-works-for-wrapper.js';
-const OZONE_RENDERER_URL = 'https://www.ardm.io/moat/renderer/20200827/ozone-renderer-moat.js';
 // const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js'; // production url
 
 // --- START REMOVE FOR RELEASE
+
+// RENDERER test urls:
+// const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-integration-20200825B/ozone-renderer-moat.min.js';
+// const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-integration-20200820B/ozone-renderer-moat-works-for-wrapper.js';
+// const OZONE_RENDERER_URL = 'https://www.ardm.io/moat/renderer/20200910/ozone-renderer-moat-mini-ima.js';
+const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/video-testing/prod/html5-renderer/ozone-renderer-moat-mini-ima-v2-multi-refresh.js';
+
 // const OZONEURI = 'https://www.betalyst.com/test/20200622-auction-2-bids.php'; // fake auction response with 2 bids from the same bidder for an adslot
 // const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-via-gpt.js'; // video testing
 // const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
@@ -59,7 +63,7 @@ const OZONE_RENDERER_URL = 'https://www.ardm.io/moat/renderer/20200827/ozone-ren
 
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.0-moat-test';
+const OZONEVERSION = '2.5.0-multi-video-refresh';
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
