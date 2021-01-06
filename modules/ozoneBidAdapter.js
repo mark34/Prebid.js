@@ -49,7 +49,7 @@ const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.ht
 // const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-integration-20200825B/ozone-renderer-moat.min.js';
 // const OZONE_RENDERER_URL = 'http://localhost:8876/html5_video_tag_version-integration-20200820B/ozone-renderer-moat-works-for-wrapper.js';
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/moat/renderer/20200910/ozone-renderer-moat-mini-ima.js';
-const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/video-testing/prod/html5-renderer/ozone-renderer-moat-mini-ima-v2-multi-refresh.js';
+const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/video-testing/prod/html5-renderer/ozone-renderer-20201023-moat-additions.js';
 
 // const OZONEURI = 'https://www.betalyst.com/test/20200622-auction-2-bids.php'; // fake auction response with 2 bids from the same bidder for an adslot
 // const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-via-gpt.js'; // video testing
@@ -63,7 +63,7 @@ const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/video-testing/prod/html5-r
 
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.0-multi-video-refresh';
+const OZONEVERSION = '2.5.0-20201023';
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
@@ -1190,25 +1190,37 @@ function getPlayerSizeFromObject(objVideo) {
   The renderer function will not assume that the renderer script is loaded - it will push() the ultimate render function call
  */
 function newRenderer(adUnitCode, rendererOptions = {}) {
+  let isLoaded = !!utils.deepAccess(window, 'ozoneVideo', false);
+  utils.logInfo(`OZONE newRenderer going to set loaded to ${isLoaded ? 'true' : 'false'}`);
   const renderer = Renderer.install({
     url: OZONE_RENDERER_URL,
     config: rendererOptions,
-    loaded: false,
+    // loaded: false,
+    loaded: isLoaded,
     adUnitCode
   });
   try {
     renderer.setRender(outstreamRender);
   } catch (err) {
-    utils.logWarn('OZONE Prebid Error calling setRender on renderer', err);
+    utils.logError('OZONE Prebid Error when calling setRender on renderer', JSON.parse(JSON.stringify(renderer)), err);
   }
   return renderer;
 }
 function outstreamRender(bid) {
-  utils.logInfo('OZONE: outstreamRender called. Going to push the call to window.ozoneVideo.outstreamRender(bid) bid =', bid);
+  utils.logInfo('OZONE: outstreamRender called. Going to push the call to window.ozoneVideo.outstreamRender(bid) bid =', JSON.parse(JSON.stringify(bid)));
   // push to render queue because ozoneVideo may not be loaded yet
   bid.renderer.push(() => {
     window.ozoneVideo.outstreamRender(bid);
   });
+  // setTimeout(function() {
+  //   utils.logInfo('OZONE: outstreamRender TEST - after 500ms bid is: ', JSON.parse(JSON.stringify(bid)));
+  // }, 500);
+  // setTimeout(function() {
+  //   utils.logInfo('OZONE: outstreamRender TEST - after 1000ms bid is: ', JSON.parse(JSON.stringify(bid)));
+  // }, 1000);
+  // setTimeout(function() {
+  //   utils.logInfo('OZONE: outstreamRender TEST - after 2000ms bid is: ', JSON.parse(JSON.stringify(bid)));
+  // }, 2000);
 }
 
 registerBidder(spec);
