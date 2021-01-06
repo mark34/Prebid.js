@@ -7,15 +7,12 @@ import * as utils from '../../../src/utils.js';
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const BIDDER_CODE = 'ozone';
 
-const ALLOWED_LOTAME_PARAMS = ['oz_lotameid', 'oz_lotamepid', 'oz_lotametpid'];
-const ALLOWED_LOTAME_LIGHTNING_PARAMS = ['oz_lotame_audiences'];
-
 /*
 
 NOTE - use firefox console to deep copy the objects to use here
 
  */
-var originalPropertyBag = {'lotameWasOverridden': 0, 'pageId': null};
+var originalPropertyBag = {'pageId': null};
 var validBidRequests = [
   {
     adUnitCode: 'div-gpt-ad-1460505748561-0',
@@ -25,7 +22,7 @@ var validBidRequests = [
     bidder: 'ozone',
     bidderRequestId: '1c1586b27a1b5c8',
     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'lotame_tpid_from_page', 'pid': 'lotame_pid_from_page', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
     sizes: [[300, 250], [300, 600]],
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
@@ -40,7 +37,7 @@ var validBidRequestsMulti = [
     bidder: 'ozone',
     bidderRequestId: '1c1586b27a1b5c8',
     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'lotame_tpid_from_page', 'pid': 'lotame_pid_from_page', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
     sizes: [[300, 250], [300, 600]],
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   },
@@ -53,12 +50,12 @@ var validBidRequestsMulti = [
     bidder: 'ozone',
     bidderRequestId: '1c1586b27a1b5c0',
     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'lotame_tpid_from_page', 'pid': 'lotame_pid_from_page', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
     sizes: [[300, 250], [300, 600]],
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
 ];
-// use 'pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId', 'criteortus', 'lotamePanoramaId'
+// use 'pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId', 'criteortus'
 // NOTE THAT criteortus is no longer referenced anywhere - should be removed asap
 // see http://prebid.org/dev-docs/modules/userId.html
 var validBidRequestsWithUserIdData = [
@@ -70,7 +67,7 @@ var validBidRequestsWithUserIdData = [
     bidder: 'ozone',
     bidderRequestId: '1c1586b27a1b5c8',
     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'lotame_tpid_from_page', 'pid': 'lotame_pid_from_page', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
     sizes: [[300, 250], [300, 600]],
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87',
     userId: {
@@ -81,8 +78,7 @@ var validBidRequestsWithUserIdData = [
       'criteoId': '1111criteoId',
       'idl_env': 'liverampId',
       'lipb': {'lipbid': 'lipbidId123'},
-      'parrableId': {'eid': '01.5678.parrableid'},
-      'lotamePanoramaId': '1234556789LotamePanorama'
+      'parrableId': {'eid': '01.5678.parrableid'}
     }
   }
 ];
@@ -108,7 +104,7 @@ var validBidRequestsNoSizes = [
     bidder: 'ozone',
     bidderRequestId: '1c1586b27a1b5c8',
     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'lotame_tpid_from_page', 'pid': 'lotame_pid_from_page', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
 ];
@@ -122,7 +118,7 @@ var validBidRequestsWithBannerMediaType = [
     bidder: 'ozone',
     bidderRequestId: '1c1586b27a1b5c8',
     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'lotame_tpid_from_page', 'pid': 'lotame_pid_from_page', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
     mediaTypes: {banner: {sizes: [[300, 250], [300, 600]]}},
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
@@ -136,7 +132,7 @@ var validBidRequestsWithNonBannerMediaTypesAndValidOutstreamVideo = [
     bidder: 'ozone',
     bidderRequestId: '1c1586b27a1b5c8',
     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'lotame_tpid_from_page', 'pid': 'lotame_pid_from_page', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, video: {skippable: true, playback_method: ['auto_play_sound_off'], targetDiv: 'some-different-div-id-to-my-adunitcode'} } ] },
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, video: {skippable: true, playback_method: ['auto_play_sound_off'], targetDiv: 'some-different-div-id-to-my-adunitcode'} } ] },
     mediaTypes: {video: {mimes: ['video/mp4'], 'context': 'outstream', 'sizes': [640, 480], playerSize: [640, 480]}, native: {info: 'dummy data'}},
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
@@ -178,43 +174,21 @@ var validBidRequests1OutstreamVideo2020 = [
           }
         }
       ],
-      'lotameData': {
-        'Profile': {
-          'tpid': '4e5c21fc7c181c2b1eb3a73d543a27f6',
-          'pid': '3a45fd4872fa01f35c49586d8dcb7c60',
-          'Audiences': {
-            'Audience': [
-              {
-                'id': '439847',
-                'abbr': 'all'
-              },
-              {
-                'id': '446197',
-                'abbr': 'Arts, Culture & Literature'
-              },
-              {
-                'id': '446198',
-                'abbr': 'Business'
-              }
-            ]
-          }
+      'userId': {
+        'pubcid': '2ada6ae6-aeca-4e07-8922-a99b3aaf8a56'
+      },
+      'userIdAsEids': [
+        {
+          'source': 'pubcid.org',
+          'uids': [
+            {
+              'id': '2ada6ae6-aeca-4e07-8922-a99b3aaf8a56',
+              'atype': 1
+            }
+          ]
         }
-      }
+      ]
     },
-    'userId': {
-      'pubcid': '2ada6ae6-aeca-4e07-8922-a99b3aaf8a56'
-    },
-    'userIdAsEids': [
-      {
-        'source': 'pubcid.org',
-        'uids': [
-          {
-            'id': '2ada6ae6-aeca-4e07-8922-a99b3aaf8a56',
-            'atype': 1
-          }
-        ]
-      }
-    ],
     'mediaTypes': {
       'video': {
         'playerSize': [
@@ -289,29 +263,7 @@ var validBidderRequest1OutstreamVideo2020 = {
                 'pt9': '|k0xw2vqzp33kklb3j5w4|||'
               }
             }
-          ],
-          'lotameData': {
-            'Profile': {
-              'tpid': '4e5c21fc7c181c2b1eb3a73d543a27f6',
-              'pid': '3a45fd4872fa01f35c49586d8dcb7c60',
-              'Audiences': {
-                'Audience': [
-                  {
-                    'id': '439847',
-                    'abbr': 'all'
-                  },
-                  {
-                    'id': '446197',
-                    'abbr': 'Arts, Culture & Literature'
-                  },
-                  {
-                    'id': '446198',
-                    'abbr': 'Business'
-                  }
-                ]
-              }
-            }
-          }
+          ]
         },
         'userId': {
           'id5id': 'ID5-ZHMOpSv9CkZNiNd1oR4zc62AzCgSS73fPjmQ6Od7OA',
@@ -387,7 +339,7 @@ var validBidderRequest = {
       bidder: 'ozone',
       bidderRequestId: '1c1586b27a1b5c8',
       crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-      params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'lotame_tpid_from_page', 'pid': 'lotame_pid_from_page', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { banner: { topframe: 1, w: 300, h: 250, format: [{ w: 300, h: 250 }, { w: 300, h: 600 }] }, id: '2899ec066a91ff8', secure: 1, tagid: 'undefined' } ] },
+      params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { banner: { topframe: 1, w: 300, h: 250, format: [{ w: 300, h: 250 }, { w: 300, h: 600 }] }, id: '2899ec066a91ff8', secure: 1, tagid: 'undefined' } ] },
       sizes: [[300, 250], [300, 600]],
       transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
     }],
@@ -416,7 +368,7 @@ var bidderRequestWithFullGdpr = {
       bidder: 'ozone',
       bidderRequestId: '1c1586b27a1b5c8',
       crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-      params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], lotameData: {'Profile': {'tpid': 'c8ef27a0d4ba771a81159f0d2e792db4', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}}, placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { banner: { topframe: 1, w: 300, h: 250, format: [{ w: 300, h: 250 }, { w: 300, h: 600 }] }, id: '2899ec066a91ff8', secure: 1, tagid: 'undefined' } ] },
+      params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { banner: { topframe: 1, w: 300, h: 250, format: [{ w: 300, h: 250 }, { w: 300, h: 600 }] }, id: '2899ec066a91ff8', secure: 1, tagid: 'undefined' } ] },
       sizes: [[300, 250], [300, 600]],
       transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
     }],
@@ -508,17 +460,6 @@ var bidderRequestWithPartialGdpr = {
       params: {
         publisherId: '9876abcd12-3',
         customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}],
-        lotameData: {
-          'Profile': {
-            'tpid': 'c8ef27a0d4ba771a81159f0d2e792db4',
-            'Audiences': {
-              'Audience': [{'id': '99999', 'abbr': 'sports'}, {
-                'id': '88888',
-                'abbr': 'movie'
-              }, {'id': '77777', 'abbr': 'blogger'}]
-            }
-          }
-        },
         placementId: '1310000099',
         siteId: '1234567890',
         id: 'fea37168-78f1-4a23-a40e-88437a99377e',
@@ -999,29 +940,7 @@ var multiRequest1 = [
             'pt9': '|k0xw2vqzp33kklb3j5w4|||'
           }
         }
-      ],
-      'lotameData': {
-        'Profile': {
-          'tpid': '4e5c21fc7c181c2b1eb3a73d543a27f6',
-          'pid': '3a45fd4872fa01f35c49586d8dcb7c60',
-          'Audiences': {
-            'Audience': [
-              {
-                'id': '439847',
-                'abbr': 'all'
-              },
-              {
-                'id': '446197',
-                'abbr': 'Arts, Culture & Literature'
-              },
-              {
-                'id': '446198',
-                'abbr': 'Business'
-              }
-            ]
-          }
-        }
-      }
+      ]
     },
     'mediaTypes': {
       'banner': {
@@ -1086,29 +1005,7 @@ var multiRequest1 = [
             'pt9': '|k0xw2vqzp33kklb3j5w4|||'
           }
         }
-      ],
-      'lotameData': {
-        'Profile': {
-          'tpid': '4e5c21fc7c181c2b1eb3a73d543a27f6',
-          'pid': '3a45fd4872fa01f35c49586d8dcb7c60',
-          'Audiences': {
-            'Audience': [
-              {
-                'id': '439847',
-                'abbr': 'all'
-              },
-              {
-                'id': '446197',
-                'abbr': 'Arts, Culture & Literature'
-              },
-              {
-                'id': '446198',
-                'abbr': 'Business'
-              }
-            ]
-          }
-        }
-      }
+      ]
     },
     'mediaTypes': {
       'banner': {
@@ -1182,29 +1079,7 @@ var multiBidderRequest1 = {
                 'pt9': '|k0xw2vqzp33kklb3j5w4|||'
               }
             }
-          ],
-          'lotameData': {
-            'Profile': {
-              'tpid': '4e5c21fc7c181c2b1eb3a73d543a27f6',
-              'pid': '3a45fd4872fa01f35c49586d8dcb7c60',
-              'Audiences': {
-                'Audience': [
-                  {
-                    'id': '439847',
-                    'abbr': 'all'
-                  },
-                  {
-                    'id': '446197',
-                    'abbr': 'Arts, Culture & Literature'
-                  },
-                  {
-                    'id': '446198',
-                    'abbr': 'Business'
-                  }
-                ]
-              }
-            }
-          }
+          ]
         },
         'mediaTypes': {
           'banner': {
@@ -1269,29 +1144,7 @@ var multiBidderRequest1 = {
                 'pt9': '|k0xw2vqzp33kklb3j5w4|||'
               }
             }
-          ],
-          'lotameData': {
-            'Profile': {
-              'tpid': '4e5c21fc7c181c2b1eb3a73d543a27f6',
-              'pid': '3a45fd4872fa01f35c49586d8dcb7c60',
-              'Audiences': {
-                'Audience': [
-                  {
-                    'id': '439847',
-                    'abbr': 'all'
-                  },
-                  {
-                    'id': '446197',
-                    'abbr': 'Arts, Culture & Literature'
-                  },
-                  {
-                    'id': '446198',
-                    'abbr': 'Business'
-                  }
-                ]
-              }
-            }
-          }
+          ]
         },
         'mediaTypes': {
           'banner': {
@@ -1605,8 +1458,7 @@ describe('ozone Adapter', function () {
         placementId: '1310000099',
         publisherId: '9876abcd12-3',
         siteId: '1234567890',
-        customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}],
-        lotameData: {'Profile': {'tpid': 'c8ef27a0d4ba771a81159f0d2e792db4', 'Audiences': {'Audience': [{'id': '99999', 'abbr': 'sports'}, {'id': '88888', 'abbr': 'movie'}, {'id': '77777', 'abbr': 'blogger'}]}}},
+        customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}]
       },
       siteId: 1234567890
     }
@@ -1900,26 +1752,11 @@ describe('ozone Adapter', function () {
     it('should not validate customParams - this is a renamed key', function () {
       expect(spec.isBidRequestValid(xBadCustomParams)).to.equal(false);
     });
-
-    var xBadLotame = {
-      bidder: BIDDER_CODE,
-      params: {
-        'placementId': '1234567890',
-        'publisherId': '9876abcd12-3',
-        'lotameData': 'this should be an object',
-        siteId: '1234567890'
-      }
-    };
-    it('should not validate lotameData being sent', function () {
-      expect(spec.isBidRequestValid(xBadLotame)).to.equal(false);
-    });
-
     var xBadVideoContext2 = {
       bidder: BIDDER_CODE,
       params: {
         'placementId': '1234567890',
         'publisherId': '9876abcd12-3',
-        'lotameData': {},
         siteId: '1234567890'
       },
       mediaTypes: {
@@ -1954,49 +1791,6 @@ describe('ozone Adapter', function () {
       instreamVid.mediaTypes.video.context = 'instream';
       expect(spec.isBidRequestValid(instreamVid)).to.equal(true);
     });
-    // validate lotame override parameters
-    it('should validate lotame classic override params', function () {
-      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': 'tpid123'};
-      };
-      expect(spec.isBidRequestValid(validBidReq)).to.equal(true);
-    });
-    it('should validate lotame lightning override params', function () {
-      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotame_audiences': '123abc,pd-123,all-good-here'};
-      };
-      expect(spec.isBidRequestValid(validBidReq)).to.equal(true);
-    });
-    it('should validate missing lotame classic override params', function () {
-      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123'};
-      };
-      expect(spec.isBidRequestValid(validBidReq)).to.equal(false);
-    });
-    it('should validate invalid lotame classic override params', function () {
-      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': '123 "this ain\\t right!" eee'};
-      };
-      expect(spec.isBidRequestValid(validBidReq)).to.equal(false);
-    });
-    it('should validate invalid lotame lightning override params', function () {
-      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotame_audiences': '123abc,this is _ not good!'};
-      };
-      expect(spec.isBidRequestValid(validBidReq)).to.equal(false);
-    });
-    it('should validate no lotame override params at all', function () {
-      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
-      spec.getGetParametersAsObject = function() {
-        return {};
-      };
-      expect(spec.isBidRequestValid(validBidReq)).to.equal(true);
-    });
   });
 
   describe('buildRequests', function () {
@@ -2020,7 +1814,6 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
-      expect(data.ext.ozone.lotameData).to.be.an('object');
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(request).not.to.have.key('lotameData');
       expect(request).not.to.have.key('customData');
@@ -2028,11 +1821,9 @@ describe('ozone Adapter', function () {
 
     it('adds all parameters inside the ext object only - lightning', function () {
       let localBidReq = JSON.parse(JSON.stringify(validBidRequests));
-      localBidReq[0].params.lotameData = ['123', '456'];
       const request = spec.buildRequests(localBidReq, validBidderRequest.bidderRequest);
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
-      expect(data.ext.ozone.lotameData).to.be.an('array');
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(request).not.to.have.key('lotameData');
       expect(request).not.to.have.key('customData');
@@ -2044,7 +1835,6 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequestsWithOzoneData, validBidderRequest.bidderRequest);
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
-      expect(data.ext.ozone.lotameData).to.be.an('object');
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(data.imp[0].ext.ozone.ozoneData).to.be.undefined;
       expect(request).not.to.have.key('lotameData');
@@ -2061,7 +1851,7 @@ describe('ozone Adapter', function () {
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
     });
 
-    it('handles no ozone, lotame or custom data', function () {
+    it('handles no ozone or custom data', function () {
       const request = spec.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
     });
@@ -2204,8 +1994,7 @@ describe('ozone Adapter', function () {
       'criteoId': '1111criteoId',
       'idl_env': 'liverampId',
       'lipb': {'lipbid': 'lipbidId123'},
-      'parrableId': {'eid': '01.5678.parrableid'},
-      'lotamePanoramaId': '1234556789LotamePanorama'
+      'parrableId': {'eid': '01.5678.parrableid'}
        */
 
       const payload = JSON.parse(request.data);
@@ -2232,8 +2021,6 @@ describe('ozone Adapter', function () {
       expect(payload.user.ext.eids[8]['uids'][0]['id']).to.equal('lipbidId123');
       expect(payload.user.ext.eids[9]['source']).to.equal('parrable.com');
       expect(payload.user.ext.eids[9]['uids'][0]['id']['eid']).to.equal('01.5678.parrableid');
-      expect(payload.user.ext.eids[10]['source']).to.equal('crwdcntrl.net');
-      expect(payload.user.ext.eids[10]['uids'][0]['id']).to.equal('1234556789LotamePanorama');
     });
 
     it('should use oztestmode GET value if set', function() {
@@ -2276,69 +2063,6 @@ describe('ozone Adapter', function () {
       const data = JSON.parse(request.data);
       expect(data.ext.ozone.oz_rw).to.equal(0);
       expect(data.imp[0].ext.prebid.storedrequest.id).to.equal('1310000099');
-    });
-
-    it('should pick up the value of valid lotame override parameters when there is a lotame object', function () {
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': '123eee'};
-      };
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
-      expect(payload.ext.ozone.lotameData.Profile.tpid).to.equal('lotame_tpid_from_page');
-      expect(payload.ext.ozone.lotameData.Profile.pid).to.equal('lotame_pid_from_page');
-      expect(payload.ext.ozone.oz_lot_rw).to.equal(1);
-    });
-    it('should use the value of ALL valid lotame override parameters when there is a lotame object thats missing pid', function () {
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': '123eee'};
-      };
-      let r = JSON.parse(JSON.stringify(validBidRequests));
-      delete r[0].params.lotameData.Profile.pid;
-      const request = spec.buildRequests(r, validBidderRequest.bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
-      expect(payload.ext.ozone.lotameData.Profile.tpid).to.equal('123eee');
-      expect(payload.ext.ozone.lotameData.Profile.pid).to.equal('pid123');
-      expect(payload.ext.ozone.oz_lot_rw).to.equal(1);
-    });
-    it('should pick up the value of valid lotame override parameters when there is an empty lotame object', function () {
-      let nolotameBidReq = JSON.parse(JSON.stringify(validBidRequests));
-      nolotameBidReq[0].params.lotameData = {};
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': '123eeetpid'};
-      };
-      const request = spec.buildRequests(nolotameBidReq, validBidderRequest.bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
-      expect(payload.ext.ozone.lotameData.Profile.tpid).to.equal('123eeetpid');
-      expect(payload.ext.ozone.lotameData.Profile.pid).to.equal('pid123');
-      expect(payload.ext.ozone.oz_lot_rw).to.equal(1);
-    });
-    it('should pick up the value of valid lotame override parameters when there is NO "lotame" key at all', function () {
-      let nolotameBidReq = JSON.parse(JSON.stringify(validBidRequests));
-      delete (nolotameBidReq[0].params['lotameData']);
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': '123eeetpid'};
-      };
-      const request = spec.buildRequests(nolotameBidReq, validBidderRequest.bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.ext.ozone.lotameData.Profile.Audiences.Audience[0].id).to.equal('123abc');
-      expect(payload.ext.ozone.lotameData.Profile.tpid).to.equal('123eeetpid');
-      expect(payload.ext.ozone.lotameData.Profile.pid).to.equal('pid123');
-      expect(payload.ext.ozone.oz_lot_rw).to.equal(1);
-      spec.propertyBag = originalPropertyBag; // tidy up
-    });
-    // NOTE - only one negative test case;
-    // you can't send invalid lotame params to buildRequests because 'validate' will have rejected them
-    it('should not use lotame override parameters if they dont exist', function () {
-      expect(spec.propertyBag.lotameWasOverridden).to.equal(0);
-      spec.getGetParametersAsObject = function() {
-        return {}; //  no lotame override params
-      };
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.ext.ozone.oz_lot_rw).to.equal(0);
     });
 
     it('should pick up the config value of coppa & set it in the request', function () {
@@ -2738,49 +2462,6 @@ describe('ozone Adapter', function () {
       config.resetConfig();
     });
   });
-  describe('makeLotameObjectFromOverride', function() {
-    it('should update an object with valid lotame data', function () {
-      let objLotameOverride = {'oz_lotametpid': '1234', 'oz_lotameid': '12345', 'oz_lotamepid': '123456'};
-      let result = spec.makeLotameObjectFromOverride(
-        objLotameOverride,
-        {'Profile': {'pid': 'originalpid', 'tpid': 'originaltpid', 'Audiences': {'Audience': [{'id': 'aud1'}]}}}
-      );
-      expect(result.Profile.Audiences.Audience).to.be.an('array');
-      expect(result.Profile.Audiences.Audience[0]).to.be.an('object');
-      expect(result.Profile.Audiences.Audience[0]).to.deep.include({'id': '12345', 'abbr': '12345'});
-    });
-    it('should return the original object if it seems weird', function () {
-      let objLotameOverride = {'oz_lotametpid': '1234', 'oz_lotameid': '12345', 'oz_lotamepid': '123456'};
-      let objLotameOriginal = {'Profile': {'pid': 'originalpid', 'tpid': 'originaltpid', 'somethingstrange': [{'id': 'aud1'}]}};
-      let result = spec.makeLotameObjectFromOverride(
-        objLotameOverride,
-        objLotameOriginal
-      );
-      expect(result).to.equal(objLotameOriginal);
-    });
-  });
-  describe('lotameDataIsValid', function() {
-    it('should allow a valid minimum lotame object', function() {
-      let obj = {'Profile': {'pid': '', 'tpid': '', 'Audiences': {'Audience': []}}};
-      let result = spec.isLotameDataValid(obj);
-      expect(result).to.be.true;
-    });
-    it('should allow a valid lotame object', function() {
-      let obj = {'Profile': {'pid': '12345', 'tpid': '45678', 'Audiences': {'Audience': [{'id': '1234', 'abbr': '567'}, {'id': '9999', 'abbr': '1111'}]}}};
-      let result = spec.isLotameDataValid(obj);
-      expect(result).to.be.true;
-    });
-    it('should allow a lotame object without an Audience.id but with abbr', function() {
-      let obj = {'Profile': {'tpid': '', 'pid': '', 'Audiences': {'Audience': [{'abbr': 'marktest'}]}}};
-      let result = spec.isLotameDataValid(obj);
-      expect(result).to.be.true;
-    });
-    it('should disallow a lotame object without an Audience.id or abbr', function() {
-      let obj = {'Profile': {'tpid': '', 'pid': '', 'Audiences': {'Audience': [{'bad': 'marktest', 'badagain': 'somethingelse bad'}]}}};
-      let result = spec.isLotameDataValid(obj);
-      expect(result).to.be.false;
-    });
-  });
   describe('getPageId', function() {
     it('should return the same Page ID for multiple calls', function () {
       let result = spec.getPageId();
@@ -2801,32 +2482,6 @@ describe('ozone Adapter', function () {
     it('should locate the video context inside a bid', function () {
       let result = spec.getVideoContextForBidId('2899ec066a91ff8', validBidRequestsWithNonBannerMediaTypesAndValidOutstreamVideo);
       expect(result).to.equal('outstream');
-    });
-  });
-  describe('getLotameOverrideParams', function() {
-    it('should get 3 valid lotame classic params that exist in GET params', function () {
-      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotameid': '123abc', 'oz_lotamepid': 'pid123', 'oz_lotametpid': 'tpid123'};
-      };
-      let result = spec.getLotameOverrideParams(ALLOWED_LOTAME_PARAMS);
-      expect(Object.keys(result).length).to.equal(3);
-    });
-    it('should get only 1 valid lotame classic param that exists in GET params', function () {
-      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotameid': '123abc', 'xoz_lotamepid': 'pid123', 'xoz_lotametpid': 'tpid123'};
-      };
-      let result = spec.getLotameOverrideParams(ALLOWED_LOTAME_PARAMS);
-      expect(Object.keys(result).length).to.equal(1);
-    });
-    it('should get only 1 valid lotame lightning param that exists in GET params', function () {
-      // mock the getGetParametersAsObject function to simulate GET parameters for lotame overrides:
-      spec.getGetParametersAsObject = function() {
-        return {'oz_lotame_audiences': '123abc,pe-3455,999'};
-      };
-      let result = spec.getLotameOverrideParams(ALLOWED_LOTAME_LIGHTNING_PARAMS);
-      expect(Object.keys(result).length).to.equal(1);
     });
   });
   describe('unpackVideoConfigIntoIABformat', function() {
