@@ -5,19 +5,63 @@ import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
 const BIDDER_CODE = 'ozone';
-const ALLOWED_LOTAME_PARAMS = ['oz_lotameid', 'oz_lotamepid', 'oz_lotametpid'];
+// --- START REMOVE FOR RELEASE
+/*
+GET parameters:
+pbjs_debug=true
+ */
+
+// NOTE THAT the gvl is available at https://iabeurope.eu/vendor-list-tcf-v2-0/
+
+// testing fake endpoint for cookie sync new code with postMessage
+// const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
+// const OZONECOOKIESYNC = 'https://betalyst.local/prebid-cookie-sync-development.html';
+
+// *** DEV-ozpr
+// const OZONEURI = 'https://test.ozpr.net/openrtb2/auction';
+// const OZONECOOKIESYNC = 'https://test.ozpr.net/static/load-cookie.html';
+// const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
+// const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js'; // video testing
+
+// *** DEV-afsheen
+// const OZONEURI = 'http://afsheen-dev.the-ozone-project.com/openrtb2/auction';
+// const OZONECOOKIESYNC = 'http://afsheen-dev.the-ozone-project.com/static/load-cookie.html';
+// const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
+// const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
+// --- END REMOVE FOR RELEASE
 
 // *** PROD ***
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const OZONECOOKIESYNC = 'https://elb.the-ozone-project.com/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 
-const OZONEVERSION = '2.4.0';
+// --- START REMOVE FOR RELEASE
+// const OZONEURI = 'https://www.betalyst.com/test/20200622-auction-2-bids.php'; // fake auction response with 2 bids from the same bidder for an adslot
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-via-gpt.js'; // video testing
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
+// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt-delay.php';
+// const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-via-gpt.js'; // video testing local
+// const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js'; // video testing local for guardian
+// const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-switch.js'; // video testing local
+
+// 20200605 - test js renderer
+// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
+// --- END REMOVE FOR RELEASE
+const OZONEVERSION = '2.6.0-local';
 export const spec = {
+  gvlid: 524,
+  version: OZONEVERSION,
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
   cookieSyncBag: {'publisherId': null, 'siteId': null, 'userIdObject': {}}, // variables we want to make available to cookie sync
-  propertyBag: {'lotameWasOverridden': 0, 'pageId': null, 'buildRequestsStart': 0, 'buildRequestsEnd': 0}, /* allow us to store vars in instance scope - needs to be an object to be mutable */
+  propertyBag: {'pageId': null, 'buildRequestsStart': 0, 'buildRequestsEnd': 0}, /* allow us to store vars in instance scope - needs to be an object to be mutable */
 
   /**
    * Basic check to see whether required parameters are in the request.
@@ -74,12 +118,6 @@ export const spec = {
         return false;
       }
     }
-    if (bid.params.hasOwnProperty('lotameData')) {
-      if (typeof bid.params.lotameData !== 'object') {
-        utils.logError('OZONE: OZONE BID ADAPTER VALIDATION FAILED : lotameData is not an object', adUnitCode);
-        return false;
-      }
-    }
     if (bid.hasOwnProperty('mediaTypes') && bid.mediaTypes.hasOwnProperty(VIDEO)) {
       if (!bid.mediaTypes[VIDEO].hasOwnProperty('context')) {
         utils.logError('OZONE: No video context key/value in bid. Rejecting bid: ', bid);
@@ -89,23 +127,6 @@ export const spec = {
         utils.logError('OZONE: video.context is invalid. Only instream/outstream video is supported. Rejecting bid: ', bid);
         return false;
       }
-    }
-    // guard against hacks in GET parameters that we might allow
-    const arrLotameOverride = this.getLotameOverrideParams();
-    // lotame override, test params. All 3 must be present, or none.
-    let lotameKeys = Object.keys(arrLotameOverride);
-    if (lotameKeys.length === ALLOWED_LOTAME_PARAMS.length) {
-      utils.logInfo('OZONE: VALIDATION : arrLotameOverride', arrLotameOverride);
-      for (let i in lotameKeys) {
-        if (!arrLotameOverride[ALLOWED_LOTAME_PARAMS[i]].toString().match(/^[0-9a-zA-Z]+$/)) {
-          utils.logError('OZONE: Only letters & numbers allowed in lotame override: ' + i.toString() + ': ' + arrLotameOverride[ALLOWED_LOTAME_PARAMS[i]].toString() + '. Rejecting bid: ', bid);
-          return false;
-        }
-      }
-    } else if (lotameKeys.length > 0) {
-      utils.logInfo('OZONE: VALIDATION : arrLotameOverride', arrLotameOverride);
-      utils.logError('OZONE: lotame override params are incomplete. You must set all ' + ALLOWED_LOTAME_PARAMS.length + ': ' + JSON.stringify(ALLOWED_LOTAME_PARAMS) + ', . Rejecting bid: ', bid);
-      return false;
     }
     return true;
   },
@@ -120,7 +141,7 @@ export const spec = {
 
   buildRequests(validBidRequests, bidderRequest) {
     this.propertyBag.buildRequestsStart = new Date().getTime();
-    utils.logInfo(`OZONE: buildRequests time: ${this.propertyBag.buildRequestsStart} ozone v ${OZONEVERSION} validBidRequests`, validBidRequests, 'bidderRequest', bidderRequest);
+    utils.logInfo(`OZONE: buildRequests time: ${this.propertyBag.buildRequestsStart} ozone v ${OZONEVERSION} validBidRequests`, JSON.parse(JSON.stringify(validBidRequests)), 'bidderRequest', JSON.parse(JSON.stringify(bidderRequest)));
     // First check - is there any config to block this request?
     if (this.blockTheRequest()) {
       return [];
@@ -141,7 +162,7 @@ export const spec = {
 
     if (bidderRequest && bidderRequest.gdprConsent) {
       utils.logInfo('OZONE: ADDING GDPR info');
-      let apiVersion = utils.deepAccess(bidderRequest.gdprConsent, 'apiVersion', '1');
+      let apiVersion = bidderRequest.gdprConsent.apiVersion || '1';
       ozoneRequest.regs = {ext: {gdpr: bidderRequest.gdprConsent.gdprApplies ? 1 : 0, apiVersion: apiVersion}};
       if (ozoneRequest.regs.ext.gdpr) {
         ozoneRequest.user = ozoneRequest.user || {};
@@ -156,7 +177,6 @@ export const spec = {
     const ozTestMode = getParams.hasOwnProperty('oztestmode') ? getParams.oztestmode : null; // this can be any string, it's used for testing ads
     ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
     let placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
-    let lotameDataSingle = {}; // we will capture lotame data once & send it to the server as ext.ozone.lotameData
     // build the array of params to attach to `imp`
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
@@ -242,23 +262,19 @@ export const spec = {
       } else {
         utils.logInfo('OZONE: no ozTestMode ');
       }
-      // now deal with lotame, including the optional override parameters
-      if (Object.keys(lotameDataSingle).length === 0) { // we've not yet found lotameData, see if we can get it from this bid request object
-        lotameDataSingle = this.tryGetLotameData(ozoneBidRequest);
-      }
       return obj;
     });
 
     // in v 2.0.0 we moved these outside of the individual ad slots
-    let extObj = {'ozone': {'oz_pb_v': OZONEVERSION, 'oz_rw': placementIdOverrideFromGetParam ? 1 : 0, 'oz_lot_rw': this.propertyBag.lotameWasOverridden}};
+    let extObj = {'ozone': {'oz_pb_v': OZONEVERSION, 'oz_rw': placementIdOverrideFromGetParam ? 1 : 0}};
     if (validBidRequests.length > 0) {
-      let userIds = this.findAllUserIds(validBidRequests[0]);
+      let userIds = this.cookieSyncBag.userIdObject; // 2021-01-06 - slight optimisation - we've already found this info
+      // let userIds = this.findAllUserIds(validBidRequests[0]);
       if (userIds.hasOwnProperty('pubcid')) {
         extObj.ozone.pubcid = userIds.pubcid;
       }
     }
     extObj.ozone.pv = this.getPageId(); // attach the page ID that will be common to all auciton calls for this page if refresh() is called
-    extObj.ozone.lotameData = lotameDataSingle; // 2.4.0 moved lotameData out of bid objects into the single ext.ozone area to remove duplication
     let ozOmpFloorDollars = config.getConfig('ozone.oz_omp_floor'); // valid only if a dollar value (typeof == 'number')
     utils.logInfo('OZONE: oz_omp_floor dollar value = ', ozOmpFloorDollars);
     if (typeof ozOmpFloorDollars === 'number') {
@@ -341,7 +357,7 @@ export const spec = {
   interpretResponse(serverResponse, request) {
     let startTime = new Date().getTime();
     utils.logInfo(`OZONE: interpretResponse time: ${startTime} . Time between buildRequests done and interpretResponse start was ${startTime - this.propertyBag.buildRequestsEnd}ms`);
-    utils.logInfo(`OZONE: serverResponse, request`, serverResponse, request);
+    utils.logInfo(`OZONE: serverResponse, request`, JSON.parse(JSON.stringify(serverResponse)), JSON.parse(JSON.stringify(request)));
     serverResponse = serverResponse.body || {};
     // note that serverResponse.id value is the auction_id we might want to use for reporting reasons.
     if (!serverResponse.hasOwnProperty('seatbid')) {
@@ -535,11 +551,13 @@ export const spec = {
   },
   /**
    *  Look for pubcid & all the other IDs according to http://prebid.org/dev-docs/modules/userId.html
+   *  NOTE that criteortus is deprecated & should be removed asap
    *  @return map
    */
   findAllUserIds(bidRequest) {
     var ret = {};
-    let searchKeysSingle = ['pubcid', 'tdid', 'parrableId', 'idl_env', 'digitrustid', 'criteortus'];
+    let searchKeysSingle = ['pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId', 'criteortus',
+      'sharedId', 'lotamePanoramaId'];
     if (bidRequest.hasOwnProperty('userId')) {
       for (let arrayId in searchKeysSingle) {
         let key = searchKeysSingle[arrayId];
@@ -551,10 +569,6 @@ export const spec = {
       if (lipbid) {
         ret['lipb'] = {'lipbid': lipbid};
       }
-      var id5id = utils.deepAccess(bidRequest.userId, 'id5id.uid');
-      if (id5id) {
-        ret['id5id'] = id5id;
-      }
     }
     if (!ret.hasOwnProperty('pubcid')) {
       var pubcid = utils.deepAccess(bidRequest, 'crumbs.pubcid');
@@ -563,69 +577,6 @@ export const spec = {
       }
     }
     return ret;
-  },
-  /**
-   * get all the lotame override keys/values from the querystring.
-   * @return object containing zero or more keys/values
-   */
-  getLotameOverrideParams() {
-    const arrGet = this.getGetParametersAsObject();
-    utils.logInfo('OZONE: getLotameOverrideParams - arrGet=', arrGet);
-    let arrRet = {};
-    for (let i in ALLOWED_LOTAME_PARAMS) {
-      if (arrGet.hasOwnProperty(ALLOWED_LOTAME_PARAMS[i])) {
-        arrRet[ALLOWED_LOTAME_PARAMS[i]] = arrGet[ALLOWED_LOTAME_PARAMS[i]];
-      }
-    }
-    return arrRet;
-  },
-  /**
-   * Boolean function to check that this lotame data is valid (check Audience.id)
-   */
-  isLotameDataValid(lotameObj) {
-    if (!lotameObj.hasOwnProperty('Profile')) return false;
-    let prof = lotameObj.Profile;
-    if (!prof.hasOwnProperty('tpid')) return false;
-    if (!prof.hasOwnProperty('pid')) return false;
-    let audiences = utils.deepAccess(prof, 'Audiences.Audience');
-    if (typeof audiences != 'object') {
-      return false;
-    }
-    for (var i = 0; i < audiences.length; i++) {
-      let aud = audiences[i];
-      if (!aud.hasOwnProperty('id')) {
-        return false;
-      }
-    }
-    return true; // All Audiences objects have an 'id' key
-  },
-  /**
-   * Use the arrOverride keys/vals to update the arrExisting lotame object.
-   * Ideally we will only be using the oz_lotameid value to update the audiences id, but in the event of bad/missing
-   * pid & tpid we will also have to use substitute values for those too.
-   *
-   * @param objOverride object will contain all the ALLOWED_LOTAME_PARAMS parameters
-   * @param lotameData object might be {} or contain the lotame data
-   */
-  makeLotameObjectFromOverride(objOverride, lotameData) {
-    if ((lotameData.hasOwnProperty('Profile') && Object.keys(lotameData.Profile).length < 3) ||
-      (!lotameData.hasOwnProperty('Profile'))) { // bad or empty lotame object (should contain pid, tpid & Audiences object) - build a total replacement
-      utils.logInfo('OZONE: makeLotameObjectFromOverride will return a full default lotame object');
-      return {
-        'Profile': {
-          'tpid': objOverride['oz_lotametpid'],
-          'pid': objOverride['oz_lotamepid'],
-          'Audiences': {'Audience': [{'id': objOverride['oz_lotameid'], 'abbr': objOverride['oz_lotameid']}]}
-        }
-      };
-    }
-    if (utils.deepAccess(lotameData, 'Profile.Audiences.Audience')) {
-      utils.logInfo('OZONE: makeLotameObjectFromOverride will return the existing lotame object with updated Audience by oz_lotameid');
-      lotameData.Profile.Audiences.Audience = [{'id': objOverride['oz_lotameid'], 'abbr': objOverride['oz_lotameid']}];
-      return lotameData;
-    }
-    utils.logInfo('OZONE: makeLotameObjectFromOverride Weird error - failed to find Profile.Audiences.Audience in lotame object. Will return the object as-is');
-    return lotameData;
   },
   /**
    * Convenient method to get the value we need for the placementId - ONLY from the bidRequest - NOT taking into account any GET override ID
@@ -657,7 +608,8 @@ export const spec = {
    * Produces external userid object
    */
   addExternalUserId(eids, value, source, atype) {
-    if (utils.isStr(value)) {
+    utils.logInfo('addExternalUserId', eids, value, source, atype);
+    if (typeof value == 'object' || (typeof value == 'string' && value.length > 0)) {
       eids.push({
         source,
         uids: [{
@@ -668,7 +620,10 @@ export const spec = {
     }
   },
   /**
+   *
+   * @todo - change this to simply return validBidRequests[0].userId
    * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
+   * http://prebid.org/dev-docs/modules/userId.html
    * @param validBidRequests
    * @return {Array}
    */
@@ -676,14 +631,22 @@ export const spec = {
     let eids = [];
     this.handleTTDId(eids, validBidRequests);
     const bidRequest = validBidRequests[0];
+
+    // it would be better if we could use this:
+    // utils.logInfo('OZONE: getting bidRequest.userIdAsEids : ', bidRequest.userIdAsEids);
+    // return bidRequest.userIdAsEids;
+
     if (bidRequest && bidRequest.userId) {
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid', 1); // need to find out if I can remove these
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcommon', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.id5id.uid`), 'id5-sync.com', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteortus.${BIDDER_CODE}.userid`), 'criteortus', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid.org', 1); // this is the current one 20200803
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.id5id`), 'id5-sync.com', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteortus.${BIDDER_CODE}.userid`), 'criteortus', 1); // deprecated & should be removed asap
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteoId`), 'criteo', 1);
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.idl_env`), 'liveramp.com', 1);
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lipb.lipbid`), 'liveintent.com', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableId.eid`), 'parrable.com', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableId`), 'parrable.com', 1);
+      // @todo - what to add for sharedId & lotamePanoramaId ?
     }
     return eids;
   },
@@ -746,34 +709,6 @@ export const spec = {
       this.propertyBag.pageId = new Date().getTime() + '_' + randPart;
     }
     return this.propertyBag.pageId;
-  },
-  /**
-   * handle the complexity of there possibly being lotameData override (may be valid/invalid) & there may or may not be lotameData present in the bidRequest
-   * NOTE THAT this will also set this.propertyBag.lotameWasOverridden=1 if we use lotame override
-   * @param ozoneBidRequest
-   * @return object representing the absolute lotameData we need to use.
-   */
-  tryGetLotameData: function(ozoneBidRequest) {
-    const arrLotameOverride = this.getLotameOverrideParams();
-    let ret = {};
-    if (Object.keys(arrLotameOverride).length === ALLOWED_LOTAME_PARAMS.length) {
-      // all override params are present, override lotame object:
-      if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
-        ret = this.makeLotameObjectFromOverride(arrLotameOverride, ozoneBidRequest.params.lotameData);
-      } else {
-        ret = this.makeLotameObjectFromOverride(arrLotameOverride, {});
-      }
-      this.propertyBag.lotameWasOverridden = 1;
-    } else if (ozoneBidRequest.params.hasOwnProperty('lotameData')) {
-      // no lotame override, use it as-is
-      if (this.isLotameDataValid(ozoneBidRequest.params.lotameData)) {
-        ret = ozoneBidRequest.params.lotameData;
-      } else {
-        utils.logError('OZONE: INVALID LOTAME DATA FOUND - WILL NOT USE THIS AT ALL ELSE IT MIGHT BREAK THE AUCTION CALL!', ozoneBidRequest.params.lotameData);
-        ret = {};
-      }
-    }
-    return ret;
   },
   unpackVideoConfigIntoIABformat(videoConfig, childConfig) {
     let ret = {'ext': {}};
@@ -932,7 +867,7 @@ export function ozoneGetAllBidsForBidId(matchBidId, serverResponseSeatBid) {
     for (let k = 0; k < theseBids.length; k++) {
       if (theseBids[k].impid === matchBidId) {
         if (objBids.hasOwnProperty(thisSeat)) { // > 1 bid for an adunit from a bidder - only use the one with the highest bid
-        //   objBids[`${thisSeat}${theseBids[k].w}x${theseBids[k].h}`] = theseBids[k];
+          //   objBids[`${thisSeat}${theseBids[k].w}x${theseBids[k].h}`] = theseBids[k];
           if (objBids[thisSeat]['price'] < theseBids[k].price) {
             objBids[thisSeat] = theseBids[k];
           }
@@ -1099,21 +1034,24 @@ function getPlayerSizeFromObject(objVideo) {
   The renderer function will not assume that the renderer script is loaded - it will push() the ultimate render function call
  */
 function newRenderer(adUnitCode, rendererOptions = {}) {
+  // brought from the test branch - this could be an improvement
+  let isLoaded = !!utils.deepAccess(window, 'ozoneVideo', false);
+  utils.logInfo(`OZONE newRenderer going to set loaded to ${isLoaded ? 'true' : 'false'}`);
   const renderer = Renderer.install({
     url: OZONE_RENDERER_URL,
     config: rendererOptions,
-    loaded: false,
+    loaded: isLoaded,
     adUnitCode
   });
   try {
     renderer.setRender(outstreamRender);
   } catch (err) {
-    utils.logWarn('OZONE Prebid Error calling setRender on renderer', err);
+    utils.logError('OZONE Prebid Error when calling setRender on renderer', JSON.parse(JSON.stringify(renderer)), err);
   }
   return renderer;
 }
 function outstreamRender(bid) {
-  utils.logInfo('OZONE: outstreamRender called. Going to push the call to window.ozoneVideo.outstreamRender(bid) bid =', bid);
+  utils.logInfo('OZONE: outstreamRender called. Going to push the call to window.ozoneVideo.outstreamRender(bid) bid =', JSON.parse(JSON.stringify(bid)));
   // push to render queue because ozoneVideo may not be loaded yet
   bid.renderer.push(() => {
     window.ozoneVideo.outstreamRender(bid);
@@ -1121,4 +1059,4 @@ function outstreamRender(bid) {
 }
 
 registerBidder(spec);
-utils.logInfo('OZONE: ozoneBidAdapter was loaded');
+utils.logInfo(`OZONE: ozoneBidAdapter ${OZONEVERSION} was loaded`);
