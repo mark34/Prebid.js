@@ -54,7 +54,7 @@ const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.6.0-local';
+const OZONEVERSION = '2.6.0';
 export const spec = {
   gvlid: 524,
   version: OZONEVERSION,
