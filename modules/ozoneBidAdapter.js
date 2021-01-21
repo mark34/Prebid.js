@@ -54,7 +54,7 @@ const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.6.0';
+const OZONEVERSION = '2.6.0-20210120B';
 export const spec = {
   gvlid: 524,
   version: OZONEVERSION,
@@ -562,7 +562,13 @@ export const spec = {
       for (let arrayId in searchKeysSingle) {
         let key = searchKeysSingle[arrayId];
         if (bidRequest.userId.hasOwnProperty(key)) {
-          ret[key] = bidRequest.userId[key];
+          if (typeof (bidRequest.userId[key]) == 'string') {
+            ret[key] = bidRequest.userId[key];
+          } else if (typeof (bidRequest.userId[key]) == 'object') {
+            ret[key] = Object.values(bidRequest.userId[key])[0];
+          } else {
+            utils.logError(`OZONE: failed to get string key value for userId : ${key}`);
+          }
         }
       }
       var lipbid = utils.deepAccess(bidRequest.userId, 'lipb.lipbid');
@@ -645,8 +651,9 @@ export const spec = {
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteoId`), 'criteo', 1);
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.idl_env`), 'liveramp.com', 1);
       this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lipb.lipbid`), 'liveintent.com', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableId`), 'parrable.com', 1);
+      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableId.eid`), 'parrable.com', 1);
       // @todo - what to add for sharedId & lotamePanoramaId ?
+      utils.logInfo('OZONE: generateEids : ** NOTE ** - not currently handling sharedId or lotamePanoramaId');
     }
     return eids;
   },
