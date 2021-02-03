@@ -1913,6 +1913,7 @@ describe('ozone Adapter', function () {
       expect(payload.regs.ext.gdpr).to.equal(1);
       expect(payload.user.ext.consent).to.equal(consentString);
     });
+
     it('should set regs.ext.gdpr flag to 0 when gdprApplies is false', function () {
       let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
       let bidderRequest = validBidderRequest.bidderRequest;
@@ -2020,30 +2021,75 @@ describe('ozone Adapter', function () {
       expect(payload.user.ext.eids[8]['source']).to.equal('liveintent.com');
       expect(payload.user.ext.eids[8]['uids'][0]['id']).to.equal('lipbidId123');
       expect(payload.user.ext.eids[9]['source']).to.equal('parrable.com');
-      expect(payload.user.ext.eids[9]['uids'][0]['id']['eid']).to.equal('01.5678.parrableid');
+      expect(payload.user.ext.eids[9]['uids'][0]['id']).to.equal('01.5678.parrableid');
     });
 
+    it('replaces the auction url for a config override', function () {
+      spec.propertyBag.whitelabel = null;
+      let fakeOrigin = 'http://sometestendpoint';
+      config.setConfig({'ozone': {'endpointOverride': {'origin': fakeOrigin}}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      expect(request.url).to.equal(fakeOrigin + '/openrtb2/auction');
+      expect(request.method).to.equal('POST');
+      config.setConfig({'ozone': {'kvpPrefix': null, 'endpointOverride': null}});
+      spec.propertyBag.whitelabel = null;
+    });
+
+    it('replaces the renderer url for a config override', function () {
+      spec.propertyBag.whitelabel = null;
+      let fakeUrl = 'http://renderer.com';
+      config.setConfig({'ozone': {'endpointOverride': {'rendererUrl': fakeUrl}}});
+      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest1OutstreamVideo2020.bidderRequest);
+      const result = spec.interpretResponse(getCleanValidVideoResponse(), validBidderRequest1OutstreamVideo2020);
+      const bid = result[0];
+      expect(bid.renderer).to.be.an.instanceOf(Renderer);
+      expect(bid.renderer.url).to.equal(fakeUrl);
+      config.setConfig({'ozone': {'kvpPrefix': null, 'endpointOverride': null}});
+      spec.propertyBag.whitelabel = null;
+    });
+
+    it('replaces the kvp prefix ', function () {
+      spec.propertyBag.whitelabel = null;
+      config.setConfig({'ozone': {'kvpPrefix': 'test'}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const data = JSON.parse(request.data);
+      expect(data.ext.ozone).to.haveOwnProperty('test_rw');
+      config.setConfig({'ozone': {'kvpPrefix': null}});
+      spec.propertyBag.whitelabel = null;
+    });
+
+    it('handles an alias ', function () {
+      spec.propertyBag.whitelabel = null;
+      config.setConfig({'lmc': {'kvpPrefix': 'test'}});
+      let br = JSON.parse(JSON.stringify(validBidRequests));
+      br[0]['bidder'] = 'lmc';
+      const request = spec.buildRequests(br, validBidderRequest.bidderRequest);
+      const data = JSON.parse(request.data);
+      expect(data.ext.lmc).to.haveOwnProperty('test_rw');
+      config.setConfig({'lmc': {'kvpPrefix': null}}); // I cant remove the key so set the value to null
+      spec.propertyBag.whitelabel = null;
+    });
+    var specMock = utils.deepClone(spec);
     it('should use oztestmode GET value if set', function() {
       // mock the getGetParametersAsObject function to simulate GET parameters for oztestmode:
-      spec.getGetParametersAsObject = function() {
+      specMock.getGetParametersAsObject = function() {
         return {'oztestmode': 'mytestvalue_123'};
       };
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
       const data = JSON.parse(request.data);
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
     });
     it('should use oztestmode GET value if set, even if there is no customdata in config', function() {
       // mock the getGetParametersAsObject function to simulate GET parameters for oztestmode:
-      spec.getGetParametersAsObject = function() {
+      specMock.getGetParametersAsObject = function() {
         return {'oztestmode': 'mytestvalue_123'};
       };
-      const request = spec.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
+      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
       const data = JSON.parse(request.data);
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
     });
-    var specMock = utils.deepClone(spec);
     it('should use a valid ozstoredrequest GET value if set to override the placementId values, and set oz_rw if we find it', function() {
       // mock the getGetParametersAsObject function to simulate GET parameters for ozstoredrequest:
       specMock.getGetParametersAsObject = function() {
@@ -2410,6 +2456,14 @@ describe('ozone Adapter', function () {
       let obj = {'playerSize': 'should be an array', 'mimes': ['video/mp4'], 'context': 'outstream'};
       const result = playerSizeIsNestedArray(obj);
       expect(result).to.be.null;
+    });
+    it.only('should add oz_appnexus_dealid into ads request if dealid exists in the auction response', function () {
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest.bidderRequest);
+      let validres = JSON.parse(JSON.stringify(validResponse2Bids));
+      validres.body.seatbid[0].bid[0].dealid = '1234';
+      const result = spec.interpretResponse(validres, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_dealid')).to.equal('1234');
+      expect(utils.deepAccess(result[1].adserverTargeting, 'oz_appnexus_dealid', '')).to.equal('');
     });
   });
 
