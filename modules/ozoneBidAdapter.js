@@ -55,7 +55,7 @@ const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.0-20210126-whitelabel';
+const OZONEVERSION = '2.5.0-20210126-whitelabel-with-logging';
 export const spec = {
   gvlid: 524,
   aliases: [{ code: 'lmc' }],
@@ -126,6 +126,15 @@ export const spec = {
     let args = arguments;
     args[0] = `${this.propertyBag.whitelabel.logId}: ${arguments[0]}`;
     utils.logWarn.apply(this, args);
+  },
+  /**
+   * put an img on the page sending params to "https://www.ardm.io/log_mark/log.php?a=1&b=2&c=3&d=4&e=5&f=marktest"
+   */
+  dropPixel(requestId, impId, auctionId, reqOrResp, adUnitCode) {
+    var d1 = window.document.createElement('img');
+    let pageId = this.getPageId();
+    d1.setAttribute('src', `https://www.ardm.io/log/log.php?singleMode=1&a=${pageId}&b=${requestId}&c=${impId}&d=${auctionId}&e=${reqOrResp}&f=${adUnitCode}`);
+    window.document.body.appendChild(d1);
   },
   /**
    * Basic check to see whether required parameters are in the request.
@@ -210,7 +219,16 @@ export const spec = {
     let whitelabelBidder = this.propertyBag.whitelabel.bidder; // by default = ozone
     let whitelabelPrefix = this.propertyBag.whitelabel.keyPrefix;
     this.logInfo(`buildRequests time: ${this.propertyBag.buildRequestsStart} v ${OZONEVERSION} validBidRequests`, JSON.parse(JSON.stringify(validBidRequests)), 'bidderRequest', JSON.parse(JSON.stringify(bidderRequest)));
-    // First check - is there any config to block this request?
+
+    // test logging
+    for (let ind in validBidRequests) {
+      let thisBr = validBidRequests[ind];
+      this.logInfo(`*** test logging : going to log buildRequests with  requestId (bidderRequest['bidderRequestId']) ${bidderRequest['bidderRequestId']}, impid (thisBr['bidId']) ${thisBr['bidId']}, auctionId (bidderRequest['auctionId']) ${bidderRequest['auctionId']}, 'request', adUnitCode (thisBr['adUnitCode']) ${thisBr['adUnitCode']}`);
+      this.dropPixel(bidderRequest['bidderRequestId'], thisBr['bidId'], bidderRequest['auctionId'], 'request', thisBr['adUnitCode']);
+    }
+
+    // First check - is there any config to block this request?      this.logInfo('*** test logging : going to log buildRequests with ', bidderRequest['bidderRequestId'], thisBr['bdiId'], bidderRequest['auctionId'], 'request', thisBr['adUnitCode']);
+
     if (this.blockTheRequest()) {
       return [];
     }
@@ -432,6 +450,7 @@ export const spec = {
    */
   interpretResponse(serverResponse, request) {
     if (request && request.bidderRequest && request.bidderRequest.bids) { this.loadWhitelabelData(request.bidderRequest.bids[0]); }
+
     let startTime = new Date().getTime();
     let whitelabelBidder = this.propertyBag.whitelabel.bidder; // by default = ozone
     let whitelabelPrefix = this.propertyBag.whitelabel.keyPrefix;
@@ -445,6 +464,21 @@ export const spec = {
     if (typeof serverResponse.seatbid !== 'object') {
       return [];
     }
+
+    // test logging - log for ozone's bids only
+    for (let i = 0; i < serverResponse.seatbid.length; i++) {
+      let theSeatBid = serverResponse.seatbid[i];
+      if (theSeatBid.seat.match(/^oz/)) {
+        for (let j = 0; j < theSeatBid.bid.length; j++) {
+          let theBid = theSeatBid.bid[j];
+          this.logInfo(`*** test logging : going to log ozone interpretResponse with  reqId (theBid.id) ${theBid.id}, impid (theBid.impid) ${theBid.impid}, auctionId (serverResponse.id) ${serverResponse.id}, 'response', adUnitCode (utils.deepAccess(theBid, 'ext.bidder.ozone.adUnitCode')) ${utils.deepAccess(theBid, 'ext.bidder.ozone.adUnitCode')}`);
+          this.dropPixel(theBid.id, theBid.impid, serverResponse.id, 'response', utils.deepAccess(theBid, 'ext.bidder.ozone.adUnitCode'));
+        }
+      } else {
+        this.logInfo(`*** test logging : ozone interpretResponse is ignoring seat: ${theSeatBid.seat}`);
+      }
+    }
+
     let arrAllBids = [];
     let enhancedAdserverTargeting = this.getWhitelabelConfigItem('ozone.enhancedAdserverTargeting');
     this.logInfo('enhancedAdserverTargeting', enhancedAdserverTargeting);
