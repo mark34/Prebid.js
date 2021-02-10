@@ -2457,7 +2457,7 @@ describe('ozone Adapter', function () {
       const result = playerSizeIsNestedArray(obj);
       expect(result).to.be.null;
     });
-    it.only('should add oz_appnexus_dealid into ads request if dealid exists in the auction response', function () {
+    it('should add oz_appnexus_dealid into ads request if dealid exists in the auction response', function () {
       const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest.bidderRequest);
       let validres = JSON.parse(JSON.stringify(validResponse2Bids));
       validres.body.seatbid[0].bid[0].dealid = '1234';

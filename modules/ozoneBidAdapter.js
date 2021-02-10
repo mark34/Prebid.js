@@ -55,7 +55,7 @@ const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.0-20210126-whitelabel';
+const OZONEVERSION = '2.5.0-20210210';
 export const spec = {
   gvlid: 524,
   aliases: [{ code: 'lmc' }],
@@ -649,8 +649,9 @@ export const spec = {
    */
   findAllUserIds(bidRequest) {
     var ret = {};
+    // @todo - what is fabirck called & where to look for it? If it's a simple value then it will automatically be ok
     let searchKeysSingle = ['pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId', 'criteortus',
-      'sharedId', 'lotamePanoramaId'];
+      'sharedid', 'lotamePanoramaId', 'fabrickId'];
     if (bidRequest.hasOwnProperty('userId')) {
       for (let arrayId in searchKeysSingle) {
         let key = searchKeysSingle[arrayId];
@@ -707,29 +708,27 @@ export const spec = {
   /**
    * Produces external userid object
    */
-  addExternalUserId(eids, value, source, atype) {
-    this.logInfo('addExternalUserId', eids, value, source, atype);
-    if (typeof value == 'object' || (typeof value == 'string' && value.length > 0)) {
-      eids.push({
-        source,
-        uids: [{
-          id: value,
-          atype
-        }]
-      });
-    }
-  },
+  // addExternalUserId(eids, value, source, atype) {
+  //   this.logInfo('addExternalUserId', eids, value, source, atype);
+  //   if (typeof value == 'object' || (typeof value == 'string' && value.length > 0)) {
+  //     eids.push({
+  //       source,
+  //       uids: [{
+  //         id: value,
+  //         atype
+  //       }]
+  //     });
+  //   }
+  // },
   /**
    *
-   * @todo - change this to simply return validBidRequests[0].userId
    * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
    * http://prebid.org/dev-docs/modules/userId.html
    * @param validBidRequests
    * @return {Array}
    */
   generateEids(validBidRequests) {
-    let eids = [];
-    this.handleTTDId(eids, validBidRequests);
+    let eids;
     const bidRequest = validBidRequests[0];
 
     // it would be better if we could use this:
@@ -737,20 +736,24 @@ export const spec = {
     // return bidRequest.userIdAsEids;
 
     if (bidRequest && bidRequest.userId) {
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid', 1); // need to find out if I can remove these
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcommon', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid.org', 1); // this is the current one 20200803
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.id5id`), 'id5-sync.com', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteortus.${BIDDER_CODE}.userid`), 'criteortus', 1); // deprecated & should be removed asap
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteoId`), 'criteo', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.idl_env`), 'liveramp.com', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lipb.lipbid`), 'liveintent.com', 1);
-      this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableId.eid`), 'parrable.com', 1);
-      // @todo - what to add for sharedId & lotamePanoramaId ?
-      this.logInfo('generateEids : ** NOTE ** - not currently handling sharedId or lotamePanoramaId');
+      // eids = [];
+      eids = bidRequest.userIdAsEids;
+      this.handleTTDId(eids, validBidRequests);
+      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid', 1); // need to find out if I can remove these
+      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcommon', 1);
+      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid.org', 1); // this is the current one 20200803
+      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.id5id`), 'id5-sync.com', 1);
+      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteortus.${BIDDER_CODE}.userid`), 'criteortus', 1); // deprecated & should be removed asap
+      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteoId`), 'criteo', 1);
+      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.idl_env`), 'liveramp.com', 1);
+      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lipb.lipbid`), 'liveintent.com', 1);
+      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableId.eid`), 'parrable.com', 1);
+      // // @todo - what to add for sharedId & lotamePanoramaId ?
+      // this.logInfo('generateEids : ** NOTE ** - not currently handling sharedId or lotamePanoramaId');
     }
     return eids;
   },
+  // @todo delete this as soon as we can stop calling it:
   handleTTDId(eids, validBidRequests) {
     let ttdId = null;
     let adsrvrOrgId = config.getConfig('adsrvrOrgId');
