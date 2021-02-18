@@ -79,7 +79,71 @@ var validBidRequestsWithUserIdData = [
       'idl_env': 'liverampId',
       'lipb': {'lipbid': 'lipbidId123'},
       'parrableId': {'eid': '01.5678.parrableid'}
-    }
+    },
+    userIdAsEids: [
+      {
+        'source': 'pubcid.org',
+        'uids': [
+          {
+            'id': '12345678',
+            'atype': 1
+          }
+        ]
+      },
+      {
+        'source': 'adserver.org',
+        'uids': [{
+          'id': '1111tdid',
+          'atype': 1,
+          'ext': {
+            'rtiPartner': 'TDID'
+          }
+        }]
+      },
+      {
+        'source': 'id5-sync.com',
+        'uids': [{
+          'id': 'ID5-someId',
+          'atype': 1,
+        }]
+      },
+      {
+        'source': 'criteortus',
+        'uids': [{
+          'id': {'ozone': {'userid': 'critId123'}},
+          'atype': 1,
+        }]
+      },
+      {
+        'source': 'criteoId',
+        'uids': [{
+          'id': '1111criteoId',
+          'atype': 1,
+        }]
+      },
+      {
+        'source': 'idl_env',
+        'uids': [{
+          'id': 'liverampId',
+          'atype': 1,
+        }]
+      },
+      {
+        'source': 'lipb',
+        'uids': [{
+          'id': {'lipbid': 'lipbidId123'},
+          'atype': 1,
+        }]
+      },
+      {
+        'source': 'parrableId',
+        'uids': [{
+          'id': {'eid': '01.5678.parrableid'},
+          'atype': 1,
+        }]
+      }
+    ]
+
   }
 ];
 var validBidRequestsMinimal = [
@@ -1959,6 +2023,7 @@ describe('ozone Adapter', function () {
         'pubcid': '5555',
         'tdid': '6666'
       };
+      bidRequests[0]['userIdAsEids'] = validBidRequestsWithUserIdData[0]['userIdAsEids'];
       const request = spec.buildRequests(bidRequests, bidderRequest);
       const payload = JSON.parse(request.data);
       let firstBid = payload.imp[0].ext.ozone;
@@ -1979,6 +2044,7 @@ describe('ozone Adapter', function () {
         // 'pubcid': '5555', // remove pubcid from here to emulate the OLD module & cause the failover code to kick in
         'tdid': '6666'
       };
+      bidRequests[0]['userIdAsEids'] = validBidRequestsWithUserIdData[0]['userIdAsEids'];
       const request = spec.buildRequests(bidRequests, validBidderRequest.bidderRequest);
       const payload = JSON.parse(request.data);
       expect(payload.ext.ozone.pubcid).to.equal(bidRequests[0]['crumbs']['pubcid']);
@@ -2002,26 +2068,22 @@ describe('ozone Adapter', function () {
       expect(payload.user).to.exist;
       expect(payload.user.ext).to.exist;
       expect(payload.user.ext.eids).to.exist;
-      expect(payload.user.ext.eids[0]['source']).to.equal('adserver.org');
-      expect(payload.user.ext.eids[0]['uids'][0]['id']).to.equal('1111tdid');
-      expect(payload.user.ext.eids[1]['source']).to.equal('pubcid'); // this is deprecated
-      expect(payload.user.ext.eids[1]['uids'][0]['id']).to.equal('12345678');
-      expect(payload.user.ext.eids[2]['source']).to.equal('pubcommon'); // this is deprecated
-      expect(payload.user.ext.eids[2]['uids'][0]['id']).to.equal('12345678');
-      expect(payload.user.ext.eids[3]['source']).to.equal('pubcid.org');
-      expect(payload.user.ext.eids[3]['uids'][0]['id']).to.equal('12345678');
-      expect(payload.user.ext.eids[4]['source']).to.equal('id5-sync.com');
-      expect(payload.user.ext.eids[4]['uids'][0]['id']).to.equal('ID5-someId');
-      expect(payload.user.ext.eids[5]['source']).to.equal('criteortus'); // this is deprecated
-      expect(payload.user.ext.eids[5]['uids'][0]['id']).to.equal('critId123');
-      expect(payload.user.ext.eids[6]['source']).to.equal('criteo');
-      expect(payload.user.ext.eids[6]['uids'][0]['id']).to.equal('1111criteoId');
-      expect(payload.user.ext.eids[7]['source']).to.equal('liveramp.com');
-      expect(payload.user.ext.eids[7]['uids'][0]['id']).to.equal('liverampId');
-      expect(payload.user.ext.eids[8]['source']).to.equal('liveintent.com');
-      expect(payload.user.ext.eids[8]['uids'][0]['id']).to.equal('lipbidId123');
-      expect(payload.user.ext.eids[9]['source']).to.equal('parrable.com');
-      expect(payload.user.ext.eids[9]['uids'][0]['id']).to.equal('01.5678.parrableid');
+      expect(payload.user.ext.eids[0]['source']).to.equal('pubcid.org');
+      expect(payload.user.ext.eids[0]['uids'][0]['id']).to.equal('12345678');
+      expect(payload.user.ext.eids[1]['source']).to.equal('adserver.org');
+      expect(payload.user.ext.eids[1]['uids'][0]['id']).to.equal('1111tdid');
+      expect(payload.user.ext.eids[2]['source']).to.equal('id5-sync.com');
+      expect(payload.user.ext.eids[2]['uids'][0]['id']).to.equal('ID5-someId');
+      expect(payload.user.ext.eids[3]['source']).to.equal('criteortus'); // this is deprecated
+      expect(payload.user.ext.eids[3]['uids'][0]['id']['ozone']['userid']).to.equal('critId123');
+      expect(payload.user.ext.eids[4]['source']).to.equal('criteoId');
+      expect(payload.user.ext.eids[4]['uids'][0]['id']).to.equal('1111criteoId');
+      expect(payload.user.ext.eids[5]['source']).to.equal('idl_env');
+      expect(payload.user.ext.eids[5]['uids'][0]['id']).to.equal('liverampId');
+      expect(payload.user.ext.eids[6]['source']).to.equal('lipb');
+      expect(payload.user.ext.eids[6]['uids'][0]['id']['lipbid']).to.equal('lipbidId123');
+      expect(payload.user.ext.eids[7]['source']).to.equal('parrableId');
+      expect(payload.user.ext.eids[7]['uids'][0]['id']['eid']).to.equal('01.5678.parrableid');
     });
 
     it('replaces the auction url for a config override', function () {

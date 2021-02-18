@@ -11,8 +11,8 @@
 
 $src = file('./modules/ozoneBidAdapter.js');
 $spec = file('./test/spec/modules/ozoneBidAdapter_spec.js');
-$srcOut = './ozoneBidAdapter.js.nocomments-' . date("Y-m-d_H_i_s") . '.txt';
-$specOut = './ozoneBidAdapter_spec.js.nocomments-' . date("Y-m-d_H_i_s") . '.txt';
+$srcOut = './ozoneBidAdapter.js.' . date("Y-m-d_H_i_s") . '.txt';
+$specOut = './ozoneBidAdapter_spec.js.' . date("Y-m-d_H_i_s") . '.txt';
 file_put_contents($srcOut, '');
 file_put_contents($specOut, '');
 $writeLine = true;

@@ -6,6 +6,9 @@ import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
 const BIDDER_CODE = 'ozone';
 // --- START REMOVE FOR RELEASE
+
+// To remove this : php removecomments.php
+
 /*
 GET parameters:
 pbjs_debug=true
@@ -55,7 +58,7 @@ const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.0-20210210';
+const OZONEVERSION = '2.5.0';
 export const spec = {
   gvlid: 524,
   aliases: [{ code: 'lmc' }],
@@ -649,7 +652,7 @@ export const spec = {
    */
   findAllUserIds(bidRequest) {
     var ret = {};
-    // @todo - what is fabirck called & where to look for it? If it's a simple value then it will automatically be ok
+    // @todo - what is fabrick called & where to look for it? If it's a simple value then it will automatically be ok
     let searchKeysSingle = ['pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId', 'criteortus',
       'sharedid', 'lotamePanoramaId', 'fabrickId'];
     if (bidRequest.hasOwnProperty('userId')) {
@@ -659,7 +662,7 @@ export const spec = {
           if (typeof (bidRequest.userId[key]) == 'string') {
             ret[key] = bidRequest.userId[key];
           } else if (typeof (bidRequest.userId[key]) == 'object') {
-            ret[key] = Object.values(bidRequest.userId[key])[0];
+            ret[key] = bidRequest.userId[key][Object.keys(bidRequest.userId[key])[0]]; // cannot use Object.values
           } else {
             this.logError(`failed to get string key value for userId : ${key}`);
           }
@@ -706,22 +709,6 @@ export const spec = {
     return null;
   },
   /**
-   * Produces external userid object
-   */
-  // addExternalUserId(eids, value, source, atype) {
-  //   this.logInfo('addExternalUserId', eids, value, source, atype);
-  //   if (typeof value == 'object' || (typeof value == 'string' && value.length > 0)) {
-  //     eids.push({
-  //       source,
-  //       uids: [{
-  //         id: value,
-  //         atype
-  //       }]
-  //     });
-  //   }
-  // },
-  /**
-   *
    * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
    * http://prebid.org/dev-docs/modules/userId.html
    * @param validBidRequests
@@ -730,30 +717,12 @@ export const spec = {
   generateEids(validBidRequests) {
     let eids;
     const bidRequest = validBidRequests[0];
-
-    // it would be better if we could use this:
-    // this.logInfo('getting bidRequest.userIdAsEids : ', bidRequest.userIdAsEids);
-    // return bidRequest.userIdAsEids;
-
     if (bidRequest && bidRequest.userId) {
-      // eids = [];
       eids = bidRequest.userIdAsEids;
       this.handleTTDId(eids, validBidRequests);
-      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid', 1); // need to find out if I can remove these
-      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcommon', 1);
-      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.pubcid`), 'pubcid.org', 1); // this is the current one 20200803
-      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.id5id`), 'id5-sync.com', 1);
-      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteortus.${BIDDER_CODE}.userid`), 'criteortus', 1); // deprecated & should be removed asap
-      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.criteoId`), 'criteo', 1);
-      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.idl_env`), 'liveramp.com', 1);
-      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.lipb.lipbid`), 'liveintent.com', 1);
-      // this.addExternalUserId(eids, utils.deepAccess(bidRequest, `userId.parrableId.eid`), 'parrable.com', 1);
-      // // @todo - what to add for sharedId & lotamePanoramaId ?
-      // this.logInfo('generateEids : ** NOTE ** - not currently handling sharedId or lotamePanoramaId');
     }
     return eids;
   },
-  // @todo delete this as soon as we can stop calling it:
   handleTTDId(eids, validBidRequests) {
     let ttdId = null;
     let adsrvrOrgId = config.getConfig('adsrvrOrgId');
@@ -1138,7 +1107,6 @@ function getPlayerSizeFromObject(objVideo) {
   The renderer function will not assume that the renderer script is loaded - it will push() the ultimate render function call
  */
 function newRenderer(adUnitCode, rendererOptions = {}) {
-  // brought from the test branch - this could be an improvement
   let isLoaded = window.ozoneVideo;
   spec.logInfo(`newRenderer going to set loaded to ${isLoaded ? 'true' : 'false'}`);
   const renderer = Renderer.install({
