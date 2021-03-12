@@ -55,8 +55,7 @@ var validBidRequestsMulti = [
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
 ];
-// use 'pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId', 'criteortus'
-// NOTE THAT criteortus is no longer referenced anywhere - should be removed asap
+// use 'pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId'
 // see http://prebid.org/dev-docs/modules/userId.html
 var validBidRequestsWithUserIdData = [
   {
@@ -73,12 +72,11 @@ var validBidRequestsWithUserIdData = [
     userId: {
       'pubcid': '12345678',
       'tdid': '1111tdid',
-      'id5id': 'ID5-someId',
-      'criteortus': {'ozone': {'userid': 'critId123'}},
+      'id5id': { uid: '1111', ext: { linkType: 2, abTestingControlGroup: false } },
       'criteoId': '1111criteoId',
       'idl_env': 'liverampId',
-      'lipb': {'lipbid': 'lipbidId123'},
-      'parrableId': {'eid': '01.5678.parrableid'}
+      'parrableId': {'eid': '01.5678.parrableid'},
+      'sharedid': {'id': '01EAJWWNEPN3CYMM5N8M5VXY22', 'third': '01EAJWWNEPN3CYMM5N8M5VXY22'}
     },
     userIdAsEids: [
       {
@@ -108,13 +106,6 @@ var validBidRequestsWithUserIdData = [
         }]
       },
       {
-        'source': 'criteortus',
-        'uids': [{
-          'id': {'ozone': {'userid': 'critId123'}},
-          'atype': 1,
-        }]
-      },
-      {
         'source': 'criteoId',
         'uids': [{
           'id': '1111criteoId',
@@ -125,13 +116,6 @@ var validBidRequestsWithUserIdData = [
         'source': 'idl_env',
         'uids': [{
           'id': 'liverampId',
-          'atype': 1,
-        }]
-      },
-      {
-        'source': 'lipb',
-        'uids': [{
-          'id': {'lipbid': 'lipbidId123'},
           'atype': 1,
         }]
       },
@@ -330,7 +314,7 @@ var validBidderRequest1OutstreamVideo2020 = {
           ]
         },
         'userId': {
-          'id5id': 'ID5-ZHMOpSv9CkZNiNd1oR4zc62AzCgSS73fPjmQ6Od7OA',
+          'id5id': { uid: '1111', ext: { linkType: 2, abTestingControlGroup: false } },
           'pubcid': '2ada6ae6-aeca-4e07-8922-a99b3aaf8a56'
         },
         'userIdAsEids': [
@@ -2014,14 +1998,13 @@ describe('ozone Adapter', function () {
       let bidRequests = validBidRequests;
       // values from http://prebid.org/dev-docs/modules/userId.html#pubcommon-id
       bidRequests[0]['userId'] = {
-        'criteortus': '1111',
         'digitrustid': {data: {id: 'DTID', keyv: 4, privacy: {optout: false}, producer: 'ABC', version: 2}},
-        'id5id': '2222',
+        'id5id': { uid: '1111', ext: { linkType: 2, abTestingControlGroup: false } },
         'idl_env': '3333',
-        'lipb': {'lipbid': '4444'},
         'parrableid': 'eidVersion.encryptionKeyReference.encryptedValue',
         'pubcid': '5555',
-        'tdid': '6666'
+        'tdid': '6666',
+        'sharedid': {'id': '01EAJWWNEPN3CYMM5N8M5VXY22', 'third': '01EAJWWNEPN3CYMM5N8M5VXY22'}
       };
       bidRequests[0]['userIdAsEids'] = validBidRequestsWithUserIdData[0]['userIdAsEids'];
       const request = spec.buildRequests(bidRequests, bidderRequest);
@@ -2035,14 +2018,13 @@ describe('ozone Adapter', function () {
       let bidRequests = validBidRequests;
       // values from http://prebid.org/dev-docs/modules/userId.html#pubcommon-id
       bidRequests[0]['userId'] = {
-        'criteortus': '1111',
         'digitrustid': {data: {id: 'DTID', keyv: 4, privacy: {optout: false}, producer: 'ABC', version: 2}},
-        'id5id': '2222',
+        'id5id': { uid: '1111', ext: { linkType: 2, abTestingControlGroup: false } },
         'idl_env': '3333',
-        'lipb': {'lipbid': '4444'},
         'parrableid': 'eidVersion.encryptionKeyReference.encryptedValue',
         // 'pubcid': '5555', // remove pubcid from here to emulate the OLD module & cause the failover code to kick in
-        'tdid': '6666'
+        'tdid': '6666',
+        'sharedid': {'id': '01EAJWWNEPN3CYMM5N8M5VXY22', 'third': '01EAJWWNEPN3CYMM5N8M5VXY22'}
       };
       bidRequests[0]['userIdAsEids'] = validBidRequestsWithUserIdData[0]['userIdAsEids'];
       const request = spec.buildRequests(bidRequests, validBidderRequest.bidderRequest);
@@ -2056,11 +2038,9 @@ describe('ozone Adapter', function () {
       /*
       'pubcid': '12345678',
       'tdid': '1111tdid',
-      'id5id': 'ID5-someId',
-      'criteortus': {'ozone': {'userid': 'critId123'}},
+      'id5id': { uid: '1111', ext: { linkType: 2, abTestingControlGroup: false } },
       'criteoId': '1111criteoId',
       'idl_env': 'liverampId',
-      'lipb': {'lipbid': 'lipbidId123'},
       'parrableId': {'eid': '01.5678.parrableid'}
        */
 
@@ -2074,16 +2054,12 @@ describe('ozone Adapter', function () {
       expect(payload.user.ext.eids[1]['uids'][0]['id']).to.equal('1111tdid');
       expect(payload.user.ext.eids[2]['source']).to.equal('id5-sync.com');
       expect(payload.user.ext.eids[2]['uids'][0]['id']).to.equal('ID5-someId');
-      expect(payload.user.ext.eids[3]['source']).to.equal('criteortus'); // this is deprecated
-      expect(payload.user.ext.eids[3]['uids'][0]['id']['ozone']['userid']).to.equal('critId123');
-      expect(payload.user.ext.eids[4]['source']).to.equal('criteoId');
-      expect(payload.user.ext.eids[4]['uids'][0]['id']).to.equal('1111criteoId');
-      expect(payload.user.ext.eids[5]['source']).to.equal('idl_env');
-      expect(payload.user.ext.eids[5]['uids'][0]['id']).to.equal('liverampId');
-      expect(payload.user.ext.eids[6]['source']).to.equal('lipb');
-      expect(payload.user.ext.eids[6]['uids'][0]['id']['lipbid']).to.equal('lipbidId123');
-      expect(payload.user.ext.eids[7]['source']).to.equal('parrableId');
-      expect(payload.user.ext.eids[7]['uids'][0]['id']['eid']).to.equal('01.5678.parrableid');
+      expect(payload.user.ext.eids[3]['source']).to.equal('criteoId');
+      expect(payload.user.ext.eids[3]['uids'][0]['id']).to.equal('1111criteoId');
+      expect(payload.user.ext.eids[4]['source']).to.equal('idl_env');
+      expect(payload.user.ext.eids[4]['uids'][0]['id']).to.equal('liverampId');
+      expect(payload.user.ext.eids[5]['source']).to.equal('parrableId');
+      expect(payload.user.ext.eids[5]['uids'][0]['id']['eid']).to.equal('01.5678.parrableid');
     });
 
     it('replaces the auction url for a config override', function () {
@@ -2131,8 +2107,8 @@ describe('ozone Adapter', function () {
       config.setConfig({'lmc': {'kvpPrefix': null}}); // I cant remove the key so set the value to null
       spec.propertyBag.whitelabel = null;
     });
-    var specMock = utils.deepClone(spec);
     it('should use oztestmode GET value if set', function() {
+      var specMock = utils.deepClone(spec);
       // mock the getGetParametersAsObject function to simulate GET parameters for oztestmode:
       specMock.getGetParametersAsObject = function() {
         return {'oztestmode': 'mytestvalue_123'};
@@ -2143,6 +2119,7 @@ describe('ozone Adapter', function () {
       expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
     });
     it('should use oztestmode GET value if set, even if there is no customdata in config', function() {
+      var specMock = utils.deepClone(spec);
       // mock the getGetParametersAsObject function to simulate GET parameters for oztestmode:
       specMock.getGetParametersAsObject = function() {
         return {'oztestmode': 'mytestvalue_123'};
@@ -2152,8 +2129,33 @@ describe('ozone Adapter', function () {
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
     });
+    it('should use GET values auction=dev & cookiesync=dev if set', function() {
+      // mock the getGetParametersAsObject function to simulate GET parameters for oztestmode:
+      var specMock = utils.deepClone(spec);
+      specMock.getGetParametersAsObject = function() {
+        return {};
+      };
+      let request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
+      let url = request.url;
+      expect(url).to.equal('https://elb.the-ozone-project.com/openrtb2/auction');
+      let cookieUrl = specMock.getCookieSyncUrl();
+      expect(cookieUrl).to.equal('https://elb.the-ozone-project.com/static/load-cookie.html');
+
+      // now mock the response from getGetParametersAsObject & do the request again
+
+      specMock = utils.deepClone(spec);
+      specMock.getGetParametersAsObject = function() {
+        return {'auction': 'dev', 'cookiesync': 'dev'};
+      };
+      request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
+      url = request.url;
+      expect(url).to.equal('https://test.ozpr.net/openrtb2/auction');
+      cookieUrl = specMock.getCookieSyncUrl();
+      expect(cookieUrl).to.equal('https://test.ozpr.net/static/load-cookie.html');
+    });
     it('should use a valid ozstoredrequest GET value if set to override the placementId values, and set oz_rw if we find it', function() {
       // mock the getGetParametersAsObject function to simulate GET parameters for ozstoredrequest:
+      var specMock = utils.deepClone(spec);
       specMock.getGetParametersAsObject = function() {
         return {'ozstoredrequest': '1122334455'}; // 10 digits are valid
       };
@@ -2164,6 +2166,7 @@ describe('ozone Adapter', function () {
     });
     it('should NOT use an invalid ozstoredrequest GET value if set to override the placementId values, and set oz_rw to 0', function() {
       // mock the getGetParametersAsObject function to simulate GET parameters for ozstoredrequest:
+      var specMock = utils.deepClone(spec);
       specMock.getGetParametersAsObject = function() {
         return {'ozstoredrequest': 'BADVAL'}; // 10 digits are valid
       };

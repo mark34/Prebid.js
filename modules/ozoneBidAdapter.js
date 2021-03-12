@@ -45,6 +45,7 @@ const ORIGIN = 'https://elb.the-ozone-project.com' // applies only to auction & 
 const AUCTIONURI = '/openrtb2/auction';
 const OZONECOOKIESYNC = '/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+const ORIGIN_DEV = 'https://test.ozpr.net';
 
 // --- START REMOVE FOR RELEASE
 // const AUCTIONURI = 'https://www.betalyst.com/test/20200622-auction-2-bids.php'; // fake auction response with 2 bids from the same bidder for an adslot
@@ -58,7 +59,7 @@ const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.0';
+const OZONEVERSION = '2.5.1';
 export const spec = {
   gvlid: 524,
   aliases: [{ code: 'lmc' }],
@@ -97,7 +98,21 @@ export const spec = {
       if (bidderConfig.endpointOverride.rendererUrl) {
         this.propertyBag.whitelabel.rendererUrl = bidderConfig.endpointOverride.rendererUrl;
       }
+      if (bidderConfig.endpointOverride.cookieSyncUrl) {
+        this.propertyBag.whitelabel.cookieSyncUrl = bidderConfig.endpointOverride.cookieSyncUrl;
+      }
     }
+    try {
+      let arr = this.getGetParametersAsObject();
+      if (arr.hasOwnProperty('auction') && arr.auction === 'dev') {
+        utils.logInfo('GET: auction=dev');
+        this.propertyBag.whitelabel.auctionUrl = ORIGIN_DEV + AUCTIONURI;
+      }
+      if (arr.hasOwnProperty('cookiesync') && arr.cookiesync === 'dev') {
+        utils.logInfo('GET: cookiesync=dev');
+        this.propertyBag.whitelabel.cookieSyncUrl = ORIGIN_DEV + OZONECOOKIESYNC;
+      }
+    } catch (e) {}
     this.logInfo('set propertyBag.whitelabel to', this.propertyBag.whitelabel);
   },
   getAuctionUrl() {
@@ -455,7 +470,10 @@ export const spec = {
       enhancedAdserverTargeting = true;
     }
     this.logInfo('enhancedAdserverTargeting', enhancedAdserverTargeting);
+
+    // 2021-03-05 - comment this out for a build without adding adid to the response
     serverResponse.seatbid = injectAdIdsIntoAllBidResponses(serverResponse.seatbid); // we now make sure that each bid in the bidresponse has a unique (within page) adId attribute.
+
     serverResponse.seatbid = this.removeSingleBidderMultipleBids(serverResponse.seatbid);
     let ozOmpFloorDollars = this.getWhitelabelConfigItem('ozone.oz_omp_floor'); // valid only if a dollar value (typeof == 'number')
     let addOzOmpFloorDollars = typeof ozOmpFloorDollars === 'number';
@@ -597,9 +615,12 @@ export const spec = {
       }
       arrQueryString.push('gdpr=' + (utils.deepAccess(gdprConsent, 'gdprApplies', false) ? '1' : '0'));
       arrQueryString.push('gdpr_consent=' + utils.deepAccess(gdprConsent, 'consentString', ''));
-      var objKeys = Object.getOwnPropertyNames(this.cookieSyncBag.userIdObject);
-      for (let idx in objKeys) {
-        let keyname = objKeys[idx];
+      // var objKeys = Object.getOwnPropertyNames(this.cookieSyncBag.userIdObject);
+      // for (let idx in objKeys) {
+      //   let keyname = objKeys[idx];
+      //   arrQueryString.push(keyname + '=' + this.cookieSyncBag.userIdObject[keyname]);
+      // }
+      for (let keyname in this.cookieSyncBag.userIdObject) {
         arrQueryString.push(keyname + '=' + this.cookieSyncBag.userIdObject[keyname]);
       }
       arrQueryString.push('publisherId=' + this.cookieSyncBag.publisherId);
@@ -646,15 +667,15 @@ export const spec = {
     return null;
   },
   /**
+   * This is used for cookie sync, not auction call
    *  Look for pubcid & all the other IDs according to http://prebid.org/dev-docs/modules/userId.html
-   *  NOTE that criteortus is deprecated & should be removed asap
    *  @return map
    */
   findAllUserIds(bidRequest) {
     var ret = {};
-    // @todo - what is fabrick called & where to look for it? If it's a simple value then it will automatically be ok
-    let searchKeysSingle = ['pubcid', 'tdid', 'id5id', 'parrableId', 'idl_env', 'criteoId', 'criteortus',
-      'sharedid', 'lotamePanoramaId', 'fabrickId'];
+    // @todo - what is Neustar fabrick called & where to look for it? If it's a simple value then it will automatically be ok
+    // it is not in the table 'Bidder Adapter Implementation' on https://docs.prebid.org/dev-docs/modules/userId.html#prebidjs-adapters
+    let searchKeysSingle = ['pubcid', 'tdid', 'idl_env', 'criteoId', 'lotamePanoramaId', 'fabrickId'];
     if (bidRequest.hasOwnProperty('userId')) {
       for (let arrayId in searchKeysSingle) {
         let key = searchKeysSingle[arrayId];
@@ -662,19 +683,33 @@ export const spec = {
           if (typeof (bidRequest.userId[key]) == 'string') {
             ret[key] = bidRequest.userId[key];
           } else if (typeof (bidRequest.userId[key]) == 'object') {
+            this.logError(`WARNING: findAllUserIds had to use first key in user object to get value for bid.userId key: ${key}. Prebid adapter should be updated.`);
+            // fallback - get the value of the first key in the object; this is NOT desirable behaviour
             ret[key] = bidRequest.userId[key][Object.keys(bidRequest.userId[key])[0]]; // cannot use Object.values
           } else {
             this.logError(`failed to get string key value for userId : ${key}`);
           }
         }
       }
-      var lipbid = utils.deepAccess(bidRequest.userId, 'lipb.lipbid');
-      if (lipbid) {
-        ret['lipb'] = {'lipbid': lipbid};
+      let id5id = utils.deepAccess(bidRequest.userId, 'id5id.uid');
+      if (id5id) {
+        ret['id5id'] = id5id;
+      }
+      let parrableId = utils.deepAccess(bidRequest.userId, 'parrableId.eid');
+      if (parrableId) {
+        ret['parrableId'] = parrableId;
+      }
+      let sharedid = utils.deepAccess(bidRequest.userId, 'sharedid.id');
+      if (sharedid) {
+        ret['sharedid'] = sharedid;
+      }
+      let sharedidthird = utils.deepAccess(bidRequest.userId, 'sharedid.third');
+      if (sharedidthird) {
+        ret['sharedidthird'] = sharedidthird;
       }
     }
     if (!ret.hasOwnProperty('pubcid')) {
-      var pubcid = utils.deepAccess(bidRequest, 'crumbs.pubcid');
+      let pubcid = utils.deepAccess(bidRequest, 'crumbs.pubcid');
       if (pubcid) {
         ret['pubcid'] = pubcid; // if built with old pubCommonId module
       }
