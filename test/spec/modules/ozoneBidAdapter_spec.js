@@ -75,6 +75,7 @@ var validBidRequestsWithUserIdData = [
       'id5id': { uid: '1111', ext: { linkType: 2, abTestingControlGroup: false } },
       'criteoId': '1111criteoId',
       'idl_env': 'liverampId',
+      'lipb': {'lipbid': 'lipbidId123'},
       'parrableId': {'eid': '01.5678.parrableid'},
       'sharedid': {'id': '01EAJWWNEPN3CYMM5N8M5VXY22', 'third': '01EAJWWNEPN3CYMM5N8M5VXY22'}
     },
@@ -116,6 +117,13 @@ var validBidRequestsWithUserIdData = [
         'source': 'idl_env',
         'uids': [{
           'id': 'liverampId',
+          'atype': 1,
+        }]
+      },
+      {
+        'source': 'lipb',
+        'uids': [{
+          'id': {'lipbid': 'lipbidId123'},
           'atype': 1,
         }]
       },
@@ -2058,8 +2066,10 @@ describe('ozone Adapter', function () {
       expect(payload.user.ext.eids[3]['uids'][0]['id']).to.equal('1111criteoId');
       expect(payload.user.ext.eids[4]['source']).to.equal('idl_env');
       expect(payload.user.ext.eids[4]['uids'][0]['id']).to.equal('liverampId');
-      expect(payload.user.ext.eids[5]['source']).to.equal('parrableId');
-      expect(payload.user.ext.eids[5]['uids'][0]['id']['eid']).to.equal('01.5678.parrableid');
+      expect(payload.user.ext.eids[5]['source']).to.equal('lipb');
+      expect(payload.user.ext.eids[5]['uids'][0]['id']['lipbid']).to.equal('lipbidId123');
+      expect(payload.user.ext.eids[6]['source']).to.equal('parrableId');
+      expect(payload.user.ext.eids[6]['uids'][0]['id']['eid']).to.equal('01.5678.parrableid');
     });
 
     it('replaces the auction url for a config override', function () {
@@ -2069,6 +2079,21 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
       expect(request.url).to.equal(fakeOrigin + '/openrtb2/auction');
       expect(request.method).to.equal('POST');
+      const data = JSON.parse(request.data);
+      expect(data.ext.ozone.origin).to.equal(fakeOrigin);
+      config.setConfig({'ozone': {'kvpPrefix': null, 'endpointOverride': null}});
+      spec.propertyBag.whitelabel = null;
+    });
+
+    it('replaces the FULL auction url for a config override', function () {
+      spec.propertyBag.whitelabel = null;
+      let fakeurl = 'http://sometestendpoint/myfullurl';
+      config.setConfig({'ozone': {'endpointOverride': {'auctionUrl': fakeurl}}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      expect(request.url).to.equal(fakeurl);
+      expect(request.method).to.equal('POST');
+      const data = JSON.parse(request.data);
+      expect(data.ext.ozone.origin).to.equal(fakeurl);
       config.setConfig({'ozone': {'kvpPrefix': null, 'endpointOverride': null}});
       spec.propertyBag.whitelabel = null;
     });
@@ -2084,6 +2109,26 @@ describe('ozone Adapter', function () {
       expect(bid.renderer.url).to.equal(fakeUrl);
       config.setConfig({'ozone': {'kvpPrefix': null, 'endpointOverride': null}});
       spec.propertyBag.whitelabel = null;
+    });
+    it('should generate all the adservertargeting keys correctly named', function () {
+      var specMock = utils.deepClone(spec);
+      config.setConfig({'ozone': {'kvpPrefix': 'xx'}});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(result[0].adserverTargeting).to.have.own.property('xx_appnexus_crid');
+      expect(utils.deepAccess(result[0].adserverTargeting, 'xx_appnexus_crid')).to.equal('98493581');
+      expect(utils.deepAccess(result[0].adserverTargeting, 'xx_pb')).to.equal(0.5);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'xx_adId')).to.equal('2899ec066a91ff8-0-xx-0');
+      expect(utils.deepAccess(result[0].adserverTargeting, 'xx_size')).to.equal('300x600');
+      config.resetConfig();
+    });
+    it('should create a meta object on each bid returned', function () {
+      var specMock = utils.deepClone(spec);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(result[0]).to.have.own.property('meta');
+      expect(result[0].meta.advertiserDomains[0]).to.equal('http://prebid.org');
+      config.resetConfig();
     });
 
     it('replaces the kvp prefix ', function () {
@@ -2117,6 +2162,32 @@ describe('ozone Adapter', function () {
       const data = JSON.parse(request.data);
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
+    });
+    it('should pass through GET params if present: ozf, ozpf, ozrp, ozip', function() {
+      var specMock = utils.deepClone(spec);
+      // mock the getGetParametersAsObject function to simulate GET parameters :
+      specMock.getGetParametersAsObject = function() {
+        return {ozf: '1', ozpf: '0', ozrp: '2', ozip: '123'};
+      };
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const data = JSON.parse(request.data);
+      expect(data.ext.ozone.ozf).to.equal(1);
+      expect(data.ext.ozone.ozpf).to.equal(0);
+      expect(data.ext.ozone.ozrp).to.equal(2);
+      expect(data.ext.ozone.ozip).to.equal(123);
+    });
+    it('should pass through GET params if present: ozf, ozpf, ozrp, ozip with alternative values', function() {
+      var specMock = utils.deepClone(spec);
+      // mock the getGetParametersAsObject function to simulate GET parameters :
+      specMock.getGetParametersAsObject = function() {
+        return {ozf: 'false', ozpf: 'true', ozrp: 'xyz', ozip: 'hello'};
+      };
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const data = JSON.parse(request.data);
+      expect(data.ext.ozone.ozf).to.equal(0);
+      expect(data.ext.ozone.ozpf).to.equal(1);
+      expect(data.ext.ozone).to.not.haveOwnProperty('ozrp');
+      expect(data.ext.ozone).to.not.haveOwnProperty('ozip');
     });
     it('should use oztestmode GET value if set, even if there is no customdata in config', function() {
       var specMock = utils.deepClone(spec);
@@ -2377,7 +2448,7 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adv')).to.be.undefined;
-      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adId')).to.equal('2899ec066a91ff8-0-0');
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adId')).to.equal('2899ec066a91ff8-0-oz-0');
       config.resetConfig();
     });
     it('should ignore a whitelist if enhancedAdserverTargeting is false', function () {
@@ -2424,7 +2495,7 @@ describe('ozone Adapter', function () {
       const result = spec.interpretResponse(validres, request);
       expect(result.length).to.equal(1);
       expect(result[0]['price']).to.equal(0.9);
-      expect(result[0]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('2899ec066a91ff8-0-1');
+      expect(result[0]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('2899ec066a91ff8-0-oz-1');
     });
     it('should correctly process an auction with 2 adunits & multiple bidders one of which bids for both adslots', function() {
       let validres = JSON.parse(JSON.stringify(multiResponse1));
@@ -2434,7 +2505,7 @@ describe('ozone Adapter', function () {
       expect(result[1]['price']).to.equal(0.521);
       expect(result[1]['impid']).to.equal('3025f169863b7f8');
       expect(result[1]['id']).to.equal('18552976939844999');
-      expect(result[1]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('3025f169863b7f8-0-2');
+      expect(result[1]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('3025f169863b7f8-0-oz-2');
       // change the bid values so a different second bid for an impid by the same bidder gets dropped
       validres = JSON.parse(JSON.stringify(multiResponse1));
       validres.body.seatbid[0].bid[1].price = 1.1;
@@ -2444,7 +2515,7 @@ describe('ozone Adapter', function () {
       expect(result[1]['price']).to.equal(1.1);
       expect(result[1]['impid']).to.equal('3025f169863b7f8');
       expect(result[1]['id']).to.equal('18552976939844681');
-      expect(result[1]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('3025f169863b7f8-0-1');
+      expect(result[1]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('3025f169863b7f8-0-oz-1');
     });
   });
 
