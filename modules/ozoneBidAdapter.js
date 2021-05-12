@@ -333,6 +333,14 @@ export const spec = {
           obj.native = ozoneBidRequest.mediaTypes[NATIVE];
           this.logInfo('setting native object from the mediaTypes.native element: ' + obj.id + ':', obj.native);
         }
+        // is the publisher specifying floors, and is the floors module enabled?
+        if (ozoneBidRequest.hasOwnProperty('getFloor')) {
+          this.logInfo('This bidRequest object has property: getFloor');
+          obj.floor = this.getFloorObjectForAuction(ozoneBidRequest);
+          this.logInfo('obj.floor is : ', obj.floor);
+        } else {
+          this.logInfo('This bidRequest object DOES NOT have property: getFloor');
+        }
       }
       if (arrBannerSizes.length > 0) {
         // build the banner request using banner sizes we found in either possible location:
@@ -461,6 +469,37 @@ export const spec = {
     this.propertyBag.buildRequestsEnd = new Date().getTime();
     this.logInfo(`buildRequests going to return for non-single at time ${this.propertyBag.buildRequestsEnd} (took ${this.propertyBag.buildRequestsEnd - this.propertyBag.buildRequestsStart}ms): `, arrRet);
     return arrRet;
+  },
+  /**
+   * parse a bidRequestRef that contains getFloor(), get all the data from it for the sizes & media requested for this bid & return an object containing floor data you can send to auciton endpoint
+   * @param bidRequestRef object = a valid bid request object reference
+   * @return object
+   *
+   * call:
+   * bidObj.getFloor({
+      currency: 'USD', <- currency to return the value in
+      mediatype: ‘banner’,
+      size: ‘*’ <- or [300,250] or [[300,250],[640,480]]
+   * });
+   *
+   */
+  getFloorObjectForAuction(bidRequestRef) {
+    const mediaTypesSizes = {
+      banner: utils.deepAccess(bidRequestRef, 'mediaTypes.banner.sizes', null),
+      video: utils.deepAccess(bidRequestRef, 'mediaTypes.video.playerSize', null),
+      native: utils.deepAccess(bidRequestRef, 'mediaTypes.native.image.sizes', null)
+    }
+    let ret = {};
+    if (mediaTypesSizes.banner) {
+      ret.banner = bidRequestRef.getFloor({mediatype: 'banner', currency: 'USD', size: mediaTypesSizes.banner});
+    }
+    if (mediaTypesSizes.video) {
+      ret.video = bidRequestRef.getFloor({mediatype: 'video', currency: 'USD', size: mediaTypesSizes.video});
+    }
+    if (mediaTypesSizes.native) {
+      ret.native = bidRequestRef.getFloor({mediatype: 'native', currency: 'USD', size: mediaTypesSizes.native});
+    }
+    return ret;
   },
   /**
    * Interpret the response if the array contains BIDDER elements, in the format: [ [bidder1 bid 1, bidder1 bid 2], [bidder2 bid 1, bidder2 bid 2] ]
