@@ -65,7 +65,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.1';
+const OZONEVERSION = '2.5.1-video-floor';
 export const spec = {
   gvlid: 524,
   aliases: [{ code: 'lmc', gvlid: 524 }, {code: 'newspassid', gvlid: 524}],
@@ -489,16 +489,18 @@ export const spec = {
       video: utils.deepAccess(bidRequestRef, 'mediaTypes.video.playerSize', null),
       native: utils.deepAccess(bidRequestRef, 'mediaTypes.native.image.sizes', null)
     }
+    this.logInfo('getFloorObjectForAuction mediaTypesSizes : ', mediaTypesSizes);
     let ret = {};
     if (mediaTypesSizes.banner) {
-      ret.banner = bidRequestRef.getFloor({mediatype: 'banner', currency: 'USD', size: mediaTypesSizes.banner});
+      ret.banner = bidRequestRef.getFloor({mediaType: 'banner', currency: 'USD', size: mediaTypesSizes.banner});
     }
     if (mediaTypesSizes.video) {
-      ret.video = bidRequestRef.getFloor({mediatype: 'video', currency: 'USD', size: mediaTypesSizes.video});
+      ret.video = bidRequestRef.getFloor({mediaType: 'video', currency: 'USD', size: mediaTypesSizes.video});
     }
     if (mediaTypesSizes.native) {
-      ret.native = bidRequestRef.getFloor({mediatype: 'native', currency: 'USD', size: mediaTypesSizes.native});
+      ret.native = bidRequestRef.getFloor({mediaType: 'native', currency: 'USD', size: mediaTypesSizes.native});
     }
+    this.logInfo('getFloorObjectForAuction returning : ', JSON.parse(JSON.stringify(ret)));
     return ret;
   },
   /**
