@@ -65,7 +65,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.1-video-floor';
+const OZONEVERSION = '2.5.1-video-floor-firstpartydata';
 export const spec = {
   gvlid: 524,
   aliases: [{ code: 'lmc', gvlid: 524 }, {code: 'newspassid', gvlid: 524}],
@@ -478,7 +478,7 @@ export const spec = {
    * call:
    * bidObj.getFloor({
       currency: 'USD', <- currency to return the value in
-      mediatype: ‘banner’,
+      mediaType: ‘banner’,
       size: ‘*’ <- or [300,250] or [[300,250],[640,480]]
    * });
    *
