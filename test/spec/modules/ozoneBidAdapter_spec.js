@@ -27,6 +27,20 @@ var validBidRequests = [
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
 ];
+var validBidRequestsNoCustomData = [
+  {
+    adUnitCode: 'div-gpt-ad-1460505748561-0',
+    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
+    bidId: '2899ec066a91ff8',
+    bidRequestsCount: 1,
+    bidder: 'ozone',
+    bidderRequestId: '1c1586b27a1b5c8',
+    crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
+    params: { publisherId: '9876abcd12-3', placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    sizes: [[300, 250], [300, 600]],
+    transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
+  }
+];
 var validBidRequestsMulti = [
   {
     testId: 1,
@@ -2304,6 +2318,72 @@ describe('ozone Adapter', function () {
       const payload = JSON.parse(request.data);
       expect(payload.ext.ozone.oz_kvp_rw).to.equal(0);
     });
+    it('should handle ortb2 site data', function () {
+      config.setConfig({'ortb2': {
+        'site': {
+          'name': 'example_ortb2_name',
+          'domain': 'page.example.com',
+          'cat': ['IAB2'],
+          'sectioncat': ['IAB2-2'],
+          'pagecat': ['IAB2-2'],
+          'page': 'https://page.example.com/here.html',
+          'ref': 'https://ref.example.com',
+          'keywords': 'power tools, drills',
+          'search': 'drill'
+        }
+      }});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(payload.imp[0].ext.ozone.customData[0].targeting.name).to.equal('example_ortb2_name');
+      expect(payload.user.ext).to.not.have.property('gender');
+      config.resetConfig();
+    });
+    it('should add ortb2 site data when there is no customData already created', function () {
+      config.setConfig({'ortb2': {
+        'site': {
+          'name': 'example_ortb2_name',
+          'domain': 'page.example.com',
+          'cat': ['IAB2'],
+          'sectioncat': ['IAB2-2'],
+          'pagecat': ['IAB2-2'],
+          'page': 'https://page.example.com/here.html',
+          'ref': 'https://ref.example.com',
+          'keywords': 'power tools, drills',
+          'search': 'drill'
+        }
+      }});
+      const request = spec.buildRequests(validBidRequestsNoCustomData, validBidderRequest.bidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(payload.imp[0].ext.ozone.customData[0].targeting.name).to.equal('example_ortb2_name');
+      expect(payload.imp[0].ext.ozone.customData[0].targeting).to.not.have.property('gender')
+      config.resetConfig();
+    });
+    it('should add ortb2 user data to the user object', function () {
+      config.setConfig({'ortb2': {
+        'user': {
+          'gender': 'who knows these days'
+        }
+      }});
+      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(payload.user.gender).to.equal('who knows these days');
+      config.resetConfig();
+    });
+    it('should not override the user.ext.consent string even if this is set in config ortb2', function () {
+      config.setConfig({'ortb2': {
+        'user': {
+          'ext': {
+            'consent': 'this is the consent override that shouldnt work',
+            'consent2': 'this should be set'
+          }
+        }
+      }});
+      const request = spec.buildRequests(validBidRequests, bidderRequestWithFullGdpr.bidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(payload.user.ext.consent2).to.equal('this should be set');
+      expect(payload.user.ext.consent).to.equal('BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA');
+      config.resetConfig();
+    });
     it('should have openrtb video params', function() {
       let allowed = ['mimes', 'minduration', 'maxduration', 'protocols', 'w', 'h', 'startdelay', 'placement', 'linearity', 'skip', 'skipmin', 'skipafter', 'sequence', 'battr', 'maxextended', 'minbitrate', 'maxbitrate', 'boxingallowed', 'playbackmethod', 'playbackend', 'delivery', 'pos', 'companionad', 'api', 'companiontype', 'ext'];
       const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest.bidderRequest);
@@ -2314,6 +2394,33 @@ describe('ozone Adapter', function () {
         expect(allowed).to.include(keys[i]);
       }
       expect(payload.imp[0].video.ext).to.include({'context': 'outstream'});
+    });
+    it('should handle standard floor config correctly', function () {
+      config.setConfig({
+        floors: {
+          enforcement: {
+            floorDeals: false,
+            bidAdjustment: true
+          },
+          data: {
+            currency: 'USD',
+            schema: {
+              fields: ['mediaType']
+            },
+            values: {
+              'video': 1.20,
+              'banner': 0.8
+            }
+          }
+        }
+      });
+      let localBidRequest = JSON.parse(JSON.stringify(validBidRequestsWithBannerMediaType));
+      localBidRequest[0].getFloor = function(x) { return {'currency': 'USD', 'floor': 0.8} };
+      const request = spec.buildRequests(localBidRequest, validBidderRequest.bidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(utils.deepAccess(payload, 'imp.0.floor.banner.currency')).to.equal('USD');
+      expect(utils.deepAccess(payload, 'imp.0.floor.banner.floor')).to.equal(0.8);
+      config.resetConfig();
     });
   });
 

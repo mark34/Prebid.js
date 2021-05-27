@@ -65,7 +65,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.5.1-video-floor-firstpartydata';
+const OZONEVERSION = '2.5.1';
 export const spec = {
   gvlid: 524,
   aliases: [{ code: 'lmc', gvlid: 524 }, {code: 'newspassid', gvlid: 524}],
@@ -264,19 +264,13 @@ export const spec = {
     let ozoneRequest = {}; // we only want to set specific properties on this, not validBidRequests[0].params
     delete ozoneRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
 
-    if (bidderRequest && bidderRequest.gdprConsent) {
-      this.logInfo('ADDING GDPR info');
-      let apiVersion = bidderRequest.gdprConsent.apiVersion || '1';
-      ozoneRequest.regs = {ext: {gdpr: bidderRequest.gdprConsent.gdprApplies ? 1 : 0, apiVersion: apiVersion}};
-      if (ozoneRequest.regs.ext.gdpr) {
-        ozoneRequest.user = ozoneRequest.user || {};
-        ozoneRequest.user.ext = {'consent': bidderRequest.gdprConsent.consentString};
-      } else {
-        this.logInfo('**** Strange CMP info: bidderRequest.gdprConsent exists BUT bidderRequest.gdprConsent.gdprApplies is false. See bidderRequest logged above. ****');
-      }
-    } else {
-      this.logInfo('WILL NOT ADD GDPR info; no bidderRequest.gdprConsent object was present.');
+    // First party data module : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
+    let fpd = config.getConfig('ortb2');
+    if (fpd && utils.deepAccess(fpd, 'user')) {
+      this.logInfo('added FPD user object');
+      ozoneRequest.user = fpd.user;
     }
+
     const getParams = this.getGetParametersAsObject();
     const wlOztestmodeKey = whitelabelPrefix + 'testmode';
     const isTestMode = getParams[wlOztestmodeKey] || null; // this can be any string, it's used for testing ads
@@ -355,8 +349,9 @@ export const spec = {
       }
       // these 3 MUST exist - we check them in the validation method
       obj.placementId = placementId;
-      // build the imp['ext'] object
-      obj.ext = {'prebid': {'storedrequest': {'id': placementId}}};
+      // build the imp['ext'] object - NOTE - Dont obliterate anything that' already in obj.ext
+      utils.deepSetValue(obj, 'ext.prebid', {'storedrequest': {'id': placementId}});
+      // obj.ext = {'prebid': {'storedrequest': {'id': placementId}}};
       obj.ext[whitelabelBidder] = {};
       obj.ext[whitelabelBidder].adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
       obj.ext[whitelabelBidder].transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
@@ -373,6 +368,19 @@ export const spec = {
         } else {
           obj.ext[whitelabelBidder].customData = [{'settings': {}, 'targeting': {}}];
           obj.ext[whitelabelBidder].customData[0].targeting[wlOztestmodeKey] = isTestMode;
+        }
+      }
+      if (fpd && utils.deepAccess(fpd, 'site')) {
+        // attach the site fpd into exactly : imp[n].ext.[whitelabel].customData.0.targeting
+        utils.logInfo('added FPD site object');
+        if (utils.deepAccess(obj, 'ext.' + whitelabelBidder + '.customData.0.targeting', false)) {
+          obj.ext[whitelabelBidder].customData[0].targeting = Object.assign(obj.ext[whitelabelBidder].customData[0].targeting, fpd.site);
+          // let keys = utils.getKeys(fpd.site);
+          // for (let i = 0; i < keys.length; i++) {
+          //   obj.ext[whitelabelBidder].customData[0].targeting[keys[i]] = fpd.site[keys[i]];
+          // }
+        } else {
+          utils.deepSetValue(obj, 'ext.' + whitelabelBidder + '.customData.0.targeting', fpd.site);
         }
       }
       return obj;
@@ -412,6 +420,7 @@ export const spec = {
     if (getParams.hasOwnProperty('ozip') && getParams.ozip.match(/^\d+$/)) { extObj[whitelabelBidder]['ozip'] = parseInt(getParams.ozip); }
     if (this.propertyBag.endpointOverride != null) { extObj[whitelabelBidder]['origin'] = this.propertyBag.endpointOverride; }
 
+    // extObj.ortb2 = config.getConfig('ortb2'); // original test location
     var userExtEids = this.generateEids(validBidRequests); // generate the UserIDs in the correct format for UserId module
 
     ozoneRequest.site = {
@@ -420,6 +429,20 @@ export const spec = {
       'id': htmlParams.siteId
     };
     ozoneRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] === 'true') ? 1 : 0;
+
+    // this should come as late as possible so it overrides any user.ext.consent value
+    if (bidderRequest && bidderRequest.gdprConsent) {
+      this.logInfo('ADDING GDPR info');
+      let apiVersion = utils.deepAccess(bidderRequest, 'gdprConsent.apiVersion', 1);
+      ozoneRequest.regs = {ext: {gdpr: bidderRequest.gdprConsent.gdprApplies ? 1 : 0, apiVersion: apiVersion}};
+      if (utils.deepAccess(ozoneRequest, 'regs.ext.gdpr')) {
+        utils.deepSetValue(ozoneRequest, 'user.ext.consent', bidderRequest.gdprConsent.consentString);
+      } else {
+        this.logInfo('**** Strange CMP info: bidderRequest.gdprConsent exists BUT bidderRequest.gdprConsent.gdprApplies is false. See bidderRequest logged above. ****');
+      }
+    } else {
+      this.logInfo('WILL NOT ADD GDPR info; no bidderRequest.gdprConsent object was present.');
+    }
 
     // this is for 2.2.1
     // coppa compliance
@@ -442,7 +465,7 @@ export const spec = {
         data: JSON.stringify(ozoneRequest),
         bidderRequest: bidderRequest
       };
-      this.logInfo('buildRequests request data for single = ', ozoneRequest);
+      this.logInfo('buildRequests request data for single = ', JSON.parse(JSON.stringify(ozoneRequest)));
       this.propertyBag.buildRequestsEnd = new Date().getTime();
       this.logInfo(`buildRequests going to return for single at time ${this.propertyBag.buildRequestsEnd} (took ${this.propertyBag.buildRequestsEnd - this.propertyBag.buildRequestsStart}ms): `, ret);
       return ret;
