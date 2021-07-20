@@ -2134,6 +2134,8 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'xx_pb')).to.equal(0.5);
       expect(utils.deepAccess(result[0].adserverTargeting, 'xx_adId')).to.equal('2899ec066a91ff8-0-xx-0');
       expect(utils.deepAccess(result[0].adserverTargeting, 'xx_size')).to.equal('300x600');
+      expect(utils.deepAccess(result[0].adserverTargeting, 'xx_pb_r')).to.equal('0.50');
+      expect(utils.deepAccess(result[0].adserverTargeting, 'xx_bid')).to.equal('true');
       config.resetConfig();
     });
     it('should create a meta object on each bid returned', function () {
@@ -2447,11 +2449,20 @@ describe('ozone Adapter', function () {
       const result = spec.interpretResponse(validResponse, request);
       expect(result.length).to.equal(1);
     });
+    it('should build bid array with usp/CCPA', function () {
+      let validBR = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr.bidderRequest));
+      validBR.uspConsent = '1YNY';
+      const request = spec.buildRequests(validBidRequests, validBR);
+      const payload = JSON.parse(request.data);
+      expect(payload.user.ext.uspConsent).to.equal('1YNY');
+    });
 
     it('should build bid array with only partial gdpr', function () {
       var validBidderRequestWithGdpr = bidderRequestWithPartialGdpr.bidderRequest;
       validBidderRequestWithGdpr.gdprConsent = {'gdprApplies': 1, 'consentString': 'This is the gdpr consent string'};
       const request = spec.buildRequests(validBidRequests, validBidderRequestWithGdpr);
+      const payload = JSON.parse(request.data);
+      expect(payload.user.ext.consent).to.be.a('string');
     });
 
     it('should fail ok if no seatbid in server response', function () {
@@ -2644,6 +2655,20 @@ describe('ozone Adapter', function () {
       expect(result[0].url).to.include('siteId=1234567890');
       expect(result[0].url).to.include('gdpr=1');
       expect(result[0].url).to.include('gdpr_consent=BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA');
+    });
+    it('should append ccpa (usp data)', function() {
+      // get the cookie bag populated
+      spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', gdpr1, '1YYN');
+      expect(result).to.be.an('array');
+      expect(result[0].url).to.include('usp_consent=1YYN');
+    });
+    it('should use "" if no usp is sent to cookieSync', function() {
+      // get the cookie bag populated
+      spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', gdpr1);
+      expect(result).to.be.an('array');
+      expect(result[0].url).to.include('usp_consent=&');
     });
   });
 
