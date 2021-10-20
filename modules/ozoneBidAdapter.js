@@ -4,6 +4,10 @@ import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
+
+// NOTE this allows us to access the pv value outside of prebid after the auction request.
+// import { getStorageManager } from '../src/storageManager.js'
+
 const BIDDER_CODE = 'ozone';
 // --- START REMOVE FOR RELEASE
 
@@ -904,6 +908,11 @@ export const spec = {
       }
       this.propertyBag.pageId = new Date().getTime() + '_' + randPart;
     }
+    // NOTE this allows us to access the pv value outside of prebid after the auction request.
+    // let storage = getStorageManager(this.gvlid, 'ozone');
+    // if (storage.localStorageIsEnabled()) {
+    //   storage.setDataInLocalStorage('ozone_pv', this.propertyBag.pageId);
+    // }
     return this.propertyBag.pageId;
   },
   unpackVideoConfigIntoIABformat(videoConfig, childConfig) {
