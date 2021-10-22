@@ -14,13 +14,16 @@ const BIDDER_CODE = 'ozone';
 // To remove this : php removecomments.php
 
 /*
-GET parameters:
+GET parameters (20211022):
 pbjs_debug=true
 renderer=https%3A%2F%2Fwww.ardm.io%2Fozone%2Fvideo-testing%2Fprod%2Fhtml5-renderer%2Fozone-renderer-20210406-scroll-listener-noviewportfix.js
 ozf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
 ozpf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
 ozrp (possible values: 0-3 / basically any integer which we just pass along)
 ozip (integer again as a value)
+auction=dev
+cookiesync=dev
+whitelabelPrefix + 'storedrequest'=[a valid stored request ID]
  */
 
 // NOTE THAT the gvl is available at https://iabeurope.eu/vendor-list-tcf-v2-0/
