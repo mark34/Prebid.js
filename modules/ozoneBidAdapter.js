@@ -11,49 +11,27 @@ import { Renderer } from '../src/Renderer.js';
 const BIDDER_CODE = 'ozone';
 // --- START REMOVE FOR RELEASE
 
-// To remove this : php removecomments.php
-
 /*
-GET parameters:
-pbjs_debug=true
-renderer=https%3A%2F%2Fwww.ardm.io%2Fozone%2Fvideo-testing%2Fprod%2Fhtml5-renderer%2Fozone-renderer-20210406-scroll-listener-noviewportfix.js
-ozf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
-ozpf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
-ozrp (possible values: 0-3 / basically any integer which we just pass along)
-ozip (integer again as a value)
- */
 
-// NOTE THAT the gvl is available at https://iabeurope.eu/vendor-list-tcf-v2-0/
+NOTE - THIS IS A SPECIFIC TEST BUILD THAT WILL NOT BE RELEASED!
 
-// testing fake endpoint for cookie sync new code with postMessage
-// const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
-// const OZONECOOKIESYNC = 'https://betalyst.local/prebid-cookie-sync-development.html';
+IT POINTS TO A TEST ENDPOINT using GET: file_id and target_id
 
-// *** DEV-ozpr
-// const ORIGIN = 'https://test-pub.ozpr.net';
-// const ORIGIN = 'https://test.ozpr.net'; // to do a dev build, just uncomment this line & comment out the prod one
-// const AUCTIONURI = '/openrtb2/auction';
-// const OZONECOOKIESYNC = 'https://test.ozpr.net/static/load-cookie.html';
-// const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
-// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
-// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
-// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
-// const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
-// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh.js'; // video testing
+*/
 
-// *** DEV-afsheen
-// const AUCTIONURI = 'http://afsheen-dev.the-ozone-project.com/openrtb2/auction';
-// const OZONECOOKIESYNC = 'http://afsheen-dev.the-ozone-project.com/static/load-cookie.html';
-// const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
-// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
-// const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
-// const OZONE_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
-// const OZONE_RENDERER_URL = 'http://silvermine.io/ozone/publishers/telegraph/ozone_files/ozone-renderer-jw-unruly.js';
-// --- END REMOVE FOR RELEASE
+function findGetParameter(parameterName) {
+  var result = null;
+  var tmp = [];
+  var items = location.search.substr(1).split('&');
+  for (var index = 0; index < items.length; index++) {
+    tmp = items[index].split('=');
+    if (tmp[0] === parameterName) result = decodeURIComponent(tmp[1]);
+  }
+  return result;
+}
 
-// *** PROD ***
-const ORIGIN = 'https://elb.the-ozone-project.com' // applies only to auction & cookie
-const AUCTIONURI = '/openrtb2/auction';
+const ORIGIN = 'https://www.ardm.io' // applies only to auction & cookie
+const AUCTIONURI = `/ozone/2.6.0/test-no-w-h/ttd_responses/fake_auction_dispatcher.php?file_id=${findGetParameter('file_id')}&target_id=${findGetParameter('target_id')}`;
 const OZONECOOKIESYNC = '/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 const ORIGIN_DEV = 'https://test.ozpr.net';
