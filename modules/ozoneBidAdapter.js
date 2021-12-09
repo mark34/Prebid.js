@@ -73,7 +73,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.6.0';
+const OZONEVERSION = '2.7.0';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}, {code: 'newspassid', gvlid: 524}],
@@ -107,11 +107,13 @@ export const spec = {
     }
     let arr = this.getGetParametersAsObject();
     if (bidderConfig.endpointOverride) {
+
       if (bidderConfig.endpointOverride.origin) {
         this.propertyBag.endpointOverride = bidderConfig.endpointOverride.origin;
         this.propertyBag.whitelabel.auctionUrl = bidderConfig.endpointOverride.origin + AUCTIONURI;
         this.propertyBag.whitelabel.cookieSyncUrl = bidderConfig.endpointOverride.origin + OZONECOOKIESYNC;
       }
+
       if (arr.hasOwnProperty('renderer')) {
         if (arr.renderer.match('%3A%2F%2F')) {
           this.propertyBag.whitelabel.rendererUrl = decodeURIComponent(arr['renderer']);
@@ -159,9 +161,9 @@ export const spec = {
     this.loadWhitelabelData(bid);
     logInfo('isBidRequestValid : ', config.getConfig(), bid);
     let adUnitCode = bid.adUnitCode; // adunit[n].code
-
+    let err1 = 'VALIDATION FAILED : missing {param} : siteId, placementId and publisherId are REQUIRED'
     if (!(bid.params.hasOwnProperty('placementId'))) {
-      logError('VALIDATION FAILED : missing placementId : siteId, placementId and publisherId are REQUIRED', adUnitCode);
+      logError(err1.replace('{param}', 'placementId'), adUnitCode);
       return false;
     }
     if (!this.isValidPlacementId(bid.params.placementId)) {
@@ -169,7 +171,7 @@ export const spec = {
       return false;
     }
     if (!(bid.params.hasOwnProperty('publisherId'))) {
-      logError('VALIDATION FAILED : missing publisherId : siteId, placementId and publisherId are REQUIRED', adUnitCode);
+      logError(err1.replace('{param}', 'publisherId'), adUnitCode);
       return false;
     }
     if (!(bid.params.publisherId).toString().match(/^[a-zA-Z0-9\-]{12}$/)) {
@@ -177,7 +179,7 @@ export const spec = {
       return false;
     }
     if (!(bid.params.hasOwnProperty('siteId'))) {
-      logError('VALIDATION FAILED : missing siteId : siteId, placementId and publisherId are REQUIRED', adUnitCode);
+      logError(err1.replace('{param}', 'siteId'), adUnitCode);
       return false;
     }
     if (!(bid.params.siteId).toString().match(/^[0-9]{10}$/)) {
@@ -264,6 +266,7 @@ export const spec = {
     ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
     let placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
     // build the array of params to attach to `imp`
+    let schain = null;
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
@@ -359,7 +362,7 @@ export const spec = {
       }
       if (fpd && deepAccess(fpd, 'site')) {
         // attach the site fpd into exactly : imp[n].ext.[whitelabel].customData.0.targeting
-        logInfo('added FPD site object');
+        logInfo('added fdp.site');
         if (deepAccess(obj, 'ext.' + whitelabelBidder + '.customData.0.targeting', false)) {
           obj.ext[whitelabelBidder].customData[0].targeting = Object.assign(obj.ext[whitelabelBidder].customData[0].targeting, fpd.site);
           // let keys = getKeys(fpd.site);
@@ -369,6 +372,9 @@ export const spec = {
         } else {
           deepSetValue(obj, 'ext.' + whitelabelBidder + '.customData.0.targeting', fpd.site);
         }
+      }
+      if (!schain && deepAccess(ozoneBidRequest, 'schain')) {
+        schain = ozoneBidRequest.schain;
       }
       return obj;
     });
@@ -385,6 +391,7 @@ export const spec = {
         extObj[whitelabelBidder].pubcid = userIds.pubcid;
       }
     }
+
     extObj[whitelabelBidder].pv = this.getPageId(); // attach the page ID that will be common to all auciton calls for this page if refresh() is called
     let ozOmpFloorDollars = this.getWhitelabelConfigItem('ozone.oz_omp_floor'); // valid only if a dollar value (typeof == 'number')
     logInfo(`${whitelabelPrefix}_omp_floor dollar value = `, ozOmpFloorDollars);
@@ -436,6 +443,10 @@ export const spec = {
     } else {
       logInfo('WILL NOT ADD CCPA info; no bidderRequest.uspConsent.');
     }
+    if (schain) { // we set this while iterating over the bids
+      logInfo('schain found');
+      deepSetValue(ozoneRequest, 'source.ext.schain', schain);
+    }
 
     // this is for 2.2.1
     // coppa compliance
@@ -450,7 +461,7 @@ export const spec = {
       ozoneRequest.auctionId = bidderRequest.auctionId; // not sure if this should be here?
       ozoneRequest.imp = tosendtags;
       ozoneRequest.ext = extObj;
-      ozoneRequest.source = {'tid': bidderRequest.auctionId}; // RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
+      deepSetValue(ozoneRequest, 'tid', bidderRequest.auctionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
       deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
       var ret = {
         method: 'POST',
@@ -472,7 +483,8 @@ export const spec = {
       ozoneRequestSingle.auctionId = imp.ext[whitelabelBidder].transactionId; // not sure if this should be here?
       ozoneRequestSingle.imp = [imp];
       ozoneRequestSingle.ext = extObj;
-      ozoneRequestSingle.source = {'tid': imp.ext[whitelabelBidder].transactionId};
+      deepSetValue(ozoneRequestSingle, 'tid', imp.ext[whitelabelBidder].transactionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
+      // ozoneRequestSingle.source = {'tid': imp.ext[whitelabelBidder].transactionId};
       deepSetValue(ozoneRequestSingle, 'user.ext.eids', userExtEids);
       logInfo('buildRequests RequestSingle (for non-single) = ', ozoneRequestSingle);
       return {

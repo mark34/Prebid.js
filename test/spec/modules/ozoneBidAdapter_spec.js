@@ -2424,6 +2424,27 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(payload, 'imp.0.floor.banner.floor')).to.equal(0.8);
       config.resetConfig();
     });
+
+    it('handles schain object in each bidrequest (will be the same in each br)', function () {
+      let br = JSON.parse(JSON.stringify(validBidRequests));
+      // I only need to inject this into one of the bidrequests - it will get picked up in the br loop
+      let schainConfigObject = {
+        'ver': '1.0',
+        'complete': 1,
+        'nodes': [
+          {
+            'asi': 'bidderA.com',
+            'sid': '00001',
+            'hp': 1
+          }
+        ]
+      };
+      br[0]['schain'] = schainConfigObject;
+      const request = spec.buildRequests(br, validBidderRequest.bidderRequest);
+      const data = JSON.parse(request.data);
+      expect(data.source.ext).to.haveOwnProperty('schain');
+      expect(data.source.ext.schain).to.deep.equal(schainConfigObject); // .deep.equal() : Target object deeply (but not strictly) equals `{a: 1}`
+    });
   });
 
   describe('interpretResponse', function () {

@@ -27,6 +27,9 @@ foreach([$srcOut => $src, $specOut => $spec] as $out => $arr) {
             continue;
         }
         if($writeLine) {
+
+            // second level. Remove commented lines ONLY if the comments are the first things
+            if(preg_match('~^\W*?//~', $line, $arr)) { continue; }
             file_put_contents($out, $line, FILE_APPEND);
         }
     }
