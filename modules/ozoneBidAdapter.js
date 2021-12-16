@@ -107,7 +107,6 @@ export const spec = {
     }
     let arr = this.getGetParametersAsObject();
     if (bidderConfig.endpointOverride) {
-
       if (bidderConfig.endpointOverride.origin) {
         this.propertyBag.endpointOverride = bidderConfig.endpointOverride.origin;
         this.propertyBag.whitelabel.auctionUrl = bidderConfig.endpointOverride.origin + AUCTIONURI;
@@ -362,7 +361,7 @@ export const spec = {
       }
       if (fpd && deepAccess(fpd, 'site')) {
         // attach the site fpd into exactly : imp[n].ext.[whitelabel].customData.0.targeting
-        logInfo('added fdp.site');
+        logInfo('added fpd.site');
         if (deepAccess(obj, 'ext.' + whitelabelBidder + '.customData.0.targeting', false)) {
           obj.ext[whitelabelBidder].customData[0].targeting = Object.assign(obj.ext[whitelabelBidder].customData[0].targeting, fpd.site);
           // let keys = getKeys(fpd.site);
@@ -461,7 +460,7 @@ export const spec = {
       ozoneRequest.auctionId = bidderRequest.auctionId; // not sure if this should be here?
       ozoneRequest.imp = tosendtags;
       ozoneRequest.ext = extObj;
-      deepSetValue(ozoneRequest, 'tid', bidderRequest.auctionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
+      deepSetValue(ozoneRequest, 'source.tid', bidderRequest.auctionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
       deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
       var ret = {
         method: 'POST',
@@ -483,7 +482,7 @@ export const spec = {
       ozoneRequestSingle.auctionId = imp.ext[whitelabelBidder].transactionId; // not sure if this should be here?
       ozoneRequestSingle.imp = [imp];
       ozoneRequestSingle.ext = extObj;
-      deepSetValue(ozoneRequestSingle, 'tid', imp.ext[whitelabelBidder].transactionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
+      deepSetValue(ozoneRequestSingle, 'source.tid', imp.ext[whitelabelBidder].transactionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
       // ozoneRequestSingle.source = {'tid': imp.ext[whitelabelBidder].transactionId};
       deepSetValue(ozoneRequestSingle, 'user.ext.eids', userExtEids);
       logInfo('buildRequests RequestSingle (for non-single) = ', ozoneRequestSingle);
@@ -666,14 +665,15 @@ export const spec = {
   /**
    * Use this to get all config values
    * Now it's getting complicated with whitelabeling, this simplifies the code for getting config values.
-   * eg. to get ozone.oz_omp_floor you just send '_omp_floor'
+   * eg. to get whitelabelled version you just sent the ozone default string like ozone.oz_omp_floor
    * @param ozoneVersion string like 'ozone.oz_omp_floor'
    * @return {string|object}
    */
   getWhitelabelConfigItem(ozoneVersion) {
     if (this.propertyBag.whitelabel.bidder == 'ozone') { return config.getConfig(ozoneVersion); }
     let whitelabelledSearch = ozoneVersion.replace('ozone', this.propertyBag.whitelabel.bidder);
-    whitelabelledSearch = ozoneVersion.replace('oz_', this.propertyBag.whitelabel.keyPrefix + '_');
+    whitelabelledSearch = whitelabelledSearch.replace('oz_', this.propertyBag.whitelabel.keyPrefix + '_');
+    // logInfo('Getting whitelabel config item for : ' + whitelabelledSearch);
     return config.getConfig(whitelabelledSearch);
   },
   /**
