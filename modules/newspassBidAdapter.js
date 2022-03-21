@@ -16,13 +16,25 @@ const BIDDER_CODE = 'newspass';
 /*
 GET parameters (20211022):
 pbjs_debug=true
-renderer=https%3A%2F%2Fwww.ardm.io%2Fozone%2Fvideo-testing%2Fprod%2Fhtml5-renderer%2Fozone-renderer-20210406-scroll-listener-noviewportfix.js
+renderer=[renderer_url]
 nppf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
 nppf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
 nprp (possible values: 0-3 / basically any integer which we just pass along)
 npip (integer again as a value)
-auction=dev
-cookiesync=dev
+auction=[full URL]
+cookiesync=[full URL]
+
+CONFIG :
+np_request: false (do NOT make a request)
+endpointOverride: {
+ origin: [override the https://bidder.newspassid.com protion of auction & cookie sync urls]
+ kvpPrefix: 'np'
+ rendererUrl: [full url]
+ cookieSyncUrl: [full url]
+ auctionUrl: [full url]
+ singleRequest: true|false
+}
+
  */
 
 // NOTE THAT the gvl is available at https://iabeurope.eu/vendor-list-tcf-v2-0/
@@ -35,7 +47,8 @@ cookiesync=dev
 const ORIGIN = 'https://bidder.newspassid.com' // applies only to auction & cookie
 const AUCTIONURI = '/openrtb2/auction';
 const NEWSPASSCOOKIESYNC = '/static/load-cookie.html';
-const NEWSPASS_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
+// renamed 20220210 so there's no ozone stuff called at all (the url is a cname pointing to https://prebid.the-ozone-project.com)
+const NEWSPASS_RENDERER_URL = 'https://bidder.newspassid.com/renderer.js';
 
 // --- START REMOVE FOR RELEASE
 // const AUCTIONURI = 'https://www.betalyst.com/test/20200622-auction-2-bids.php'; // fake auction response with 2 bids from the same bidder for an adslot
@@ -49,7 +62,7 @@ const NEWSPASS_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-render
 // 20200605 - test js renderer
 // const NEWSPASS_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const NEWSPASSVERSION = '2.7.0';
+const NEWSPASSVERSION = '1.0.0';
 export const spec = {
   version: NEWSPASSVERSION,
   code: BIDDER_CODE,
@@ -59,13 +72,12 @@ export const spec = {
   config_defaults: {
     'logId': 'NEWSPASS',
     'bidder': 'newspass',
-    'keyPrefix': 'np',
     'auctionUrl': ORIGIN + AUCTIONURI,
     'cookieSyncUrl': ORIGIN + NEWSPASSCOOKIESYNC,
     'rendererUrl': NEWSPASS_RENDERER_URL
   },
   /**
-   * make sure that the whitelabel/default values are available in the propertyBag
+   * make sure that the default values are available in the propertyBag
    * @param bid Object : the bid
    */
   loadConfiguredData(bid) {
@@ -76,9 +88,6 @@ export const spec = {
     this.propertyBag.config.bidder = bidder;
     let bidderConfig = config.getConfig(bidder) || {};
     logInfo('got bidderConfig: ', JSON.parse(JSON.stringify(bidderConfig)));
-    if (bidderConfig.kvpPrefix) {
-      this.propertyBag.config.keyPrefix = bidderConfig.kvpPrefix;
-    }
     let arrGetParams = this.getGetParametersAsObject();
     if (bidderConfig.endpointOverride) {
       if (bidderConfig.endpointOverride.origin) {
@@ -249,7 +258,7 @@ export const spec = {
           logInfo('no mediaTypes detected - will use the sizes array in the config root');
           arrBannerSizes = npBidRequest.sizes;
         } else {
-          logInfo('no mediaTypes detected, no sizes array in the config root either. Cannot set sizes for banner type');
+          logInfo('Cannot set sizes for banner type');
         }
       } else {
         if (npBidRequest.mediaTypes.hasOwnProperty(BANNER)) {
@@ -330,10 +339,10 @@ export const spec = {
         }
       }
       if (fpd && deepAccess(fpd, 'site')) {
-        // attach the site fpd into exactly : imp[n].ext.[whitelabel].customData.0.targeting
+        // attach the site fpd into exactly : imp[n].ext.newspass.customData.0.targeting
         logInfo('added fpd.site');
         if (deepAccess(obj, 'ext.newspass.customData.0.targeting', false)) {
-          obj.ext['newspass'].customData[0].targeting = Object.assign(obj.ext['newspass'].customData[0].targeting, fpd.site);
+          obj.ext.newspass.customData[0].targeting = Object.assign(obj.ext.newspass.customData[0].targeting, fpd.site);
           // let keys = getKeys(fpd.site);
           // for (let i = 0; i < keys.length; i++) {
           //   obj.ext['newspass'].customData[0].targeting[keys[i]] = fpd.site[keys[i]];
@@ -367,7 +376,7 @@ export const spec = {
     if (typeof npOmpFloorDollars === 'number') {
       extObj['newspass']['np_omp_floor'] = npOmpFloorDollars;
     } else if (typeof npOmpFloorDollars !== 'undefined') {
-      logError(`np_omp_floor is invalid - IF SET then this must be a number, representing dollar value eg. np_omp_floor: 1.55. You have it set as a ` + (typeof npOmpFloorDollars));
+      logError(`np_omp_floor is invalid, type=` + (typeof npOmpFloorDollars));
     }
     let whitelistAdserverKeys = config.getConfig('newspass.np_whitelist_adserver_keys');
     let useWhitelistAdserverKeys = isArray(whitelistAdserverKeys) && whitelistAdserverKeys.length > 0;
@@ -496,7 +505,7 @@ export const spec = {
   interpretResponse(serverResponse, request) {
     if (request && request.bidderRequest && request.bidderRequest.bids) { this.loadConfiguredData(request.bidderRequest.bids[0]); }
     let startTime = new Date().getTime();
-    logInfo(`interpretResponse time: ${startTime} . Time between buildRequests done and interpretResponse start was ${startTime - this.propertyBag.buildRequestsEnd}ms`);
+    logInfo(`interpretResponse time: ${startTime}. buildRequests done -> interpretResponse start was ${startTime - this.propertyBag.buildRequestsEnd}ms`);
     logInfo(`serverResponse, request`, JSON.parse(JSON.stringify(serverResponse)), JSON.parse(JSON.stringify(request)));
     serverResponse = serverResponse.body || {};
     // note that serverResponse.id value is the auction_id we might want to use for reporting reasons.
@@ -576,16 +585,13 @@ export const spec = {
             if (rid != null) {
               adserverTargeting['np_' + bidderName + '_rid'] = rid;
             }
-            if (bidderName.match(/^ozappnexus/)) {
+            // @todo - is npappnexus right?
+            if (bidderName.match(/^npappnexus/)) {
               adserverTargeting['np_' + bidderName + '_sid'] = String(allBidsForThisBidid[bidderName].cid);
             }
           });
         } else {
-          if (useWhitelistAdserverKeys) {
-            logWarn(`You have set a whitelist of adserver keys but this will be ignored because newspass.enhancedAdserverTargeting is set to false. No per-bid keys will be sent to adserver.`);
-          } else {
-            logInfo(`newspass.enhancedAdserverTargeting is set to false, so no per-bid keys will be sent to adserver.`);
-          }
+          logInfo(`newspass.enhancedAdserverTargeting is set to false, no per-bid keys will be sent to adserver.`);
         }
         // also add in the winning bid, to be sent to dfp
         let {seat: winningSeat, bid: winningBid} = this.getWinnerForRequestBid(thisBid.bidId, serverResponse.seatbid);
@@ -839,9 +845,9 @@ export const spec = {
    */
   blockTheRequest() {
     // if there is an newspass.np_request = false then quit now.
-    let ozRequest = config.getConfig('newspass.np_request');
-    if (typeof ozRequest == 'boolean' && !ozRequest) {
-      logWarn(`Will not allow auction : ${this.propertyBag.config.keyPrefix}one.${this.propertyBag.config.keyPrefix}_request is set to false`);
+    let npRequest = config.getConfig('newspass.np_request');
+    if (typeof npRequest == 'boolean' && !npRequest) {
+      logWarn(`Will not allow auction : np_request is set to false`);
       return true;
     }
     return false;
@@ -1023,7 +1029,7 @@ export function injectAdIdsIntoAllBidResponses(seatbid) {
     for (let j = 0; j < sb.bid.length; j++) {
       // modify the bidId per-bid, so each bid has a unique adId within this response, and dfp can select one.
       // 2020-06 we now need a second level of ID because there might be multiple identical impid's within a seatbid!
-      sb.bid[j]['adId'] = `${sb.bid[j]['impid']}-${i}-${spec.propertyBag.config.keyPrefix}-${j}`;
+      sb.bid[j]['adId'] = `${sb.bid[j]['impid']}-${i}-np-${j}`;
     }
   }
   return seatbid;
@@ -1191,7 +1197,7 @@ function getPlayerSizeFromObject(objVideo) {
   The renderer function will not assume that the renderer script is loaded - it will push() the ultimate render function call
  */
 function newRenderer(adUnitCode, rendererOptions = {}) {
-  let isLoaded = window.ozoneVideo;
+  let isLoaded = window.newspassVideo;
   logInfo(`newRenderer going to set loaded to ${isLoaded ? 'true' : 'false'}`);
   const renderer = Renderer.install({
     url: spec.getRendererUrl(),
@@ -1207,10 +1213,10 @@ function newRenderer(adUnitCode, rendererOptions = {}) {
   return renderer;
 }
 function outstreamRender(bid) {
-  logInfo('outstreamRender called. Going to push the call to window.ozoneVideo.outstreamRender(bid) bid =', JSON.parse(JSON.stringify(bid)));
-  // push to render queue because ozoneVideo may not be loaded yet
+  logInfo('outstreamRender called. Going to push the call to window.newspassVideo.outstreamRender(bid) bid =', JSON.parse(JSON.stringify(bid)));
+  // push to render queue because newspassVideo may not be loaded yet
   bid.renderer.push(() => {
-    window.ozoneVideo.outstreamRender(bid);
+    window.newspassVideo.outstreamRender(bid);
   });
 }
 

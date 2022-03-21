@@ -58,6 +58,7 @@ whitelabelPrefix + 'storedrequest'=[a valid stored request ID]
 const ORIGIN = 'https://elb.the-ozone-project.com' // applies only to auction & cookie
 const AUCTIONURI = '/openrtb2/auction';
 const OZONECOOKIESYNC = '/static/load-cookie.html';
+// NOTE this was going to be renamed to renderer.js 20220210 because of newspass not wanting the word ozone - check - is this correct?
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 const ORIGIN_DEV = 'https://test.ozpr.net';
 
@@ -498,7 +499,7 @@ export const spec = {
     return arrRet;
   },
   /**
-   * parse a bidRequestRef that contains getFloor(), get all the data from it for the sizes & media requested for this bid & return an object containing floor data you can send to auciton endpoint
+   * parse a bidRequestRef that contains getFloor(), get all the data from it for the sizes & media requested for this bid & return an object containing floor data you can send to auction endpoint
    * @param bidRequestRef object = a valid bid request object reference
    * @return object
    *
