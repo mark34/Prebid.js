@@ -1,4 +1,4 @@
-import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains, isStr, mergeDeep } from '../src/utils.js';
+import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains, isStr, mergeDeep, _each } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
@@ -73,8 +73,13 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
+
+// REASON FOR this branch:
+// bidder ix is returning bids in CAD not USD like everyone else.
+// I need to hardcode a fix for this so their bid amount is translated to USD at a fixed amount (1.27:1)
+
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.7.0';
+const OZONEVERSION = '2.7.0-torstar-ix-cad-fix';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}, {code: 'newspassid', gvlid: 524}],
@@ -556,6 +561,11 @@ export const spec = {
     if (typeof serverResponse.seatbid !== 'object') {
       return [];
     }
+    // 20220321 - correct the ix values
+    let cadConversionRate = parseFloat(deepAccess(config.getConfig('currency'), 'rates.USD.CAD', 1.27));
+    logInfo(`*** Fix for ix seat - going to use conversion rate of ${cadConversionRate} ***`);
+    serverResponse = this.correctIxBidValues(serverResponse, cadConversionRate);
+    logInfo(`*** After updating ix bids:`, JSON.parse(JSON.stringify(serverResponse)));
     let arrAllBids = [];
     let enhancedAdserverTargeting = this.getWhitelabelConfigItem('ozone.enhancedAdserverTargeting');
     logInfo('enhancedAdserverTargeting', enhancedAdserverTargeting);
@@ -662,6 +672,25 @@ export const spec = {
     let endTime = new Date().getTime();
     logInfo(`interpretResponse going to return at time ${endTime} (took ${endTime - startTime}ms) Time from buildRequests Start -> interpretRequests End = ${endTime - this.propertyBag.buildRequestsStart}ms`, arrAllBids);
     return arrAllBids;
+  },
+  /**
+   * Hardcoded fix for ix bidder who is bidding in CAD 20220321; update all bid values for seat ix
+   * @param serverResponseBody
+   * @param cadConversionRate
+   * @return serverResponse object with UPDATED bid values for ix
+   */
+  correctIxBidValues(serverResponseBody, cadConversionRate) {
+    _each(serverResponseBody.seatbid, (element, index, array) => {
+      let seatName = element.seat;
+      if (seatName === 'ix') {
+        _each(element.bid, (thisBid, bidIndex) => {
+          let old = thisBid.price;
+          thisBid.price = Math.round(thisBid.price / cadConversionRate * 1000000) / 1000000;
+          logInfo(`*** ix fix : changed bid price from ${old} to ${thisBid.price} for ${seatName}`);
+        });
+      }
+    });
+    return serverResponseBody;
   },
   /**
    * Use this to get all config values

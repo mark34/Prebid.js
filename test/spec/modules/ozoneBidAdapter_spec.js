@@ -2932,4 +2932,133 @@ describe('ozone Adapter', function () {
       config.resetConfig();
     });
   });
+  describe('correctIxBidValues', function() {
+    it('should update the price for ix to the USD equivalent of its CAD values', function() {
+      let bidresponseBody = {
+        'id': 'f05e5aef-6e16-4e09-b2a1-0b58785702b9',
+        'seatbid': [
+          {
+            'bid': [
+              {
+                'id': 'sjgo14lxz0j38g',
+                'impid': '8dc39c3fec03e7',
+                'price': 0.82,
+                'adm': '',
+                'adomain': [
+                  'tdcanadatrust.com'
+                ],
+                'crid': '13132145',
+                'w': 728,
+                'h': 90,
+                'ext': {
+                  'prebid': {
+                    'type': 'banner'
+                  }
+                }
+              },
+              {
+                'id': 'b818kiz4gxlhbx',
+                'impid': '368e75b44c8c',
+                'price': 1.00,
+                'adm': '',
+                'adomain': [
+                  'tdcanadatrust.com'
+                ],
+                'crid': '13132145',
+                'w': 728,
+                'h': 90,
+                'ext': {
+                  'prebid': {
+                    'type': 'banner'
+                  }
+                }
+              },
+              {
+                'id': 'toxb11pg02xtrm',
+                'impid': '9ffe80f0a310df',
+                'price': 1.8,
+                'adm': '',
+                'adomain': [
+                  'hyundaicanada.com'
+                ],
+                'crid': '9325386',
+                'w': 300,
+                'h': 600,
+                'ext': {
+                  'prebid': {
+                    'type': 'banner'
+                  }
+                }
+              },
+            ],
+            'seat': 'ix'
+          },
+          {
+            'bid': [
+              {
+                'id': '11',
+                'impid': '68590ba01fc3a4',
+                'price': 0.86,
+                'adm': '',
+                'adomain': [
+                  'tdcanadatrust.com'
+                ],
+                'crid': '2249:385608385',
+                'w': 728,
+                'h': 90,
+                'ext': {
+                  'prebid': {
+                    'type': 'banner'
+                  },
+                  'bidder': {
+                    'rp': {
+                      'advid': 33075,
+                      'mime': 'text/html',
+                      'size_id': 2
+                    }
+                  }
+                }
+              },
+              {
+                'id': '14',
+                'impid': '5829693db1312f',
+                'price': 0.86,
+                'adm': '',
+                'adomain': [
+                  'tdcanadatrust.com'
+                ],
+                'crid': '2249:385608385',
+                'w': 728,
+                'h': 90,
+                'ext': {
+                  'prebid': {
+                    'type': 'banner'
+                  },
+                  'bidder': {
+                    'rp': {
+                      'advid': 33075,
+                      'mime': 'text/html',
+                      'size_id': 2
+                    }
+                  }
+                }
+              }
+            ],
+            'seat': 'rubicon'
+          }
+        ]
+      };
+      expect(bidresponseBody.seatbid[0].bid[0].price).to.equal(0.82);
+      expect(bidresponseBody.seatbid[0].seat).to.equal('ix');
+      expect(bidresponseBody.seatbid[1].bid[0].price).to.equal(0.86);
+      expect(bidresponseBody.seatbid[1].seat).to.equal('rubicon');
+      bidresponseBody = spec.correctIxBidValues(bidresponseBody, 1.27);
+      expect(bidresponseBody.seatbid[0].bid[0].price).to.equal(0.645669);
+      expect(bidresponseBody.seatbid[0].bid[1].price).to.equal(0.787402);
+      expect(bidresponseBody.seatbid[0].bid[2].price).to.equal(1.417323);
+      expect(bidresponseBody.seatbid[0].seat).to.equal('ix');
+      expect(bidresponseBody.seatbid[1].bid[0].price).to.equal(0.86);
+      expect(bidresponseBody.seatbid[1].seat).to.equal('rubicon');
+    });
+  });
 });
