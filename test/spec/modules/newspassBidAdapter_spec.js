@@ -2364,7 +2364,8 @@ describe('newspass Adapter', function () {
       validBR.uspConsent = '1YNY';
       const request = spec.buildRequests(validBidRequests, validBR);
       const payload = JSON.parse(request.data);
-      expect(payload.user.ext.uspConsent).to.equal('1YNY');
+      expect(payload.user.ext.uspConsent).not.to.exist;
+      expect(payload.regs.ext.us_privacy).to.equal('1YNY');
     });
 
     it('should fail ok if no seatbid in server response', function () {

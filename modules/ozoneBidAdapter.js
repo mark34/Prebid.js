@@ -74,7 +74,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.7.0';
+const OZONEVERSION = '2.7.1';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}, {code: 'newspassid', gvlid: 524}],
@@ -127,7 +127,7 @@ export const spec = {
         this.propertyBag.whitelabel.cookieSyncUrl = bidderConfig.endpointOverride.cookieSyncUrl;
       }
       if (bidderConfig.endpointOverride.auctionUrl) {
-        this.propertyBag.endpointOverride = bidderConfig.endpointOverride.auctionUrl;
+        // this.propertyBag.endpointOverride = bidderConfig.endpointOverride.auctionUrl;
         this.propertyBag.whitelabel.auctionUrl = bidderConfig.endpointOverride.auctionUrl;
       }
     }
@@ -365,10 +365,6 @@ export const spec = {
         logInfo('added fpd.site');
         if (deepAccess(obj, 'ext.' + whitelabelBidder + '.customData.0.targeting', false)) {
           obj.ext[whitelabelBidder].customData[0].targeting = Object.assign(obj.ext[whitelabelBidder].customData[0].targeting, fpd.site);
-          // let keys = getKeys(fpd.site);
-          // for (let i = 0; i < keys.length; i++) {
-          //   obj.ext[whitelabelBidder].customData[0].targeting[keys[i]] = fpd.site[keys[i]];
-          // }
         } else {
           deepSetValue(obj, 'ext.' + whitelabelBidder + '.customData.0.targeting', fpd.site);
         }
@@ -392,7 +388,7 @@ export const spec = {
       }
     }
 
-    extObj[whitelabelBidder].pv = this.getPageId(); // attach the page ID that will be common to all auciton calls for this page if refresh() is called
+    extObj[whitelabelBidder].pv = this.getPageId(); // attach the page ID that will be common to all auction calls for this page if refresh() is called
     let ozOmpFloorDollars = this.getWhitelabelConfigItem('ozone.oz_omp_floor'); // valid only if a dollar value (typeof == 'number')
     logInfo(`${whitelabelPrefix}_omp_floor dollar value = `, ozOmpFloorDollars);
     if (typeof ozOmpFloorDollars === 'number') {
@@ -403,7 +399,7 @@ export const spec = {
     let ozWhitelistAdserverKeys = this.getWhitelabelConfigItem('ozone.oz_whitelist_adserver_keys');
     let useOzWhitelistAdserverKeys = isArray(ozWhitelistAdserverKeys) && ozWhitelistAdserverKeys.length > 0;
     extObj[whitelabelBidder][whitelabelPrefix + '_kvp_rw'] = useOzWhitelistAdserverKeys ? 1 : 0;
-    if (whitelabelBidder != 'ozone') {
+    if (whitelabelBidder !== 'ozone') {
       logInfo('setting aliases object');
       extObj.prebid = {aliases: {'ozone': whitelabelBidder}};
     }
@@ -439,7 +435,9 @@ export const spec = {
     }
     if (bidderRequest && bidderRequest.uspConsent) {
       logInfo('ADDING CCPA info');
-      deepSetValue(ozoneRequest, 'user.ext.uspConsent', bidderRequest.uspConsent);
+      // 20220322 adding usp in the correct location https://docs.prebid.org/prebid-server/developers/add-new-bidder-go.html
+      // 20220322 IAB correct location, changed from user.ext.uspConsent
+      deepSetValue(ozoneRequest, 'regs.ext.us_privacy', bidderRequest.uspConsent);
     } else {
       logInfo('WILL NOT ADD CCPA info; no bidderRequest.uspConsent.');
     }
@@ -671,7 +669,7 @@ export const spec = {
    * @return {string|object}
    */
   getWhitelabelConfigItem(ozoneVersion) {
-    if (this.propertyBag.whitelabel.bidder == 'ozone') { return config.getConfig(ozoneVersion); }
+    if (this.propertyBag.whitelabel.bidder === 'ozone') { return config.getConfig(ozoneVersion); }
     let whitelabelledSearch = ozoneVersion.replace('ozone', this.propertyBag.whitelabel.bidder);
     whitelabelledSearch = whitelabelledSearch.replace('oz_', this.propertyBag.whitelabel.keyPrefix + '_');
     // logInfo('Getting whitelabel config item for : ' + whitelabelledSearch);

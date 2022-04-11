@@ -108,7 +108,7 @@ export const spec = {
         this.propertyBag.config.cookieSyncUrl = bidderConfig.endpointOverride.cookieSyncUrl;
       }
       if (bidderConfig.endpointOverride.auctionUrl) {
-        this.propertyBag.endpointOverride = bidderConfig.endpointOverride.auctionUrl;
+        // this.propertyBag.endpointOverride = bidderConfig.endpointOverride.auctionUrl;
         this.propertyBag.config.auctionUrl = bidderConfig.endpointOverride.auctionUrl;
       }
     }
@@ -400,7 +400,9 @@ export const spec = {
 
     if (bidderRequest && bidderRequest.uspConsent) {
       logInfo('ADDING CCPA info');
-      deepSetValue(npRequest, 'user.ext.uspConsent', bidderRequest.uspConsent);
+      // 20220322 adding usp in the correct location https://docs.prebid.org/prebid-server/developers/add-new-bidder-go.html
+      // 20220322 IAB correct location, changed from user.ext.uspConsent
+      deepSetValue(npRequest, 'regs.ext.us_privacy', bidderRequest.uspConsent);
     } else {
       logInfo('WILL NOT ADD CCPA info; no bidderRequest.uspConsent.');
     }
