@@ -127,7 +127,7 @@ export const spec = {
         this.propertyBag.whitelabel.cookieSyncUrl = bidderConfig.endpointOverride.cookieSyncUrl;
       }
       if (bidderConfig.endpointOverride.auctionUrl) {
-        // this.propertyBag.endpointOverride = bidderConfig.endpointOverride.auctionUrl;
+        this.propertyBag.endpointOverride = bidderConfig.endpointOverride.auctionUrl;
         this.propertyBag.whitelabel.auctionUrl = bidderConfig.endpointOverride.auctionUrl;
       }
     }
@@ -1171,6 +1171,8 @@ export function getGranularityObject(mediaType, mediaTypeGranularity, strBuckets
 /**
  * We expect to be able to find a standard set of properties on winning bid objects; add them here.
  * @param seatBid
+ * @param defaultWidth int
+ * @param defaultHeight int
  * @returns {*}
  */
 export function ozoneAddStandardProperties(seatBid, defaultWidth, defaultHeight) {

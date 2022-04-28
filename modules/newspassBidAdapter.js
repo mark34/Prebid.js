@@ -108,7 +108,7 @@ export const spec = {
         this.propertyBag.config.cookieSyncUrl = bidderConfig.endpointOverride.cookieSyncUrl;
       }
       if (bidderConfig.endpointOverride.auctionUrl) {
-        // this.propertyBag.endpointOverride = bidderConfig.endpointOverride.auctionUrl;
+        this.propertyBag.endpointOverride = bidderConfig.endpointOverride.auctionUrl;
         this.propertyBag.config.auctionUrl = bidderConfig.endpointOverride.auctionUrl;
       }
     }
