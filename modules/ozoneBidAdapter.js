@@ -77,7 +77,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 const OZONEVERSION = '2.7.1';
 export const spec = {
   gvlid: 524,
-  aliases: [{code: 'lmc', gvlid: 524}, {code: 'newspassid', gvlid: 524}],
+  aliases: [{code: 'lmc', gvlid: 524}],
   version: OZONEVERSION,
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],

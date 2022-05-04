@@ -1824,45 +1824,6 @@ describe('newspass Adapter', function () {
     it('should not validate customParams - this is a renamed key', function () {
       expect(spec.isBidRequestValid(xBadCustomParams)).to.equal(false);
     });
-    var xBadVideoContext2 = {
-      bidder: BIDDER_CODE,
-      params: {
-        'placementId': '1234567890',
-        'publisherId': '9876abcd12-3',
-        siteId: '1234567890'
-      },
-      mediaTypes: {
-        video: {
-          mimes: ['video/mp4']}
-      }
-    };
-
-    it('should not validate video without context attribute', function () {
-      expect(spec.isBidRequestValid(xBadVideoContext2)).to.equal(false);
-    });
-
-    let validVideoBidReq = {
-      bidder: BIDDER_CODE,
-      params: {
-        placementId: '1310000099',
-        publisherId: '9876abcd12-3',
-        siteId: '1234567890'
-      },
-      mediaTypes: {
-        video: {
-          mimes: ['video/mp4'],
-          'context': 'outstream'},
-      }
-    };
-
-    it('should validate video outstream being sent', function () {
-      expect(spec.isBidRequestValid(validVideoBidReq)).to.equal(true);
-    });
-    it('should validate video instream being sent even though its not properly supported yet', function () {
-      let instreamVid = JSON.parse(JSON.stringify(validVideoBidReq));
-      instreamVid.mediaTypes.video.context = 'instream';
-      expect(spec.isBidRequestValid(instreamVid)).to.equal(true);
-    });
   });
 
   describe('buildRequests', function () {
@@ -1913,11 +1874,6 @@ describe('newspass Adapter', function () {
 
     it('handles no newspass or custom data', function () {
       const request = spec.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
-      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
-    });
-
-    it('handles video mediaType element correctly, with outstream video', function () {
-      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest.bidderRequest);
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
     });
 
@@ -2042,17 +1998,6 @@ describe('newspass Adapter', function () {
       config.setConfig({'newspass': {'kvpPrefix': null, 'endpointOverride': null}});
     });
 
-    it('replaces the renderer url for a config override', function () {
-      spec.propertyBag.config = null;
-      let fakeUrl = 'http://renderer.com';
-      config.setConfig({'newspass': {'endpointOverride': {'rendererUrl': fakeUrl}}});
-      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest1OutstreamVideo2020.bidderRequest);
-      const result = spec.interpretResponse(getCleanValidVideoResponse(), validBidderRequest1OutstreamVideo2020);
-      const bid = result[0];
-      expect(bid.renderer).to.be.an.instanceOf(Renderer);
-      expect(bid.renderer.url).to.equal(fakeUrl);
-      config.setConfig({'newspass': {'kvpPrefix': null, 'endpointOverride': null}});
-    });
     it('should ignore kvpPrefix', function () {
       spec.propertyBag.config = null;
       var specMock = utils.deepClone(spec);
@@ -2282,18 +2227,6 @@ describe('newspass Adapter', function () {
       expect(payload.user.gender).to.equal('who knows these days');
       config.resetConfig();
     });
-
-    it('should have openrtb video params', function() {
-      let allowed = ['mimes', 'minduration', 'maxduration', 'protocols', 'w', 'h', 'startdelay', 'placement', 'linearity', 'skip', 'skipmin', 'skipafter', 'sequence', 'battr', 'maxextended', 'minbitrate', 'maxbitrate', 'boxingallowed', 'playbackmethod', 'playbackend', 'delivery', 'pos', 'companionad', 'api', 'companiontype', 'ext'];
-      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest.bidderRequest);
-      const payload = JSON.parse(request.data);
-      const vid = (payload.imp[0].video);
-      const keys = Object.keys(vid);
-      for (let i = 0; i < keys.length; i++) {
-        expect(allowed).to.include(keys[i]);
-      }
-      expect(payload.imp[0].video.ext).to.include({'context': 'outstream'});
-    });
     it('should handle standard floor config correctly', function () {
       config.setConfig({
         floors: {
@@ -2307,7 +2240,6 @@ describe('newspass Adapter', function () {
               fields: ['mediaType']
             },
             values: {
-              'video': 1.20,
               'banner': 0.8
             }
           }
@@ -2378,24 +2310,6 @@ describe('newspass Adapter', function () {
       const result = spec.interpretResponse({'body': {'seatbid': 'nothing_here'}}, {});
       expect(result).to.be.an('array');
       expect(result).to.be.empty;
-    });
-
-    it('should have video renderer for outstream video', function () {
-      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest1OutstreamVideo2020.bidderRequest);
-      const result = spec.interpretResponse(getCleanValidVideoResponse(), validBidderRequest1OutstreamVideo2020);
-      const bid = result[0];
-      expect(bid.renderer).to.be.an.instanceOf(Renderer);
-    });
-
-    it('should have NO video renderer for instream video', function () {
-      let instreamRequestsObj = JSON.parse(JSON.stringify(validBidRequests1OutstreamVideo2020));
-      instreamRequestsObj[0].mediaTypes.video.context = 'instream';
-      let instreamBidderReq = JSON.parse(JSON.stringify(validBidderRequest1OutstreamVideo2020));
-      instreamBidderReq.bidderRequest.bids[0].mediaTypes.video.context = 'instream';
-      const request = spec.buildRequests(instreamRequestsObj, validBidderRequest1OutstreamVideo2020.bidderRequest);
-      const result = spec.interpretResponse(getCleanValidVideoResponse(), instreamBidderReq);
-      const bid = result[0];
-      expect(bid.hasOwnProperty('renderer')).to.be.false;
     });
 
     it('should correctly parse response where there are more bidders than ad slots', function () {
@@ -2574,69 +2488,6 @@ describe('newspass Adapter', function () {
     });
   });
 
-  describe('video object utils', function () {
-    it('should find width & height from video object', function () {
-      let obj = {'playerSize': [640, 480], 'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = getWidthAndHeightFromVideoObject(obj);
-      expect(result.w).to.equal(640);
-      expect(result.h).to.equal(480);
-    });
-    it('should find null from bad video object', function () {
-      let obj = {'playerSize': [], 'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = getWidthAndHeightFromVideoObject(obj);
-      expect(result).to.be.null;
-    });
-    it('should find null from bad video object2', function () {
-      let obj = {'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = getWidthAndHeightFromVideoObject(obj);
-      expect(result).to.be.null;
-    });
-    it('should find null from bad video object3', function () {
-      let obj = {'playerSize': 'should be an array', 'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = getWidthAndHeightFromVideoObject(obj);
-      expect(result).to.be.null;
-    });
-    it('should find that player size is nested', function () {
-      let obj = {'playerSize': [[640, 480]], 'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = getWidthAndHeightFromVideoObject(obj);
-      expect(result.w).to.equal(640);
-      expect(result.h).to.equal(480);
-    });
-    it('should fail if player size is 2 x nested', function () {
-      let obj = {'playerSize': [[[640, 480]]], 'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = getWidthAndHeightFromVideoObject(obj);
-      expect(result).to.be.null;
-    });
-    it('should find that player size is nested', function () {
-      let obj = {'playerSize': [[640, 480]], 'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = playerSizeIsNestedArray(obj);
-      expect(result).to.be.true;
-    });
-    it('should find null from bad video object', function () {
-      let obj = {'playerSize': [], 'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = playerSizeIsNestedArray(obj);
-      expect(result).to.be.null;
-    });
-    it('should find null from bad video object2', function () {
-      let obj = {'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = playerSizeIsNestedArray(obj);
-      expect(result).to.be.null;
-    });
-    it('should find null from bad video object3', function () {
-      let obj = {'playerSize': 'should be an array', 'mimes': ['video/mp4'], 'context': 'outstream'};
-      const result = playerSizeIsNestedArray(obj);
-      expect(result).to.be.null;
-    });
-    it('should add np_appnexus_dealid into ads request if dealid exists in the auction response', function () {
-      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest.bidderRequest);
-      let validres = JSON.parse(JSON.stringify(validResponse2Bids));
-      validres.body.seatbid[0].bid[0].dealid = '1234';
-      const result = spec.interpretResponse(validres, request);
-      expect(utils.deepAccess(result[0].adserverTargeting, 'np_appnexus_dealid')).to.equal('1234');
-      expect(utils.deepAccess(result[1].adserverTargeting, 'np_appnexus_dealid', '')).to.equal('');
-    });
-  });
-
   describe('default size', function () {
     it('should should return default sizes if no obj is sent', function () {
       let obj = '';
@@ -2702,81 +2553,7 @@ describe('newspass Adapter', function () {
       expect(result.testId).to.equal(2);
     });
   });
-  describe('getVideoContextForBidId', function() {
-    it('should locate the video context inside a bid', function () {
-      let result = spec.getVideoContextForBidId('2899ec066a91ff8', validBidRequestsWithNonBannerMediaTypesAndValidOutstreamVideo);
-      expect(result).to.equal('outstream');
-    });
-  });
-  describe('unpackVideoConfigIntoIABformat', function() {
-    it('should correctly unpack a usual video config', function () {
-      let mediaTypes = {
-        playerSize: [640, 480],
-        mimes: ['video/mp4'],
-        context: 'outstream',
-        testKey: 'parent value'
-      };
-      let bid_params_video = {
-        skippable: true,
-        playback_method: ['auto_play_sound_off'],
-        playbackmethod: 2, /* start on load, no sound */
-        minduration: 5,
-        maxduration: 60,
-        skipmin: 5,
-        skipafter: 5,
-        testKey: 'child value'
-      };
-      let result = spec.unpackVideoConfigIntoIABformat(mediaTypes, bid_params_video);
-      expect(result.mimes).to.be.an('array').that.includes('video/mp4');
-      expect(result.ext.context).to.equal('outstream');
-      expect(result.ext.skippable).to.be.true; // note - we add skip in a different step: addVideoDefaults
-      expect(result.ext.testKey).to.equal('child value');
-    });
-  });
-  describe('addVideoDefaults', function() {
-    it('should correctly add video defaults', function () {
-      let mediaTypes = {
-        playerSize: [640, 480],
-        mimes: ['video/mp4'],
-        context: 'outstream',
-      };
-      let bid_params_video = {
-        skippable: true,
-        playback_method: ['auto_play_sound_off'],
-        playbackmethod: 2, /* start on load, no sound */
-        minduration: 5,
-        maxduration: 60,
-        skipmin: 5,
-        skipafter: 5,
-        testKey: 'child value'
-      };
-      let result = spec.addVideoDefaults({}, mediaTypes, mediaTypes);
-      expect(result.placement).to.equal(3);
-      expect(result.skip).to.equal(0);
-      result = spec.addVideoDefaults({}, mediaTypes, bid_params_video);
-      expect(result.skip).to.equal(1);
-    });
-    it('should correctly add video defaults including skippable in parent', function () {
-      let mediaTypes = {
-        playerSize: [640, 480],
-        mimes: ['video/mp4'],
-        context: 'outstream',
-        skippable: true
-      };
-      let bid_params_video = {
-        playback_method: ['auto_play_sound_off'],
-        playbackmethod: 2, /* start on load, no sound */
-        minduration: 5,
-        maxduration: 60,
-        skipmin: 5,
-        skipafter: 5,
-        testKey: 'child value'
-      };
-      let result = spec.addVideoDefaults({}, mediaTypes, bid_params_video);
-      expect(result.placement).to.equal(3);
-      expect(result.skip).to.equal(1);
-    });
-  });
+
   describe('removeSingleBidderMultipleBids', function() {
     it('should remove the multi bid by npappnexus for adslot 2d30e86db743a8', function() {
       let validres = JSON.parse(JSON.stringify(multiResponse1));

@@ -1,14 +1,13 @@
-import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains, isStr, mergeDeep } from '../src/utils.js';
+import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains, isStr } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
-import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
+import { BANNER, NATIVE } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
-import { Renderer } from '../src/Renderer.js';
 
 // NOTE this allows us to access the pv value outside of prebid after the auction request.
 // import { getStorageManager } from '../src/storageManager.js'
 
-const BIDDER_CODE = 'newspass';
+const BIDDER_CODE = 'newspassid';
 // --- START REMOVE FOR RELEASE
 
 // To remove this : php removecomments.php
@@ -48,7 +47,6 @@ const ORIGIN = 'https://bidder.newspassid.com' // applies only to auction & cook
 const AUCTIONURI = '/openrtb2/auction';
 const NEWSPASSCOOKIESYNC = '/static/load-cookie.html';
 // renamed 20220210 so there's no ozone stuff called at all (the url is a cname pointing to https://prebid.the-ozone-project.com)
-const NEWSPASS_RENDERER_URL = 'https://bidder.newspassid.com/renderer.js';
 
 // --- START REMOVE FOR RELEASE
 // const AUCTIONURI = 'https://www.betalyst.com/test/20200622-auction-2-bids.php'; // fake auction response with 2 bids from the same bidder for an adslot
@@ -62,19 +60,19 @@ const NEWSPASS_RENDERER_URL = 'https://bidder.newspassid.com/renderer.js';
 // 20200605 - test js renderer
 // const NEWSPASS_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const NEWSPASSVERSION = '1.0.0';
+const NEWSPASSVERSION = '1.0.0rc20220504';
+
 export const spec = {
   version: NEWSPASSVERSION,
   code: BIDDER_CODE,
-  supportedMediaTypes: [VIDEO, BANNER],
+  supportedMediaTypes: [BANNER],
   cookieSyncBag: {publisherId: null, siteId: null, userIdObject: {}}, // variables we want to make available to cookie sync
   propertyBag: {config: null, pageId: null, buildRequestsStart: 0, buildRequestsEnd: 0, endpointOverride: null}, /* allow us to store vars in instance scope - needs to be an object to be mutable */
   config_defaults: {
-    'logId': 'NEWSPASS',
-    'bidder': 'newspass',
+    'logId': 'NEWSPASSID',
+    'bidder': 'newspassid',
     'auctionUrl': ORIGIN + AUCTIONURI,
-    'cookieSyncUrl': ORIGIN + NEWSPASSCOOKIESYNC,
-    'rendererUrl': NEWSPASS_RENDERER_URL
+    'cookieSyncUrl': ORIGIN + NEWSPASSCOOKIESYNC
   },
   /**
    * make sure that the default values are available in the propertyBag
@@ -83,7 +81,7 @@ export const spec = {
   loadConfiguredData(bid) {
     if (this.propertyBag.config) { return; }
     this.propertyBag.config = JSON.parse(JSON.stringify(this.config_defaults));
-    let bidder = bid.bidder || 'newspass';
+    let bidder = bid.bidder || 'newspassid';
     this.propertyBag.config.logId = bidder.toUpperCase();
     this.propertyBag.config.bidder = bidder;
     let bidderConfig = config.getConfig(bidder) || {};
@@ -94,15 +92,6 @@ export const spec = {
         this.propertyBag.endpointOverride = bidderConfig.endpointOverride.origin;
         this.propertyBag.config.auctionUrl = bidderConfig.endpointOverride.origin + AUCTIONURI;
         this.propertyBag.config.cookieSyncUrl = bidderConfig.endpointOverride.origin + NEWSPASSCOOKIESYNC;
-      }
-      if (arrGetParams.hasOwnProperty('renderer')) {
-        if (arrGetParams.renderer.match('%3A%2F%2F')) {
-          this.propertyBag.config.rendererUrl = decodeURIComponent(arrGetParams['renderer']);
-        } else {
-          this.propertyBag.config.rendererUrl = arrGetParams['renderer'];
-        }
-      } else if (bidderConfig.endpointOverride.rendererUrl) {
-        this.propertyBag.config.rendererUrl = bidderConfig.endpointOverride.rendererUrl;
       }
       if (bidderConfig.endpointOverride.cookieSyncUrl) {
         this.propertyBag.config.cookieSyncUrl = bidderConfig.endpointOverride.cookieSyncUrl;
@@ -129,9 +118,6 @@ export const spec = {
   },
   getCookieSyncUrl() {
     return this.propertyBag.config.cookieSyncUrl;
-  },
-  getRendererUrl() {
-    return this.propertyBag.config.rendererUrl;
   },
   /**
    * Basic check to see whether required parameters are in the request.
@@ -189,16 +175,6 @@ export const spec = {
         return false;
       }
     }
-    if (bid.hasOwnProperty('mediaTypes') && bid.mediaTypes.hasOwnProperty(VIDEO)) {
-      if (!bid.mediaTypes[VIDEO].hasOwnProperty('context')) {
-        logError('No video context key/value in bid. Rejecting bid: ', bid);
-        return false;
-      }
-      if (bid.mediaTypes[VIDEO].context !== 'instream' && bid.mediaTypes[VIDEO].context !== 'outstream') {
-        logError('video.context is invalid. Only instream/outstream video is supported. Rejecting bid: ', bid);
-        return false;
-      }
-    }
     return true;
   },
 
@@ -226,9 +202,9 @@ export const spec = {
       htmlParams = validBidRequests[0].params;
     }
     logInfo('cookie sync bag', this.cookieSyncBag);
-    let singleRequest = config.getConfig('newspass.singleRequest');
+    let singleRequest = config.getConfig('newspassid.singleRequest');
     singleRequest = singleRequest !== false; // undefined & true will be true
-    logInfo(`config newspass.singleRequest : `, singleRequest);
+    logInfo(`config newspassid.singleRequest : `, singleRequest);
     let npRequest = {}; // we only want to set specific properties on this, not validBidRequests[0].params
     delete npRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
 
@@ -248,7 +224,7 @@ export const spec = {
     let tosendtags = validBidRequests.map(npBidRequest => {
       var obj = {};
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(npBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
-      obj.id = npBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
+      obj.id = npBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder newspass made bid for unknown request ID: mb7953.859498327448. Ignoring."
       obj.tagid = placementId;
       obj.secure = window.location.protocol === 'https:' ? 1 : 0;
       // is there a banner (or nothing declared, so banner is the default)?
@@ -265,43 +241,10 @@ export const spec = {
           arrBannerSizes = npBidRequest.mediaTypes[BANNER].sizes; /* Note - if there is a sizes element in the config root it will be pushed into here */
           logInfo('setting banner size from the mediaTypes.banner element for bidId ' + obj.id + ': ', arrBannerSizes);
         }
-        if (npBidRequest.mediaTypes.hasOwnProperty(VIDEO)) {
-          logInfo('openrtb 2.5 compliant video');
-          // examine all the video attributes in the config, and either put them into obj.video if allowed by IAB2.5 or else in to obj.video.ext
-          if (typeof npBidRequest.mediaTypes[VIDEO] == 'object') {
-            let childConfig = deepAccess(npBidRequest, 'params.video', {});
-            obj.video = this.unpackVideoConfigIntoIABformat(npBidRequest.mediaTypes[VIDEO], childConfig);
-            obj.video = this.addVideoDefaults(obj.video, npBidRequest.mediaTypes[VIDEO], childConfig);
-          }
-          // we need to duplicate some of the video values
-          let wh = getWidthAndHeightFromVideoObject(obj.video);
-          logInfo('setting video object from the mediaTypes.video element: ' + obj.id + ':', obj.video, 'wh=', wh);
-          if (wh && typeof wh === 'object') {
-            obj.video.w = wh['w'];
-            obj.video.h = wh['h'];
-            if (playerSizeIsNestedArray(obj.video)) { // this should never happen; it was in the original spec for this change though.
-              logInfo('setting obj.video.format to be an array of objects');
-              obj.video.ext.format = [wh];
-            } else {
-              logInfo('setting obj.video.format to be an object');
-              obj.video.ext.format = wh;
-            }
-          } else {
-            logWarn('cannot set w, h & format values for video; the config is not right');
-          }
-        }
         // Native integration is not complete yet
         if (npBidRequest.mediaTypes.hasOwnProperty(NATIVE)) {
           obj.native = npBidRequest.mediaTypes[NATIVE];
           logInfo('setting native object from the mediaTypes.native element: ' + obj.id + ':', obj.native);
-        }
-        // is the publisher specifying floors, and is the floors module enabled?
-        if (npBidRequest.hasOwnProperty('getFloor')) {
-          logInfo('This bidRequest object has property: getFloor');
-          obj.floor = this.getFloorObjectForAuction(npBidRequest);
-          logInfo('obj.floor is : ', obj.floor);
-        } else {
-          logInfo('This bidRequest object DOES NOT have property: getFloor');
         }
       }
       if (arrBannerSizes.length > 0) {
@@ -340,7 +283,7 @@ export const spec = {
       }
       if (fpd && deepAccess(fpd, 'site')) {
         // attach the site fpd into exactly : imp[n].ext.newspass.customData.0.targeting
-        logInfo('added fpd.site');
+        logInfo('adding fpd.site');
         if (deepAccess(obj, 'ext.newspass.customData.0.targeting', false)) {
           obj.ext.newspass.customData[0].targeting = Object.assign(obj.ext.newspass.customData[0].targeting, fpd.site);
           // let keys = getKeys(fpd.site);
@@ -371,14 +314,7 @@ export const spec = {
     }
 
     extObj['newspass'].pv = this.getPageId(); // attach the page ID that will be common to all auciton calls for this page if refresh() is called
-    let npOmpFloorDollars = config.getConfig('newspass.np_omp_floor'); // valid only if a dollar value (typeof == 'number')
-    logInfo(`np_omp_floor dollar value = `, npOmpFloorDollars);
-    if (typeof npOmpFloorDollars === 'number') {
-      extObj['newspass']['np_omp_floor'] = npOmpFloorDollars;
-    } else if (typeof npOmpFloorDollars !== 'undefined') {
-      logError(`np_omp_floor is invalid, type=` + (typeof npOmpFloorDollars));
-    }
-    let whitelistAdserverKeys = config.getConfig('newspass.np_whitelist_adserver_keys');
+    let whitelistAdserverKeys = config.getConfig('newspassid.np_whitelist_adserver_keys');
     let useWhitelistAdserverKeys = isArray(whitelistAdserverKeys) && whitelistAdserverKeys.length > 0;
     extObj['newspass']['np_kvp_rw'] = useWhitelistAdserverKeys ? 1 : 0;
     // 20210413 - adding a set of GET params to pass to auction
@@ -462,39 +398,6 @@ export const spec = {
     return arrRet;
   },
   /**
-   * parse a bidRequestRef that contains getFloor(), get all the data from it for the sizes & media requested for this bid & return an object containing floor data you can send to auciton endpoint
-   * @param bidRequestRef object = a valid bid request object reference
-   * @return object
-   *
-   * call:
-   * bidObj.getFloor({
-      currency: 'USD', <- currency to return the value in
-      mediaType: ‘banner’,
-      size: ‘*’ <- or [300,250] or [[300,250],[640,480]]
-   * });
-   *
-   */
-  getFloorObjectForAuction(bidRequestRef) {
-    const mediaTypesSizes = {
-      banner: deepAccess(bidRequestRef, 'mediaTypes.banner.sizes', null),
-      video: deepAccess(bidRequestRef, 'mediaTypes.video.playerSize', null),
-      native: deepAccess(bidRequestRef, 'mediaTypes.native.image.sizes', null)
-    }
-    logInfo('getFloorObjectForAuction mediaTypesSizes : ', mediaTypesSizes);
-    let ret = {};
-    if (mediaTypesSizes.banner) {
-      ret.banner = bidRequestRef.getFloor({mediaType: 'banner', currency: 'USD', size: mediaTypesSizes.banner});
-    }
-    if (mediaTypesSizes.video) {
-      ret.video = bidRequestRef.getFloor({mediaType: 'video', currency: 'USD', size: mediaTypesSizes.video});
-    }
-    if (mediaTypesSizes.native) {
-      ret.native = bidRequestRef.getFloor({mediaType: 'native', currency: 'USD', size: mediaTypesSizes.native});
-    }
-    logInfo('getFloorObjectForAuction returning : ', JSON.parse(JSON.stringify(ret)));
-    return ret;
-  },
-  /**
    * Interpret the response if the array contains BIDDER elements, in the format: [ [bidder1 bid 1, bidder1 bid 2], [bidder2 bid 1, bidder2 bid 2] ]
    * NOte that in singleRequest mode this will be called once, else it will be called for each adSlot's response
    *
@@ -518,7 +421,7 @@ export const spec = {
       return [];
     }
     let arrAllBids = [];
-    let enhancedAdserverTargeting = config.getConfig('newspass.enhancedAdserverTargeting');
+    let enhancedAdserverTargeting = config.getConfig('newspassid.enhancedAdserverTargeting');
     logInfo('enhancedAdserverTargeting', enhancedAdserverTargeting);
     if (typeof enhancedAdserverTargeting == 'undefined') {
       enhancedAdserverTargeting = true;
@@ -529,9 +432,7 @@ export const spec = {
     serverResponse.seatbid = injectAdIdsIntoAllBidResponses(serverResponse.seatbid); // we now make sure that each bid in the bidresponse has a unique (within page) adId attribute.
 
     serverResponse.seatbid = this.removeSingleBidderMultipleBids(serverResponse.seatbid);
-    let npOmpFloorDollars = config.getConfig('newspass.np_omp_floor'); // valid only if a dollar value (typeof == 'number')
-    let addOzOmpFloorDollars = typeof npOmpFloorDollars === 'number';
-    let whitelistAdserverKeys = config.getConfig('newspass.np_whitelist_adserver_keys');
+    let whitelistAdserverKeys = config.getConfig('newspassid.np_whitelist_adserver_keys');
     let useWhitelistAdserverKeys = isArray(whitelistAdserverKeys) && whitelistAdserverKeys.length > 0;
 
     for (let i = 0; i < serverResponse.seatbid.length; i++) {
@@ -543,20 +444,8 @@ export const spec = {
         let thisBid = this.addStandardProperties(sb.bid[j], defaultWidth, defaultHeight);
         // prebid 4.0 compliance
         thisBid.meta = {advertiserDomains: thisBid.adomain || []};
-        let videoContext = null;
-        let isVideo = false;
         let bidType = deepAccess(thisBid, 'ext.prebid.type');
         logInfo(`this bid type is : ${bidType}`, j);
-        if (bidType === VIDEO) {
-          isVideo = true;
-          videoContext = this.getVideoContextForBidId(thisBid.bidId, request.bidderRequest.bids); // should be instream or outstream (or null if error)
-          if (videoContext === 'outstream') {
-            logInfo('going to attach a renderer to OUTSTREAM video : ', j);
-            thisBid.renderer = newRenderer(thisBid.bidId);
-          } else {
-            logInfo('bid is not an outstream video, will not attach a renderer: ', j);
-          }
-        }
         let adserverTargeting = {};
         if (enhancedAdserverTargeting) {
           let allBidsForThisBidid = this.getAllBidsForBidId(thisBid.bidId, serverResponse.seatbid);
@@ -573,27 +462,9 @@ export const spec = {
             if (allBidsForThisBidid[bidderName].hasOwnProperty('dealid')) {
               adserverTargeting['np_' + bidderName + '_dealid'] = String(allBidsForThisBidid[bidderName].dealid);
             }
-            if (addOzOmpFloorDollars) {
-              adserverTargeting['np_' + bidderName + '_omp'] = allBidsForThisBidid[bidderName].price >= npOmpFloorDollars ? '1' : '0';
-            }
-            if (isVideo) {
-              adserverTargeting['np_' + bidderName + '_vid'] = videoContext; // outstream or instream
-            }
-            let flr = deepAccess(allBidsForThisBidid[bidderName], `ext.bidder.newspass.floor`, null);
-            if (flr != null) {
-              adserverTargeting['np_' + bidderName + '_flr'] = flr;
-            }
-            let rid = deepAccess(allBidsForThisBidid[bidderName], `ext.bidder.newspass.ruleId`, null);
-            if (rid != null) {
-              adserverTargeting['np_' + bidderName + '_rid'] = rid;
-            }
-            // @todo - is npappnexus right?
-            if (bidderName.match(/^npappnexus/)) {
-              adserverTargeting['np_' + bidderName + '_sid'] = String(allBidsForThisBidid[bidderName].cid);
-            }
           });
         } else {
-          logInfo(`newspass.enhancedAdserverTargeting is set to false, no per-bid keys will be sent to adserver.`);
+          logInfo(`newspassid.enhancedAdserverTargeting is set to false, no per-bid keys will be sent to adserver.`);
         }
         // also add in the winning bid, to be sent to dfp
         let {seat: winningSeat, bid: winningBid} = this.getWinnerForRequestBid(thisBid.bidId, serverResponse.seatbid);
@@ -603,8 +474,6 @@ export const spec = {
 
         if (enhancedAdserverTargeting) {
           adserverTargeting['np_imp_id'] = String(winningBid.impid);
-          adserverTargeting['np_pb_v'] = NEWSPASSVERSION;
-          adserverTargeting['np_pb'] = winningBid.price;
           adserverTargeting['np_pb_r'] = getRoundedBid(winningBid.price, bidType);
           adserverTargeting['np_adId'] = String(winningBid.adId);
           adserverTargeting['np_size'] = `${winningBid.width}x${winningBid.height}`;
@@ -652,7 +521,7 @@ export const spec = {
   // see http://prebid.org/dev-docs/bidder-adaptor.html#registering-user-syncs
   // us privacy: https://docs.prebid.org/dev-docs/modules/consentManagementUsp.html
   getUserSyncs(optionsType, serverResponse, gdprConsent, usPrivacy) {
-    logInfo('getUserSyncs optionsType', optionsType, 'serverResponse', serverResponse, 'gdprConsent', gdprConsent, 'usPrivacy', usPrivacy, 'cookieSyncBag', this.cookieSyncBag);
+    logInfo('getUserSyncs optionsType', optionsType, 'serverResponse', serverResponse, 'usPrivacy', usPrivacy, 'cookieSyncBag', this.cookieSyncBag);
     if (!serverResponse || serverResponse.length === 0) {
       return [];
     }
@@ -661,8 +530,6 @@ export const spec = {
       if (document.location.search.match(/pbjs_debug=true/)) {
         arrQueryString.push('pbjs_debug=true');
       }
-      arrQueryString.push('gdpr=' + (deepAccess(gdprConsent, 'gdprApplies', false) ? '1' : '0'));
-      arrQueryString.push('gdpr_consent=' + deepAccess(gdprConsent, 'consentString', ''));
       arrQueryString.push('usp_consent=' + (usPrivacy || ''));
       // var objKeys = Object.getOwnPropertyNames(this.cookieSyncBag.userIdObject);
       // for (let idx in objKeys) {
@@ -698,20 +565,6 @@ export const spec = {
       if (arrBids[i].bidId === bidId) { // bidId in the request comes back as impid in the seatbid bids
         return arrBids[i];
       }
-    }
-    return null;
-  },
-  /**
-   * Locate the bid inside the arrBids for this bidId, then discover the video context, and return it.
-   * IF the bid cannot be found return null, else return a string.
-   * @param bidId
-   * @param arrBids
-   * @return string|null
-   */
-  getVideoContextForBidId(bidId, arrBids) {
-    let requestBid = this.getBidRequestForBidId(bidId, arrBids);
-    if (requestBid != null) {
-      return deepAccess(requestBid, 'mediaTypes.video.context', 'unknown')
     }
     return null;
   },
@@ -777,9 +630,8 @@ export const spec = {
     return (bidRequest.params.placementId).toString();
   },
   /**
-   * GET parameter introduced in 2.2.0 : ozstoredrequest
-   * IF the GET parameter exists then it must validate for placementId correctly
-   * IF there's a $_GET['ozstoredrequest'] & it's valid then return this. Else return null.
+   * IF the GET parameter npstoredrequest exists then it must validate for placementId correctly
+   * IF there's a $_GET['npstoredrequest'] & it's valid then return this. Else return null.
    * @returns null|string
    */
   getPlacementIdOverrideFromGetParam() {
@@ -846,8 +698,8 @@ export const spec = {
    * @return {boolean|*[]} true = block the request, else false
    */
   blockTheRequest() {
-    // if there is an newspass.np_request = false then quit now.
-    let npRequest = config.getConfig('newspass.np_request');
+    // if there is an newspassid.np_request = false then quit now.
+    let npRequest = config.getConfig('newspassid.np_request');
     if (typeof npRequest == 'boolean' && !npRequest) {
       logWarn(`Will not allow auction : np_request is set to false`);
       return true;
@@ -868,82 +720,12 @@ export const spec = {
       this.propertyBag.pageId = new Date().getTime() + '_' + randPart;
     }
     // NOTE this allows us to access the pv value outside of prebid after the auction request.
-    // let storage = getStorageManager(this.gvlid, 'newspass');
+    // let storage = getStorageManager(this.gvlid, 'newspassid');
     // if (storage.localStorageIsEnabled()) {
-    //   storage.setDataInLocalStorage('newspass_pv', this.propertyBag.pageId);
+    //   storage.setDataInLocalStorage('newspassid_pv', this.propertyBag.pageId);
     // }
     return this.propertyBag.pageId;
   },
-  unpackVideoConfigIntoIABformat(videoConfig, childConfig) {
-    let ret = {'ext': {}};
-    ret = this._unpackVideoConfigIntoIABformat(ret, videoConfig);
-    ret = this._unpackVideoConfigIntoIABformat(ret, childConfig);
-    return ret;
-  },
-  /**
-   *
-   * look in ONE object to get video config (we need to call this multiple times, so child settings override parent)
-   * @param ret
-   * @param objConfig
-   * @return {*}
-   * @private
-   */
-  _unpackVideoConfigIntoIABformat(ret, objConfig) {
-    let arrVideoKeysAllowed = ['mimes', 'minduration', 'maxduration', 'protocols', 'w', 'h', 'startdelay', 'placement', 'linearity', 'skip', 'skipmin', 'skipafter', 'sequence', 'battr', 'maxextended', 'minbitrate', 'maxbitrate', 'boxingallowed', 'playbackmethod', 'playbackend', 'delivery', 'pos', 'companionad', 'api', 'companiontype'];
-    for (const key in objConfig) {
-      var found = false;
-      arrVideoKeysAllowed.forEach(function(arg) {
-        if (arg === key) {
-          ret[key] = objConfig[key];
-          found = true;
-        }
-      });
-      if (!found) {
-        ret.ext[key] = objConfig[key];
-      }
-    }
-    // handle ext separately, if it exists; we have probably built up an ext object already
-    if (objConfig.hasOwnProperty('ext') && typeof objConfig.ext === 'object') {
-      if (objConfig.hasOwnProperty('ext')) {
-        ret.ext = mergeDeep(ret.ext, objConfig.ext);
-      } else {
-        ret.ext = objConfig.ext;
-      }
-    }
-    return ret;
-  },
-  addVideoDefaults(objRet, videoConfig, childConfig) {
-    objRet = this._addVideoDefaults(objRet, videoConfig, false);
-    objRet = this._addVideoDefaults(objRet, childConfig, true); // child config will override parent config
-    return objRet;
-  },
-  /**
-   * modify objRet, adding in default values
-   * @param objRet
-   * @param objConfig
-   * @param addIfMissing
-   * @return {*}
-   * @private
-   */
-  _addVideoDefaults(objRet, objConfig, addIfMissing) {
-    // add inferred values & any default values we want.
-    let context = deepAccess(objConfig, 'context');
-    if (context === 'outstream') {
-      objRet.placement = 3;
-    } else if (context === 'instream') {
-      objRet.placement = 1;
-    }
-    let skippable = deepAccess(objConfig, 'skippable', null);
-    if (skippable == null) {
-      if (addIfMissing && !objRet.hasOwnProperty('skip')) {
-        objRet.skip = skippable ? 1 : 0;
-      }
-    } else {
-      objRet.skip = skippable ? 1 : 0;
-    }
-    return objRet;
-  },
-
   /**
    * We expect to be able to find a standard set of properties on winning bid objects; add them here.
    * @param seatBid
@@ -994,7 +776,7 @@ export const spec = {
    * Get a list of all the bids, for this bidId. The keys in the response object will be {seatname} OR {seatname}{w}x{h} if seatname already exists
    * @param matchBidId
    * @param serverResponseSeatBid
-   * @returns {} = {newspass|320x600:{obj}, newspass|320x250:{obj}, appnexus|300x250:{obj}, ... }
+   * @returns {} = {newspassid|320x600:{obj}, newspassid|320x250:{obj}, appnexus|300x250:{obj}, ... }
    */
   getAllBidsForBidId(matchBidId, serverResponseSeatBid) {
     let objBids = {};
@@ -1131,95 +913,6 @@ export function getGranularityObject(mediaType, mediaTypeGranularity, strBuckets
     return objBuckets;
   }
   return '';
-}
-
-/**
- *
- * @param objVideo will be like {"playerSize":[640,480],"mimes":["video/mp4"],"context":"outstream"} or POSSIBLY {"playerSize":[[640,480]],"mimes":["video/mp4"],"context":"outstream"}
- * @return object {w,h} or null
- */
-export function getWidthAndHeightFromVideoObject(objVideo) {
-  let playerSize = getPlayerSizeFromObject(objVideo);
-  if (!playerSize) {
-    return null;
-  }
-  if (playerSize[0] && typeof playerSize[0] === 'object') {
-    logInfo('getWidthAndHeightFromVideoObject found nested array inside playerSize.', playerSize[0]);
-    playerSize = playerSize[0];
-    if (typeof playerSize[0] !== 'number' && typeof playerSize[0] !== 'string') {
-      logInfo('getWidthAndHeightFromVideoObject found non-number/string type inside the INNER array in playerSize. This is totally wrong - cannot continue.', playerSize[0]);
-      return null;
-    }
-  }
-  if (playerSize.length !== 2) {
-    logInfo('getWidthAndHeightFromVideoObject found playerSize with length of ' + playerSize.length + '. This is totally wrong - cannot continue.');
-    return null;
-  }
-  return ({'w': playerSize[0], 'h': playerSize[1]});
-}
-
-/**
- * @param objVideo will be like {"playerSize":[640,480],"mimes":["video/mp4"],"context":"outstream"} or POSSIBLY {"playerSize":[[640,480]],"mimes":["video/mp4"],"context":"outstream"}
- * @return object {w,h} or null
- */
-export function playerSizeIsNestedArray(objVideo) {
-  let playerSize = getPlayerSizeFromObject(objVideo);
-  if (!playerSize) {
-    return null;
-  }
-  if (playerSize.length < 1) {
-    return null;
-  }
-  return (playerSize[0] && typeof playerSize[0] === 'object');
-}
-
-/**
- * Common functionality when looking at a video object, to get the playerSize
- * @param objVideo
- * @returns {*}
- */
-function getPlayerSizeFromObject(objVideo) {
-  logInfo('getPlayerSizeFromObject received object', objVideo);
-  let playerSize = deepAccess(objVideo, 'playerSize');
-  if (!playerSize) {
-    playerSize = deepAccess(objVideo, 'ext.playerSize');
-  }
-  if (!playerSize) {
-    logError('getPlayerSizeFromObject FAILED: no playerSize in video object or ext', objVideo);
-    return null;
-  }
-  if (typeof playerSize !== 'object') {
-    logError('getPlayerSizeFromObject FAILED: playerSize is not an object/array', objVideo);
-    return null;
-  }
-  return playerSize;
-}
-/*
-  Rendering video ads - create a renderer instance, mark it as not loaded, set a renderer function.
-  The renderer function will not assume that the renderer script is loaded - it will push() the ultimate render function call
- */
-function newRenderer(adUnitCode, rendererOptions = {}) {
-  let isLoaded = window.newspassVideo;
-  logInfo(`newRenderer going to set loaded to ${isLoaded ? 'true' : 'false'}`);
-  const renderer = Renderer.install({
-    url: spec.getRendererUrl(),
-    config: rendererOptions,
-    loaded: isLoaded,
-    adUnitCode
-  });
-  try {
-    renderer.setRender(outstreamRender);
-  } catch (err) {
-    logError('Prebid Error when calling setRender on renderer', JSON.parse(JSON.stringify(renderer)), err);
-  }
-  return renderer;
-}
-function outstreamRender(bid) {
-  logInfo('outstreamRender called. Going to push the call to window.newspassVideo.outstreamRender(bid) bid =', JSON.parse(JSON.stringify(bid)));
-  // push to render queue because newspassVideo may not be loaded yet
-  bid.renderer.push(() => {
-    window.newspassVideo.outstreamRender(bid);
-  });
 }
 
 registerBidder(spec);
