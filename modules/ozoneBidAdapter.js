@@ -584,17 +584,27 @@ export const spec = {
         let isVideo = false;
         let bidType = deepAccess(thisBid, 'ext.prebid.type');
         logInfo(`this bid type is : ${bidType}`, j);
+        let adserverTargeting = {};
         if (bidType === VIDEO) {
           isVideo = true;
+          // brought in from 2.7.0 test instream branch, needed for instream video
+          thisBid.mediaType = VIDEO;
           videoContext = this.getVideoContextForBidId(thisBid.bidId, request.bidderRequest.bids); // should be instream or outstream (or null if error)
           if (videoContext === 'outstream') {
-            logInfo('going to attach a renderer to OUTSTREAM video : ', j);
+            logInfo('going to set thisBid.mediaType = VIDEO & attach a renderer to OUTSTREAM video : ', j);
             thisBid.renderer = newRenderer(thisBid.bidId);
           } else {
-            logInfo('bid is not an outstream video, will not attach a renderer: ', j);
+            logInfo('bid is not an outstream video, will set thisBid.mediaType = VIDEO and thisBid.vastUrl and not attach a renderer: ', j);
+            // prebid core sends this as 'description_url' which is not useful for vast tag param placeholders
+            thisBid.vastUrl = `https://${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'missing_host')}${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'missing_path')}?id=${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_id', 'missing_id')}`; // need to see if this works ok for ozone
+            // thisBid.vastXml = thisBid.adm; // this needs the cache config in-page
+            // add hb_cache_... keys/values to the server targeting
+            adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
+            adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
           }
+        } else {
+          thisBid.mediaType = BANNER;
         }
-        let adserverTargeting = {};
         if (enhancedAdserverTargeting) {
           let allBidsForThisBidid = ozoneGetAllBidsForBidId(thisBid.bidId, serverResponse.seatbid);
           // add all the winning & non-winning bids for this bidId:
@@ -640,6 +650,8 @@ export const spec = {
         adserverTargeting[whitelabelPrefix + '_auc_id'] = String(request.bidderRequest.auctionId);
         adserverTargeting[whitelabelPrefix + '_winner'] = String(winningSeat);
         adserverTargeting[whitelabelPrefix + '_bid'] = 'true';
+        // add the cache targeting id because we can't set hb_cache_id - this is overridden by prebid core
+        adserverTargeting[whitelabelPrefix + '_cache_id'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_id', 'no-id');
 
         if (enhancedAdserverTargeting) {
           adserverTargeting[whitelabelPrefix + '_imp_id'] = String(winningBid.impid);
@@ -658,7 +670,9 @@ export const spec = {
       }
     }
     let endTime = new Date().getTime();
-    logInfo(`interpretResponse going to return at time ${endTime} (took ${endTime - startTime}ms) Time from buildRequests Start -> interpretRequests End = ${endTime - this.propertyBag.buildRequestsStart}ms`, arrAllBids);
+    logInfo(`interpretResponse going to return at time ${endTime} (took ${endTime - startTime}ms) Time from buildRequests Start -> interpretRequests End = ${endTime - this.propertyBag.buildRequestsStart}ms`);
+    logInfo('interpretResponse arrAllBids (live): ', arrAllBids);
+    logInfo('interpretResponse arrAllBids (serialised): ', JSON.parse(JSON.stringify(arrAllBids)));
     return arrAllBids;
   },
   /**

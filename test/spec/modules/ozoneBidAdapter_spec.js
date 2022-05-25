@@ -2657,6 +2657,20 @@ describe('ozone Adapter', function () {
       expect(result[1]['id']).to.equal('18552976939844681');
       expect(result[1]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('3025f169863b7f8-0-oz-1');
     });
+    it('should add mediaType: banner for a banner ad', function () {
+      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const result = spec.interpretResponse(validResponse, request);
+      expect(result[0].mediaType).to.equal('banner');
+    });
+    it('should add mediaType: video for a video ad', function () {
+      let instreamRequestsObj = JSON.parse(JSON.stringify(validBidRequests1OutstreamVideo2020));
+      instreamRequestsObj[0].mediaTypes.video.context = 'instream';
+      let instreamBidderReq = JSON.parse(JSON.stringify(validBidderRequest1OutstreamVideo2020));
+      instreamBidderReq.bidderRequest.bids[0].mediaTypes.video.context = 'instream';
+      const result = spec.interpretResponse(getCleanValidVideoResponse(), instreamBidderReq);
+      const bid = result[0];
+      expect(bid.mediaType).to.equal('video');
+    });
   });
 
   describe('userSyncs', function () {
