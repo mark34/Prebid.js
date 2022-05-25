@@ -74,7 +74,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.7.1';
+const OZONEVERSION = '2.7.1-20220525B';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -601,6 +601,15 @@ export const spec = {
             // add hb_cache_... keys/values to the server targeting
             adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
             adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
+
+            // 20220525 - this could be set by the auction endpoint, but however it's set, it gets prebid (auction.js) to add the targeting key hb_uuid which is used on the adserver to locate the cached ad
+            if (!thisBid.hasOwnProperty('videoCacheKey')) {
+              let videoCacheUuid = deepAccess(thisBid, 'ext.prebid.targeting.hb_uuid', 'no_hb_uuid');
+              logInfo(`Adding videoCacheKey: ${videoCacheUuid}`);
+              thisBid.videoCacheKey = videoCacheUuid;
+            } else {
+              logInfo('videoCacheKey already exists on the bid object, will not add it');
+            }
           }
         } else {
           thisBid.mediaType = BANNER;
@@ -652,6 +661,7 @@ export const spec = {
         adserverTargeting[whitelabelPrefix + '_bid'] = 'true';
         // add the cache targeting id because we can't set hb_cache_id - this is overridden by prebid core
         adserverTargeting[whitelabelPrefix + '_cache_id'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_id', 'no-id');
+        adserverTargeting[whitelabelPrefix + '_uuid'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_uuid', 'no-id');
 
         if (enhancedAdserverTargeting) {
           adserverTargeting[whitelabelPrefix + '_imp_id'] = String(winningBid.impid);
