@@ -263,35 +263,35 @@ export const spec = {
       // build the imp['ext'] object - NOTE - Dont obliterate anything that' already in obj.ext
       deepSetValue(obj, 'ext.prebid', {'storedrequest': {'id': placementId}});
       // obj.ext = {'prebid': {'storedrequest': {'id': placementId}}};
-      obj.ext['newspass'] = {};
-      obj.ext['newspass'].adUnitCode = npBidRequest.adUnitCode; // eg. 'mpu'
-      obj.ext['newspass'].transactionId = npBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
+      obj.ext['newspassid'] = {};
+      obj.ext['newspassid'].adUnitCode = npBidRequest.adUnitCode; // eg. 'mpu'
+      obj.ext['newspassid'].transactionId = npBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
       if (npBidRequest.params.hasOwnProperty('customData')) {
-        obj.ext['newspass'].customData = npBidRequest.params.customData;
+        obj.ext['newspassid'].customData = npBidRequest.params.customData;
       }
-      logInfo(`obj.ext.newspass is `, obj.ext['newspass']);
+      logInfo(`obj.ext.newspassid is `, obj.ext['newspassid']);
       if (isTestMode != null) {
         logInfo('setting isTestMode to ', isTestMode);
-        if (obj.ext['newspass'].hasOwnProperty('customData')) {
-          for (let i = 0; i < obj.ext['newspass'].customData.length; i++) {
-            obj.ext['newspass'].customData[i]['targeting']['nptestmode'] = isTestMode;
+        if (obj.ext['newspassid'].hasOwnProperty('customData')) {
+          for (let i = 0; i < obj.ext['newspassid'].customData.length; i++) {
+            obj.ext['newspassid'].customData[i]['targeting']['nptestmode'] = isTestMode;
           }
         } else {
-          obj.ext['newspass'].customData = [{'settings': {}, 'targeting': {}}];
-          obj.ext['newspass'].customData[0].targeting['nptestmode'] = isTestMode;
+          obj.ext['newspassid'].customData = [{'settings': {}, 'targeting': {}}];
+          obj.ext['newspassid'].customData[0].targeting['nptestmode'] = isTestMode;
         }
       }
       if (fpd && deepAccess(fpd, 'site')) {
-        // attach the site fpd into exactly : imp[n].ext.newspass.customData.0.targeting
+        // attach the site fpd into exactly : imp[n].ext.newspassid.customData.0.targeting
         logInfo('adding fpd.site');
-        if (deepAccess(obj, 'ext.newspass.customData.0.targeting', false)) {
-          obj.ext.newspass.customData[0].targeting = Object.assign(obj.ext.newspass.customData[0].targeting, fpd.site);
+        if (deepAccess(obj, 'ext.newspassid.customData.0.targeting', false)) {
+          obj.ext.newspassid.customData[0].targeting = Object.assign(obj.ext.newspassid.customData[0].targeting, fpd.site);
           // let keys = getKeys(fpd.site);
           // for (let i = 0; i < keys.length; i++) {
-          //   obj.ext['newspass'].customData[0].targeting[keys[i]] = fpd.site[keys[i]];
+          //   obj.ext['newspassid'].customData[0].targeting[keys[i]] = fpd.site[keys[i]];
           // }
         } else {
-          deepSetValue(obj, 'ext.newspass.customData.0.targeting', fpd.site);
+          deepSetValue(obj, 'ext.newspassid.customData.0.targeting', fpd.site);
         }
       }
       if (!schain && deepAccess(npBidRequest, 'schain')) {
@@ -302,27 +302,27 @@ export const spec = {
 
     // in v 2.0.0 we moved these outside of the individual ad slots
     let extObj = {};
-    extObj['newspass'] = {};
-    extObj['newspass']['np_pb_v'] = NEWSPASSVERSION;
-    extObj['newspass']['np_rw'] = placementIdOverrideFromGetParam ? 1 : 0;
+    extObj['newspassid'] = {};
+    extObj['newspassid']['np_pb_v'] = NEWSPASSVERSION;
+    extObj['newspassid']['np_rw'] = placementIdOverrideFromGetParam ? 1 : 0;
     if (validBidRequests.length > 0) {
       let userIds = this.cookieSyncBag.userIdObject; // 2021-01-06 - slight optimisation - we've already found this info
       // let userIds = this.findAllUserIds(validBidRequests[0]);
       if (userIds.hasOwnProperty('pubcid')) {
-        extObj['newspass'].pubcid = userIds.pubcid;
+        extObj['newspassid'].pubcid = userIds.pubcid;
       }
     }
 
-    extObj['newspass'].pv = this.getPageId(); // attach the page ID that will be common to all auciton calls for this page if refresh() is called
+    extObj['newspassid'].pv = this.getPageId(); // attach the page ID that will be common to all auciton calls for this page if refresh() is called
     let whitelistAdserverKeys = config.getConfig('newspassid.np_whitelist_adserver_keys');
     let useWhitelistAdserverKeys = isArray(whitelistAdserverKeys) && whitelistAdserverKeys.length > 0;
-    extObj['newspass']['np_kvp_rw'] = useWhitelistAdserverKeys ? 1 : 0;
+    extObj['newspassid']['np_kvp_rw'] = useWhitelistAdserverKeys ? 1 : 0;
     // 20210413 - adding a set of GET params to pass to auction
-    if (getParams.hasOwnProperty('npf')) { extObj['newspass']['npf'] = getParams.npf === 'true' || getParams.npf === '1' ? 1 : 0; }
-    if (getParams.hasOwnProperty('nppf')) { extObj['newspass']['nppf'] = getParams.nppf === 'true' || getParams.nppf === '1' ? 1 : 0; }
-    if (getParams.hasOwnProperty('nprp') && getParams.nprp.match(/^[0-3]$/)) { extObj['newspass']['nprp'] = parseInt(getParams.nprp); }
-    if (getParams.hasOwnProperty('npip') && getParams.npip.match(/^\d+$/)) { extObj['newspass']['npip'] = parseInt(getParams.npip); }
-    if (this.propertyBag.endpointOverride != null) { extObj['newspass']['origin'] = this.propertyBag.endpointOverride; }
+    if (getParams.hasOwnProperty('npf')) { extObj['newspassid']['npf'] = getParams.npf === 'true' || getParams.npf === '1' ? 1 : 0; }
+    if (getParams.hasOwnProperty('nppf')) { extObj['newspassid']['nppf'] = getParams.nppf === 'true' || getParams.nppf === '1' ? 1 : 0; }
+    if (getParams.hasOwnProperty('nprp') && getParams.nprp.match(/^[0-3]$/)) { extObj['newspassid']['nprp'] = parseInt(getParams.nprp); }
+    if (getParams.hasOwnProperty('npip') && getParams.npip.match(/^\d+$/)) { extObj['newspassid']['npip'] = parseInt(getParams.npip); }
+    if (this.propertyBag.endpointOverride != null) { extObj['newspassid']['origin'] = this.propertyBag.endpointOverride; }
 
     // extObj.ortb2 = config.getConfig('ortb2'); // original test location
     var userExtEids = this.generateEids(validBidRequests); // generate the UserIDs in the correct format for UserId module
@@ -377,13 +377,13 @@ export const spec = {
     let arrRet = tosendtags.map(imp => {
       logInfo('buildRequests starting to generate non-single response, working on imp : ', imp);
       let npRequestSingle = Object.assign({}, npRequest);
-      imp.ext['newspass'].pageAuctionId = bidderRequest['auctionId']; // make a note in the ext object of what the original auctionId was, in the bidderRequest object
-      npRequestSingle.id = imp.ext['newspass'].transactionId; // Unique ID of the bid request, provided by the exchange.
-      npRequestSingle.auctionId = imp.ext['newspass'].transactionId; // not sure if this should be here?
+      imp.ext['newspassid'].pageAuctionId = bidderRequest['auctionId']; // make a note in the ext object of what the original auctionId was, in the bidderRequest object
+      npRequestSingle.id = imp.ext['newspassid'].transactionId; // Unique ID of the bid request, provided by the exchange.
+      npRequestSingle.auctionId = imp.ext['newspassid'].transactionId; // not sure if this should be here?
       npRequestSingle.imp = [imp];
       npRequestSingle.ext = extObj;
-      deepSetValue(npRequestSingle, 'source.tid', imp.ext['newspass'].transactionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
-      // npRequestSingle.source = {'tid': imp.ext['newspass'].transactionId};
+      deepSetValue(npRequestSingle, 'source.tid', imp.ext['newspassid'].transactionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
+      // npRequestSingle.source = {'tid': imp.ext['newspassid'].transactionId};
       deepSetValue(npRequestSingle, 'user.ext.eids', userExtEids);
       logInfo('buildRequests RequestSingle (for non-single) = ', npRequestSingle);
       return {
