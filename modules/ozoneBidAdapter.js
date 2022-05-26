@@ -74,7 +74,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.7.1-20220525B';
+const OZONEVERSION = '2.7.1-20220526B';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -587,8 +587,7 @@ export const spec = {
         let adserverTargeting = {};
         if (bidType === VIDEO) {
           isVideo = true;
-          // brought in from 2.7.0 test instream branch, needed for instream video
-          thisBid.mediaType = VIDEO;
+          this.setBidMediaTypeIfNotExist(thisBid, VIDEO);
           videoContext = this.getVideoContextForBidId(thisBid.bidId, request.bidderRequest.bids); // should be instream or outstream (or null if error)
           if (videoContext === 'outstream') {
             logInfo('going to set thisBid.mediaType = VIDEO & attach a renderer to OUTSTREAM video : ', j);
@@ -612,7 +611,8 @@ export const spec = {
             }
           }
         } else {
-          thisBid.mediaType = BANNER;
+          // must be a banner
+          this.setBidMediaTypeIfNotExist(thisBid, BANNER);
         }
         if (enhancedAdserverTargeting) {
           let allBidsForThisBidid = ozoneGetAllBidsForBidId(thisBid.bidId, serverResponse.seatbid);
@@ -684,6 +684,20 @@ export const spec = {
     logInfo('interpretResponse arrAllBids (live): ', arrAllBids);
     logInfo('interpretResponse arrAllBids (serialised): ', JSON.parse(JSON.stringify(arrAllBids)));
     return arrAllBids;
+  },
+  /**
+   * brought in from the 2.7.0 test instream branch, this is needed for instream video
+   * Common code to set [bid].mediaType to eg. VIDEO or BANNER. This is necessary for instream, likely other things too
+   * @param thisBid object (by reference)
+   * @param mediaType string
+   */
+  setBidMediaTypeIfNotExist(thisBid, mediaType) {
+    if (!thisBid.hasOwnProperty('mediaType')) {
+      logInfo(`setting thisBid.mediaType = ${mediaType}`);
+      thisBid.mediaType = mediaType;
+    } else {
+      logInfo(`found value for thisBid.mediaType: ${thisBid.mediaType}`);
+    }
   },
   /**
    * Use this to get all config values

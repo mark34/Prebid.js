@@ -2947,4 +2947,16 @@ describe('ozone Adapter', function () {
       config.resetConfig();
     });
   });
+  describe('setBidMediaTypeIfNotExist', function() {
+    it('should leave the bid object alone if it already contains mediaType', function() {
+      let thisBid = {mediaType: 'marktest'};
+      spec.setBidMediaTypeIfNotExist(thisBid, 'replacement');
+      expect(thisBid.mediaType).to.equal('marktest');
+    });
+    it('should change the bid object if it doesnt already contain mediaType', function() {
+      let thisBid = {someKey: 'someValue'};
+      spec.setBidMediaTypeIfNotExist(thisBid, 'replacement');
+      expect(thisBid.mediaType).to.equal('replacement');
+    });
+  });
 });
