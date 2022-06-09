@@ -1,9 +1,18 @@
 import { pick, isFn, isStr, isPlainObject, deepAccess } from '../../src/utils.js';
 
 // Each user-id sub-module is expected to mention respective config here
-const USER_IDS_CONFIG = {
+export const USER_IDS_CONFIG = {
 
   // key-name : {config}
+
+  // trustpid
+  'trustpid': {
+    source: 'trustpid.com',
+    atype: 1,
+    getValue: function (data) {
+      return data;
+    },
+  },
 
   // intentIqId
   'intentIqId': {
@@ -14,6 +23,12 @@ const USER_IDS_CONFIG = {
   // naveggId
   'naveggId': {
     source: 'navegg.com',
+    atype: 1
+  },
+
+  // justId
+  'justId': {
+    source: 'justtag.com',
     atype: 1
   },
 
@@ -41,6 +56,20 @@ const USER_IDS_CONFIG = {
     },
     source: 'id5-sync.com',
     atype: 1,
+    getUidExt: function(data) {
+      if (data.ext) {
+        return data.ext;
+      }
+    }
+  },
+
+  // ftrack
+  'ftrackId': {
+    source: 'flashtalking.com',
+    atype: 1,
+    getValue: function(data) {
+      return data.uid
+    },
     getUidExt: function(data) {
       if (data.ext) {
         return data.ext;
@@ -122,15 +151,25 @@ const USER_IDS_CONFIG = {
 
   // merkleId
   'merkleId': {
-    source: 'merkleinc.com',
     atype: 3,
+    getSource: function(data) {
+      if (data?.ext?.ssp) {
+        return `${data.ext.ssp}.merkleinc.com`
+      }
+      return 'merkleinc.com'
+    },
     getValue: function(data) {
       return data.id;
     },
     getUidExt: function(data) {
-      return (data && data.keyID) ? {
-        keyID: data.keyID
-      } : undefined;
+      if (data.keyID) {
+        return {
+          keyID: data.keyID
+        }
+      }
+      if (data.ext) {
+        return data.ext;
+      }
     }
   },
 
@@ -146,8 +185,8 @@ const USER_IDS_CONFIG = {
     atype: 1
   },
 
-  // haloId
-  'haloId': {
+  // hadronId
+  'hadronId': {
     source: 'audigent.com',
     atype: 1
   },
@@ -155,12 +194,6 @@ const USER_IDS_CONFIG = {
   // quantcastId
   'quantcastId': {
     source: 'quantcast.com',
-    atype: 1
-  },
-
-  // nextroll
-  'nextrollId': {
-    source: 'nextroll.com',
     atype: 1
   },
 
@@ -181,15 +214,18 @@ const USER_IDS_CONFIG = {
     source: 'neustar.biz',
     atype: 1
   },
+
   // MediaWallah OpenLink
   'mwOpenLinkId': {
     source: 'mediawallahscript.com',
     atype: 1
   },
+
   'tapadId': {
     source: 'tapad.com',
     atype: 1
   },
+
   // Novatiq Snowflake
   'novatiq': {
     getValue: function(data) {
@@ -198,6 +234,7 @@ const USER_IDS_CONFIG = {
     source: 'novatiq.com',
     atype: 1
   },
+
   'uid2': {
     source: 'uidapi.com',
     atype: 3,
@@ -205,41 +242,76 @@ const USER_IDS_CONFIG = {
       return data.id;
     }
   },
-  // Akamai Data Activation Platform (DAP)
-  'dapId': {
-    source: 'akamai.com',
-    atype: 1
-  },
+
   'deepintentId': {
     source: 'deepintent.com',
     atype: 3
   },
+
   // Admixer Id
   'admixerId': {
     source: 'admixer.net',
     atype: 3
   },
+
   // Adtelligent Id
   'adtelligentId': {
     source: 'adtelligent.com',
     atype: 3
   },
+
   amxId: {
     source: 'amxrtb.com',
     atype: 1,
   },
+
   'publinkId': {
     source: 'epsilon.com',
     atype: 3
   },
+
   'kpuid': {
     source: 'kpuid.com',
     atype: 3
   },
+
   'imuid': {
     source: 'intimatemerger.com',
     atype: 1
-  }
+  },
+
+  // Yahoo ConnectID
+  'connectId': {
+    source: 'yahoo.com',
+    atype: 3
+  },
+
+  // Adquery ID
+  'qid': {
+    source: 'adquery.io',
+    atype: 1
+  },
+
+  // DAC ID
+  'dacId': {
+    source: 'impact-ad.jp',
+    atype: 1
+  },
+
+  // 33across ID
+  '33acrossId': {
+    source: '33across.com',
+    atype: 1,
+    getValue: function(data) {
+      return data.envelope;
+    }
+  },
+
+  // Gravito MP ID
+  'gravitompId': {
+    source: 'gravito.net',
+    atype: 1
+  },
 };
 
 // this function will create an eid object for the given UserId sub-module
@@ -247,7 +319,8 @@ function createEidObject(userIdData, subModuleKey) {
   const conf = USER_IDS_CONFIG[subModuleKey];
   if (conf && userIdData) {
     let eid = {};
-    eid.source = conf['source'];
+    eid.source = isFn(conf['getSource']) ? conf['getSource'](userIdData) : conf['source'];
+
     const value = isFn(conf['getValue']) ? conf['getValue'](userIdData) : userIdData;
     if (isStr(value)) {
       const uid = { id: value, atype: conf['atype'] };
@@ -277,10 +350,19 @@ function createEidObject(userIdData, subModuleKey) {
 // if any adapter does not want any particular userId to be passed then adapter can use Array.filter(e => e.source != 'tdid')
 export function createEidsArray(bidRequestUserId) {
   let eids = [];
+
   for (const subModuleKey in bidRequestUserId) {
     if (bidRequestUserId.hasOwnProperty(subModuleKey)) {
       if (subModuleKey === 'pubProvidedId') {
         eids = eids.concat(bidRequestUserId['pubProvidedId']);
+      } else if (Array.isArray(bidRequestUserId[subModuleKey])) {
+        bidRequestUserId[subModuleKey].forEach((config, index, arr) => {
+          const eid = createEidObject(config, subModuleKey);
+
+          if (eid) {
+            eids.push(eid);
+          }
+        })
       } else {
         const eid = createEidObject(bidRequestUserId[subModuleKey], subModuleKey);
         if (eid) {

@@ -1,10 +1,23 @@
-import { isNumber, isStr, isInteger, isBoolean, isArray, isEmpty, isArrayOfNums, getWindowTop, parseQueryStringParameters, parseUrl, deepSetValue, deepAccess, logError } from '../src/utils.js';
-import { BANNER, VIDEO } from '../src/mediaTypes.js';
-import { registerBidder } from '../src/adapters/bidderFactory.js';
-import { Renderer } from '../src/Renderer.js';
-import includes from 'core-js-pure/features/array/includes';
-import find from 'core-js-pure/features/array/find.js';
-import { createEidsArray } from './userId/eids.js';
+import {
+  deepAccess,
+  deepSetValue,
+  getWindowTop,
+  isArray,
+  isArrayOfNums,
+  isBoolean,
+  isEmpty,
+  isInteger,
+  isNumber,
+  isStr,
+  logError,
+  parseQueryStringParameters,
+  parseUrl
+} from '../src/utils.js';
+import {BANNER, VIDEO} from '../src/mediaTypes.js';
+import {registerBidder} from '../src/adapters/bidderFactory.js';
+import {Renderer} from '../src/Renderer.js';
+import {find, includes} from '../src/polyfill.js';
+import {createEidsArray} from './userId/eids.js';
 
 const BIDDER_CODE = 'yieldmo';
 const CURRENCY = 'USD';
@@ -53,15 +66,11 @@ export const spec = {
       let serverRequest = {
         pbav: '$prebid.version$',
         p: [],
-        page_url: bidderRequest.refererInfo.referer,
+        // TODO: is 'page' the right value here?
+        page_url: bidderRequest.refererInfo.page,
         bust: new Date().getTime().toString(),
-        pr: (LOCAL_WINDOW.document && LOCAL_WINDOW.document.referrer) || '',
-        scrd: LOCAL_WINDOW.devicePixelRatio || 0,
         dnt: getDNT(),
         description: getPageDescription(),
-        title: LOCAL_WINDOW.document.title || '',
-        w: LOCAL_WINDOW.innerWidth,
-        h: LOCAL_WINDOW.innerHeight,
         userConsent: JSON.stringify({
           // case of undefined, stringify will remove param
           gdprApplies: deepAccess(bidderRequest, 'gdprConsent.gdprApplies') || '',
@@ -69,6 +78,14 @@ export const spec = {
         }),
         us_privacy: deepAccess(bidderRequest, 'uspConsent') || ''
       };
+
+      if (canAccessTopWindow()) {
+        serverRequest.pr = (LOCAL_WINDOW.document && LOCAL_WINDOW.document.referrer) || '';
+        serverRequest.scrd = LOCAL_WINDOW.devicePixelRatio || 0;
+        serverRequest.title = LOCAL_WINDOW.document.title || '';
+        serverRequest.w = LOCAL_WINDOW.innerWidth;
+        serverRequest.h = LOCAL_WINDOW.innerHeight;
+      }
 
       const mtp = window.navigator.maxTouchPoints;
       if (mtp) {
@@ -216,6 +233,7 @@ function addPlacement(request) {
  */
 function createNewBannerBid(response) {
   return {
+    dealId: response.publisherDealId,
     requestId: response['callback_id'],
     cpm: response.cpm,
     width: response.width,
@@ -241,6 +259,7 @@ function createNewVideoBid(response, bidRequest) {
   const imp = find((deepAccess(bidRequest, 'data.imp') || []), imp => imp.id === response.impid);
 
   let result = {
+    dealId: response.dealid,
     requestId: imp.id,
     cpm: response.price,
     width: imp.video.w,
@@ -334,7 +353,7 @@ function openRtbRequest(bidRequests, bidderRequest) {
     site: openRtbSite(bidRequests[0], bidderRequest),
     device: openRtbDevice(bidRequests[0]),
     badv: bidRequests[0].params.badv || [],
-    bcat: bidRequests[0].params.bcat || [],
+    bcat: deepAccess(bidderRequest, 'bcat') || bidRequests[0].params.bcat || [],
     ext: {
       prebid: '$prebid.version$',
     },
@@ -427,13 +446,13 @@ function extractPlayerSize(bidRequest) {
 function openRtbSite(bidRequest, bidderRequest) {
   let result = {};
 
-  const loc = parseUrl(deepAccess(bidderRequest, 'refererInfo.referer'));
+  const loc = parseUrl(deepAccess(bidderRequest, 'refererInfo.page'));
   if (!isEmpty(loc)) {
     result.page = `${loc.protocol}://${loc.hostname}${loc.pathname}`;
   }
 
-  if (self === top && document.referrer) {
-    result.ref = document.referrer;
+  if (bidderRequest.refererInfo?.ref) {
+    result.ref = bidderRequest.refererInfo.ref;
   }
 
   const keywords = document.getElementsByTagName('meta')['keywords'];
@@ -609,3 +628,18 @@ function getEids(bidRequest) {
     return createEidsArray(bidRequest.userId) || [];
   }
 };
+
+/**
+ * Check if top window can be accessed
+ *
+ * @return {boolean} true if can access top window otherwise false
+ */
+function canAccessTopWindow() {
+  try {
+    if (getWindowTop().location.href) {
+      return true;
+    }
+  } catch (error) {
+    return false;
+  }
+}

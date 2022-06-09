@@ -238,14 +238,17 @@ describe('SonobiBidAdapter', function () {
   });
 
   describe('.buildRequests', function () {
+    let sandbox;
     beforeEach(function() {
       sinon.stub(userSync, 'canBidderRegisterSync');
       sinon.stub(utils, 'getGptSlotInfoForAdUnitCode')
-        .onFirstCall().returns({gptSlot: '/123123/gpt_publisher/adunit-code-3', divId: 'adunit-code-3-div-id'})
+        .onFirstCall().returns({gptSlot: '/123123/gpt_publisher/adunit-code-3', divId: 'adunit-code-3-div-id'});
+      sandbox = sinon.createSandbox();
     });
     afterEach(function() {
       userSync.canBidderRegisterSync.restore();
       utils.getGptSlotInfoForAdUnitCode.restore();
+      sandbox.restore();
     });
     let bidRequest = [{
       'schain': {
@@ -327,11 +330,34 @@ describe('SonobiBidAdapter', function () {
       'refererInfo': {
         'numIframes': 0,
         'reachedTop': true,
-        'referer': 'https://example.com',
+        'page': 'https://example.com',
         'stack': ['https://example.com']
       },
       uspConsent: 'someCCPAString'
     };
+
+    it('should set fpd if there is any data in ortb2', function() {
+      const ortb2 = {
+        site: {
+          ext: {
+            data: {
+              pageType: 'article',
+              category: 'tools'
+            }
+          }
+        },
+        user: {
+          ext: {
+            data: {
+              registered: true,
+              interests: ['cars']
+            }
+          }
+        }
+      };
+      const bidRequests = spec.buildRequests(bidRequest, {...bidderRequests, ortb2});
+      expect(bidRequests.data.fpd).to.equal(JSON.stringify(ortb2));
+    });
 
     it('should populate coppa as 1 if set in config', function () {
       config.setConfig({coppa: true});
@@ -394,7 +420,7 @@ describe('SonobiBidAdapter', function () {
         'refererInfo': {
           'numIframes': 0,
           'reachedTop': true,
-          'referer': 'https://example.com',
+          'page': 'https://example.com',
           'stack': ['https://example.com']
         }
       };
@@ -414,7 +440,7 @@ describe('SonobiBidAdapter', function () {
         'refererInfo': {
           'numIframes': 0,
           'reachedTop': true,
-          'referer': 'https://example.com',
+          'page': 'https://example.com',
           'stack': ['https://example.com']
         }
       };
