@@ -335,12 +335,12 @@ export const spec = {
     npRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] === 'true') ? 1 : 0;
 
     if (bidderRequest && bidderRequest.uspConsent) {
-      logInfo('ADDING CCPA info');
+      logInfo('ADDING USP consent info');
       // 20220322 adding usp in the correct location https://docs.prebid.org/prebid-server/developers/add-new-bidder-go.html
       // 20220322 IAB correct location, changed from user.ext.uspConsent
       deepSetValue(npRequest, 'regs.ext.us_privacy', bidderRequest.uspConsent);
     } else {
-      logInfo('WILL NOT ADD CCPA info; no bidderRequest.uspConsent.');
+      logInfo('WILL NOT ADD USP consent info; no bidderRequest.uspConsent.');
     }
     if (schain) { // we set this while iterating over the bids
       logInfo('schain found');
