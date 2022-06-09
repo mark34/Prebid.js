@@ -76,14 +76,22 @@ export const spec = {
 
     const payload = {
       'key_maker': JSON.stringify(data),
-      'ref': bidderRequest.refererInfo.referer,
+      // TODO: is 'page' the right value here?
+      'ref': bidderRequest.refererInfo.page,
       's': generateUUID(),
       'pv': PAGEVIEW_ID,
       'vp': _getPlatform(),
       'lib_name': 'prebid',
       'lib_v': '$prebid.version$',
       'us': 0,
+
     };
+
+    const fpd = bidderRequest.ortb2;
+
+    if (fpd) {
+      payload.fpd = JSON.stringify(fpd);
+    }
 
     if (config.getConfig('userSync') && config.getConfig('userSync').syncsPerBidder) {
       payload.us = config.getConfig('userSync').syncsPerBidder;
