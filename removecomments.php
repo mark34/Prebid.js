@@ -1,6 +1,6 @@
 <?php
 /*
- * Create a duplicate version of the ozone & newspass adapter & spec files removing specific areas
+ * Create a duplicate version of the ozone & newspassid adapter & spec files removing specific areas
  *
  * Remove all the following:
 // --- START REMOVE FOR RELEASE
@@ -11,8 +11,8 @@
 $arrConfig = [
     ['in' => './modules/ozoneBidAdapter.js', 'out' => './ozoneBidAdapter.js.' . date("Y-m-d_H_i_s") . '.txt'],
     ['in' => './test/spec/modules/ozoneBidAdapter_spec.js', 'out' => './ozoneBidAdapter_spec.js.' . date("Y-m-d_H_i_s") . '.txt'],
-    ['in' => './modules/newspassBidAdapter.js', 'out' => './newspassBidAdapter.js.' . date("Y-m-d_H_i_s") . '.txt'],
-    ['in' => './test/spec/modules/newspassBidAdapter_spec.js', 'out' => './newspassBidAdapter_spec.js.' . date("Y-m-d_H_i_s") . '.txt'],
+    ['in' => './modules/newspassidBidAdapter.js', 'out' => './newspassidBidAdapter.js.' . date("Y-m-d_H_i_s") . '.txt'],
+    ['in' => './test/spec/modules/newspassidBidAdapter_spec.js', 'out' => './newspassidBidAdapter_spec.js.' . date("Y-m-d_H_i_s") . '.txt'],
 ];
 
 foreach($arrConfig as $config) {

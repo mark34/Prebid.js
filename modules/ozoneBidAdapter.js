@@ -1,9 +1,10 @@
-import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains, isStr, mergeDeep } from '../src/utils.js';
+import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains, mergeDeep } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
+import {getRefererInfo} from '../src/refererDetection.js';
 
 // NOTE this allows us to access the pv value outside of prebid after the auction request.
 // import { getStorageManager } from '../src/storageManager.js'
@@ -74,7 +75,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.7.1-20220526B';
+const OZONEVERSION = '2.7.2-20220629';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -254,7 +255,10 @@ export const spec = {
     delete ozoneRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
 
     // First party data module : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
-    let fpd = config.getConfig('ortb2');
+    // NOTE - see https://docs.prebid.org/features/firstPartyData.html
+    logInfo('going to get ortb2 from bidder request...');
+    let fpd = deepAccess(bidderRequest, 'ortb2', null);
+    logInfo('got fpd: ', fpd);
     if (fpd && deepAccess(fpd, 'user')) {
       logInfo('added FPD user object');
       ozoneRequest.user = fpd.user;
@@ -411,11 +415,13 @@ export const spec = {
     if (this.propertyBag.endpointOverride != null) { extObj[whitelabelBidder]['origin'] = this.propertyBag.endpointOverride; }
 
     // extObj.ortb2 = config.getConfig('ortb2'); // original test location
-    var userExtEids = this.generateEids(validBidRequests); // generate the UserIDs in the correct format for UserId module
+    // 20220628 - got rid of special treatment for adserver.org
+    let userExtEids = deepAccess(validBidRequests, '0.userIdAsEids', []); // generate the UserIDs in the correct format for UserId module
 
+    // logInfo('getRefererInfo', getRefererInfo());
     ozoneRequest.site = {
       'publisher': {'id': htmlParams.publisherId},
-      'page': document.location.href,
+      'page': getRefererInfo().page,
       'id': htmlParams.siteId
     };
     ozoneRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] === 'true') ? 1 : 0;
@@ -681,8 +687,7 @@ export const spec = {
     }
     let endTime = new Date().getTime();
     logInfo(`interpretResponse going to return at time ${endTime} (took ${endTime - startTime}ms) Time from buildRequests Start -> interpretRequests End = ${endTime - this.propertyBag.buildRequestsStart}ms`);
-    logInfo('interpretResponse arrAllBids (live): ', arrAllBids);
-    logInfo('interpretResponse arrAllBids (serialised): ', JSON.parse(JSON.stringify(arrAllBids)));
+    logInfo('interpretResponse arrAllBids (serialised): ', JSON.parse(JSON.stringify(arrAllBids))); // this is ok to log because the renderer has not been attached yet
     return arrAllBids;
   },
   /**
@@ -749,7 +754,7 @@ export const spec = {
     }
     if (optionsType.iframeEnabled) {
       var arrQueryString = [];
-      if (document.location.search.match(/pbjs_debug=true/)) {
+      if (getRefererInfo().page.match(/pbjs_debug=true/)) {
         arrQueryString.push('pbjs_debug=true');
       }
       arrQueryString.push('gdpr=' + (deepAccess(gdprConsent, 'gdprApplies', false) ? '1' : '0'));
@@ -847,10 +852,6 @@ export const spec = {
       if (sharedid) {
         ret['sharedid'] = sharedid;
       }
-      let sharedidthird = deepAccess(bidRequest.userId, 'sharedid.third');
-      if (sharedidthird) {
-        ret['sharedidthird'] = sharedidthird;
-      }
     }
     if (!ret.hasOwnProperty('pubcid')) {
       let pubcid = deepAccess(bidRequest, 'crumbs.pubcid');
@@ -886,42 +887,6 @@ export const spec = {
       }
     }
     return null;
-  },
-  /**
-   * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
-   * http://prebid.org/dev-docs/modules/userId.html
-   * @param validBidRequests
-   * @return {Array}
-   */
-  generateEids(validBidRequests) {
-    let eids;
-    const bidRequest = validBidRequests[0];
-    if (bidRequest && bidRequest.userId) {
-      eids = bidRequest.userIdAsEids;
-      this.handleTTDId(eids, validBidRequests);
-    }
-    return eids;
-  },
-  handleTTDId(eids, validBidRequests) {
-    let ttdId = null;
-    let adsrvrOrgId = config.getConfig('adsrvrOrgId');
-    if (isStr(deepAccess(validBidRequests, '0.userId.tdid'))) {
-      ttdId = validBidRequests[0].userId.tdid;
-    } else if (adsrvrOrgId && isStr(adsrvrOrgId.TDID)) {
-      ttdId = adsrvrOrgId.TDID;
-    }
-    if (ttdId !== null) {
-      eids.push({
-        'source': 'adserver.org',
-        'uids': [{
-          'id': ttdId,
-          'atype': 1,
-          'ext': {
-            'rtiPartner': 'TDID'
-          }
-        }]
-      });
-    }
   },
   // Try to use this as the mechanism for reading GET params because it's easy to mock it for tests
   getGetParametersAsObject() {
@@ -1035,7 +1000,39 @@ export const spec = {
       objRet.skip = skippable ? 1 : 0;
     }
     return objRet;
+  },
+  // NOTE we can't stringify bid object in prebid7 because of curcular refs!
+  getLoggableBidObject(bid) {
+    let logObj = {
+      ad: bid.ad,
+      adId: bid.adId,
+      adUnitCode: bid.adUnitCode,
+      adm: bid.adm,
+      adomain: bid.adomain,
+      adserverTargeting: bid.adserverTargeting,
+      auctionId: bid.auctionId,
+      bidId: bid.bidId,
+      bidder: bid.bidder,
+      bidderCode: bid.bidderCode,
+      cpm: bid.cpm,
+      creativeId: bid.creativeId,
+      crid: bid.crid,
+      currency: bid.currency,
+      h: bid.h,
+      w: bid.w,
+      impid: bid.impid,
+      mediaType: bid.mediaType,
+      params: bid.params,
+      price: bid.price,
+      transactionId: bid.transactionId,
+      ttl: bid.ttl
+    };
+    if (bid.hasOwnProperty('floorData')) {
+      logObj.floorData = bid.floorData;
+    }
+    return logObj;
   }
+
 };
 
 /**
@@ -1304,14 +1301,19 @@ function newRenderer(adUnitCode, rendererOptions = {}) {
   try {
     renderer.setRender(outstreamRender);
   } catch (err) {
-    logError('Prebid Error when calling setRender on renderer', JSON.parse(JSON.stringify(renderer)), err);
+    logError('Prebid Error when calling setRender on renderer', renderer, err);
   }
+  logInfo('returning renderer object');
   return renderer;
 }
+// NOTE from prebid 7, we can no longer log JSON.parse(JSON.stringify(bid)) - this causes a circular reference
 function outstreamRender(bid) {
-  logInfo('outstreamRender called. Going to push the call to window.ozoneVideo.outstreamRender(bid) bid =', JSON.parse(JSON.stringify(bid)));
+  logInfo('outstreamRender called. Going to push the call to window.ozoneVideo.outstreamRender(bid) bid = (first static, then reference)');
+  // note with prebid 7 we CANNOT stringify bid object due to circular reference ALSO the object is too big to realistically remove circular refs with eg. https://gist.github.com/saitonakamura/d51aa672c929e35cc81fa5a0e31f12a9
+  logInfo(JSON.parse(JSON.stringify(spec.getLoggableBidObject(bid))));
   // push to render queue because ozoneVideo may not be loaded yet
   bid.renderer.push(() => {
+    logInfo('Going to execute window.ozoneVideo.outstreamRender');
     window.ozoneVideo.outstreamRender(bid);
   });
 }

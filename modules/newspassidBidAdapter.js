@@ -1,8 +1,9 @@
-import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains, isStr } from '../src/utils.js';
+import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
+import {getRefererInfo} from '../src/refererDetection.js';
 
 // NOTE this allows us to access the pv value outside of prebid after the auction request.
 // import { getStorageManager } from '../src/storageManager.js'
@@ -15,7 +16,6 @@ const BIDDER_CODE = 'newspassid';
 /*
 GET parameters (20211022):
 pbjs_debug=true
-renderer=[renderer_url]
 nppf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
 nppf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
 nprp (possible values: 0-3 / basically any integer which we just pass along)
@@ -28,7 +28,6 @@ np_request: false (do NOT make a request)
 endpointOverride: {
  origin: [override the https://bidder.newspassid.com protion of auction & cookie sync urls]
  kvpPrefix: 'np'
- rendererUrl: [full url]
  cookieSyncUrl: [full url]
  auctionUrl: [full url]
  singleRequest: true|false
@@ -48,19 +47,7 @@ const AUCTIONURI = '/openrtb2/auction';
 const NEWSPASSCOOKIESYNC = '/static/load-cookie.html';
 // renamed 20220210 so there's no ozone stuff called at all (the url is a cname pointing to https://prebid.the-ozone-project.com)
 
-// --- START REMOVE FOR RELEASE
-// const AUCTIONURI = 'https://www.betalyst.com/test/20200622-auction-2-bids.php'; // fake auction response with 2 bids from the same bidder for an adslot
-// const NEWSPASS_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-via-gpt.js'; // video testing
-// const NEWSPASS_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js';
-// const NEWSPASS_RENDERER_URL = 'https://www.betalyst.com/test/ozone-renderer-handle-refresh-guardian20200602-with-gpt-delay.php';
-// const NEWSPASS_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-via-gpt.js'; // video testing local
-// const NEWSPASS_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js'; // video testing local for guardian
-// const NEWSPASS_RENDERER_URL = 'http://localhost:9888/ozone-renderer-switch.js'; // video testing local
-
-// 20200605 - test js renderer
-// const NEWSPASS_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
-// --- END REMOVE FOR RELEASE
-const NEWSPASSVERSION = '1.0.0rc20220504';
+const NEWSPASSVERSION = '1.0.0rc20220629';
 
 export const spec = {
   version: NEWSPASSVERSION,
@@ -208,13 +195,13 @@ export const spec = {
     let npRequest = {}; // we only want to set specific properties on this, not validBidRequests[0].params
     delete npRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
 
+    // 20220615 - had to remove this because there is confusion how it should be working now
     // First party data module : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
-    let fpd = config.getConfig('ortb2');
-    if (fpd && deepAccess(fpd, 'user')) {
-      logInfo('added FPD user object');
-      npRequest.user = fpd.user;
-    }
-
+    // let fpd = config.getConfig('ortb2');
+    // if (fpd && deepAccess(fpd, 'user')) {
+    //   logInfo('added FPD user object');
+    //   npRequest.user = fpd.user;
+    // }
     const getParams = this.getGetParametersAsObject();
     const isTestMode = getParams['nptestmode'] || null; // this can be any string, it's used for testing ads
     npRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
@@ -281,19 +268,19 @@ export const spec = {
           obj.ext['newspassid'].customData[0].targeting['nptestmode'] = isTestMode;
         }
       }
-      if (fpd && deepAccess(fpd, 'site')) {
-        // attach the site fpd into exactly : imp[n].ext.newspassid.customData.0.targeting
-        logInfo('adding fpd.site');
-        if (deepAccess(obj, 'ext.newspassid.customData.0.targeting', false)) {
-          obj.ext.newspassid.customData[0].targeting = Object.assign(obj.ext.newspassid.customData[0].targeting, fpd.site);
-          // let keys = getKeys(fpd.site);
-          // for (let i = 0; i < keys.length; i++) {
-          //   obj.ext['newspassid'].customData[0].targeting[keys[i]] = fpd.site[keys[i]];
-          // }
-        } else {
-          deepSetValue(obj, 'ext.newspassid.customData.0.targeting', fpd.site);
-        }
-      }
+      // if (fpd && deepAccess(fpd, 'site')) {
+      //   // attach the site fpd into exactly : imp[n].ext.newspassid.customData.0.targeting
+      //   logInfo('adding fpd.site');
+      //   if (deepAccess(obj, 'ext.newspassid.customData.0.targeting', false)) {
+      //     obj.ext.newspassid.customData[0].targeting = Object.assign(obj.ext.newspassid.customData[0].targeting, fpd.site);
+      //     // let keys = getKeys(fpd.site);
+      //     // for (let i = 0; i < keys.length; i++) {
+      //     //   obj.ext['newspassid'].customData[0].targeting[keys[i]] = fpd.site[keys[i]];
+      //     // }
+      //   } else {
+      //     deepSetValue(obj, 'ext.newspassid.customData.0.targeting', fpd.site);
+      //   }
+      // }
       if (!schain && deepAccess(npBidRequest, 'schain')) {
         schain = npBidRequest.schain;
       }
@@ -325,11 +312,11 @@ export const spec = {
     if (this.propertyBag.endpointOverride != null) { extObj['newspassid']['origin'] = this.propertyBag.endpointOverride; }
 
     // extObj.ortb2 = config.getConfig('ortb2'); // original test location
-    var userExtEids = this.generateEids(validBidRequests); // generate the UserIDs in the correct format for UserId module
-
+    // 20220628 - got rid of special treatment for adserver.org
+    let userExtEids = deepAccess(validBidRequests, '0.userIdAsEids', []); // generate the UserIDs in the correct format for UserId module
     npRequest.site = {
       'publisher': {'id': htmlParams.publisherId},
-      'page': document.location.href,
+      'page': getRefererInfo().page,
       'id': htmlParams.siteId
     };
     npRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] === 'true') ? 1 : 0;
@@ -527,7 +514,7 @@ export const spec = {
     }
     if (optionsType.iframeEnabled) {
       var arrQueryString = [];
-      if (document.location.search.match(/pbjs_debug=true/)) {
+      if (getRefererInfo().page.match(/pbjs_debug=true/)) {
         arrQueryString.push('pbjs_debug=true');
       }
       arrQueryString.push('usp_consent=' + (usPrivacy || ''));
@@ -557,7 +544,6 @@ export const spec = {
   },
   /**
    * Find the bid matching the bidId in the request object
-   * get instream or outstream if this was a video request else null
    * @return object|null
    */
   getBidRequestForBidId(bidId, arrBids) {
@@ -608,10 +594,6 @@ export const spec = {
       if (sharedid) {
         ret['sharedid'] = sharedid;
       }
-      let sharedidthird = deepAccess(bidRequest.userId, 'sharedid.third');
-      if (sharedidthird) {
-        ret['sharedidthird'] = sharedidthird;
-      }
     }
     if (!ret.hasOwnProperty('pubcid')) {
       let pubcid = deepAccess(bidRequest, 'crumbs.pubcid');
@@ -645,42 +627,6 @@ export const spec = {
       }
     }
     return null;
-  },
-  /**
-   * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
-   * http://prebid.org/dev-docs/modules/userId.html
-   * @param validBidRequests
-   * @return {Array}
-   */
-  generateEids(validBidRequests) {
-    let eids;
-    const bidRequest = validBidRequests[0];
-    if (bidRequest && bidRequest.userId) {
-      eids = bidRequest.userIdAsEids;
-      this.handleTTDId(eids, validBidRequests);
-    }
-    return eids;
-  },
-  handleTTDId(eids, validBidRequests) {
-    let ttdId = null;
-    let adsrvrOrgId = config.getConfig('adsrvrOrgId');
-    if (isStr(deepAccess(validBidRequests, '0.userId.tdid'))) {
-      ttdId = validBidRequests[0].userId.tdid;
-    } else if (adsrvrOrgId && isStr(adsrvrOrgId.TDID)) {
-      ttdId = adsrvrOrgId.TDID;
-    }
-    if (ttdId !== null) {
-      eids.push({
-        'source': 'adserver.org',
-        'uids': [{
-          'id': ttdId,
-          'atype': 1,
-          'ext': {
-            'rtiPartner': 'TDID'
-          }
-        }]
-      });
-    }
   },
   // Try to use this as the mechanism for reading GET params because it's easy to mock it for tests
   getGetParametersAsObject() {
@@ -849,7 +795,7 @@ export function defaultSize(thebidObj) {
 /**
  * Round the bid price down according to the granularity
  * @param price
- * @param mediaType = video, banner or native
+ * @param mediaType = banner or native
  */
 export function getRoundedBid(price, mediaType) {
   const mediaTypeGranularity = config.getConfig(`mediaTypePriceGranularity.${mediaType}`); // might be string or object or nothing; if set then this takes precedence over 'priceGranularity'

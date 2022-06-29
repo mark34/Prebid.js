@@ -82,3 +82,5 @@ typings/
 .DS_Store
 
 *.txt
+issue_tracker.yml
+/.github/workflows/

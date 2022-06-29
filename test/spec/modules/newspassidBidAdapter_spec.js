@@ -1,18 +1,11 @@
 import { expect } from 'chai';
-import { spec, getWidthAndHeightFromVideoObject, playerSizeIsNestedArray, defaultSize } from 'modules/newspassBidAdapter.js';
+import { spec, defaultSize } from 'modules/newspassidBidAdapter.js';
 import { config } from 'src/config.js';
-import {Renderer} from '../../../src/Renderer.js';
-import {getGranularityKeyName, getGranularityObject} from '../../../modules/newspassBidAdapter.js';
+import {getGranularityKeyName, getGranularityObject} from '../../../modules/newspassidBidAdapter.js';
 import * as utils from '../../../src/utils.js';
 const NEWSPASSURI = 'https://bidder.newspassid.com/openrtb2/auction';
 const BIDDER_CODE = 'newspassid';
 
-/*
-
-NOTE - use firefox console to deep copy the objects to use here
-
- */
-var originalPropertyBag = {'pageId': null};
 var validBidRequests = [
   {
     adUnitCode: 'div-gpt-ad-1460505748561-0',
@@ -27,20 +20,20 @@ var validBidRequests = [
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
 ];
-var validBidRequestsNoCustomData = [
-  {
-    adUnitCode: 'div-gpt-ad-1460505748561-0',
-    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-    bidId: '2899ec066a91ff8',
-    bidRequestsCount: 1,
-    bidder: 'newspassid',
-    bidderRequestId: '1c1586b27a1b5c8',
-    crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
-    sizes: [[300, 250], [300, 600]],
-    transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
-  }
-];
+// var validBidRequestsNoCustomData = [
+//   {
+//     adUnitCode: 'div-gpt-ad-1460505748561-0',
+//     auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
+//     bidId: '2899ec066a91ff8',
+//     bidRequestsCount: 1,
+//     bidder: 'newspassid',
+//     bidderRequestId: '1c1586b27a1b5c8',
+//     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
+//     params: { publisherId: '9876abcd12-3', placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+//     sizes: [[300, 250], [300, 600]],
+//     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
+//   }
+// ];
 var validBidRequestsMulti = [
   {
     testId: 1,
@@ -193,35 +186,15 @@ var validBidRequestsWithBannerMediaType = [
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
 ];
-var validBidRequestsWithNonBannerMediaTypesAndValidOutstreamVideo = [
-  {
-    adUnitCode: 'div-gpt-ad-1460505748561-0',
-    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-    bidId: '2899ec066a91ff8',
-    bidRequestsCount: 1,
-    bidder: 'newspassid',
-    bidderRequestId: '1c1586b27a1b5c8',
-    crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, video: {skippable: true, playback_method: ['auto_play_sound_off'], targetDiv: 'some-different-div-id-to-my-adunitcode'} } ] },
-    mediaTypes: {video: {mimes: ['video/mp4'], 'context': 'outstream', 'sizes': [640, 480], playerSize: [640, 480]}, native: {info: 'dummy data'}},
-    transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
-  }
-];
 
-var validBidRequests1OutstreamVideo2020 = [
+var validBidRequestsIsThisCamelCaseEnough = [
   {
     'bidder': 'newspassid',
-    'testname': 'validBidRequests1OutstreamVideo2020',
+    'testname': 'validBidRequestsIsThisCamelCaseEnough',
     'params': {
       'publisherId': 'newspassRUP0001',
       'placementId': '8000000009',
       'siteId': '4204204201',
-      'video': {
-        'skippable': true,
-        'playback_method': [
-          'auto_play_sound_off'
-        ]
-      },
       'customData': [
         {
           'settings': {},
@@ -259,28 +232,10 @@ var validBidRequests1OutstreamVideo2020 = [
         }
       ]
     },
-    'mediaTypes': {
-      'video': {
-        'playerSize': [
-          [
-            640,
-            480
-          ]
-        ],
-        'mimes': [
-          'video/mp4'
-        ],
-        'context': 'outstream'
-      }
-    },
-    'adUnitCode': 'video-ad',
+    mediaTypes: {banner: {sizes: [[300, 250], [300, 600]]}},
+
+    'adUnitCode': 'some-ad',
     'transactionId': '02c1ea7d-0bf2-451b-a122-1420040d1cf8',
-    'sizes': [
-      [
-        640,
-        480
-      ]
-    ],
     'bidId': '2899ec066a91ff8',
     'bidderRequestId': '1c1586b27a1b5c8',
     'auctionId': '0456c9b7-5ab2-4fec-9e10-f418d3d1f04c',
@@ -291,274 +246,29 @@ var validBidRequests1OutstreamVideo2020 = [
   }
 ];
 
-// WHEN sent as bidderRequest to buildRequests you should send the child: .bidderRequest
-var validBidderRequest1OutstreamVideo2020 = {
-  bidderRequest: {
-    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-    auctionStart: 1536838908986,
-    bidderCode: 'newspassid',
-    bidderRequestId: '1c1586b27a1b5c8',
-    bids: [
-      {
-        'bidder': 'newspassid',
-        'params': {
-          'publisherId': 'newspassRUP0001',
-          'placementId': '8000000009',
-          'siteId': '4204204201',
-          'video': {
-            'skippable': true,
-            'playback_method': [
-              'auto_play_sound_off'
-            ]
-          },
-          'customData': [
-            {
-              'settings': {},
-              'targeting': {
-                'sens': 'f',
-                'pt1': '/uk',
-                'pt2': 'uk',
-                'pt3': 'network-front',
-                'pt4': 'ng',
-                'pt5': [
-                  'uk'
-                ],
-                'pt7': 'desktop',
-                'pt8': [
-                  'tfmqxwj7q',
-                  'penl4dfdk',
-                  'uayf5jmv3',
-                  'sek9ghqwi'
-                ],
-                'pt9': '|k0xw2vqzp33kklb3j5w4|||'
-              }
-            }
-          ]
-        },
-        'userId': {
-          'id5id': { uid: '1111', ext: { linkType: 2, abTestingControlGroup: false } },
-          'pubcid': '2ada6ae6-aeca-4e07-8922-a99b3aaf8a56'
-        },
-        'userIdAsEids': [
-          {
-            'source': 'id5-sync.com',
-            'uids': [
-              {
-                'id': 'ID5-ZHMOpSv9CkZNiNd1oR4zc62AzCgSS73fPjmQ6Od7OA',
-                'atype': 1
-              }
-            ]
-          },
-          {
-            'source': 'pubcid.org',
-            'uids': [
-              {
-                'id': '2ada6ae6-aeca-4e07-8922-a99b3aaf8a56',
-                'atype': 1
-              }
-            ]
-          }
-        ],
-        'mediaTypes': {
-          'video': {
-            'playerSize': [
-              [
-                640,
-                480
-              ]
-            ],
-            'mimes': [
-              'video/mp4'
-            ],
-            'context': 'outstream'
-          }
-        },
-        'adUnitCode': 'video-ad',
-        'transactionId': 'ec20cc65-de38-4410-b5b3-50de5b7df66a',
-        'sizes': [
-          [
-            640,
-            480
-          ]
-        ],
-        'bidId': '2899ec066a91ff8',
-        'bidderRequestId': '1c1586b27a1b5c8',
-        'auctionId': '0456c9b7-5ab2-4fec-9e10-f418d3d1f04c',
-        'src': 'client',
-        'bidRequestsCount': 1,
-        'bidderRequestsCount': 1,
-        'bidderWinsCount': 0
-      }],
-    doneCbCallCount: 1,
-    start: 1536838908987,
-    timeout: 3000
-  }
-};
-// WHEN sent as bidderRequest to buildRequests you should send the child: .bidderRequest
 var validBidderRequest = {
-  bidderRequest: {
+  auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
+  auctionStart: 1536838908986,
+  bidderCode: 'newspassid',
+  bidderRequestId: '1c1586b27a1b5c8',
+  bids: [{
+    adUnitCode: 'div-gpt-ad-1460505748561-0',
     auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-    auctionStart: 1536838908986,
-    bidderCode: 'newspassid',
+    bidId: '2899ec066a91ff8',
+    bidRequestsCount: 1,
+    bidder: 'newspassid',
     bidderRequestId: '1c1586b27a1b5c8',
-    bids: [{
-      adUnitCode: 'div-gpt-ad-1460505748561-0',
-      auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-      bidId: '2899ec066a91ff8',
-      bidRequestsCount: 1,
-      bidder: 'newspassid',
-      bidderRequestId: '1c1586b27a1b5c8',
-      crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-      params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { banner: { topframe: 1, w: 300, h: 250, format: [{ w: 300, h: 250 }, { w: 300, h: 600 }] }, id: '2899ec066a91ff8', secure: 1, tagid: 'undefined' } ] },
-      sizes: [[300, 250], [300, 600]],
-      transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
-    }],
-    doneCbCallCount: 1,
-    start: 1536838908987,
-    timeout: 3000
-  }
+    crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { banner: { topframe: 1, w: 300, h: 250, format: [{ w: 300, h: 250 }, { w: 300, h: 600 }] }, id: '2899ec066a91ff8', secure: 1, tagid: 'undefined' } ] },
+    sizes: [[300, 250], [300, 600]],
+    transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
+  }],
+  doneCbCallCount: 1,
+  start: 1536838908987,
+  timeout: 3000
 };
 
-// bidder request with GDPR - change the values for testing:
-// gdprConsent.gdprApplies (true/false)
-// gdprConsent.vendorData.purposeConsents (make empty, make null, remove it)
-// gdprConsent.vendorData.vendorConsents (remove 524, remove all, make the element null, remove it)
-// WHEN sent as bidderRequest to buildRequests you should send the child: .bidderRequest
-var bidderRequestWithFullGdpr = {
-  bidderRequest: {
-    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-    auctionStart: 1536838908986,
-    bidderCode: 'newspassid',
-    bidderRequestId: '1c1586b27a1b5c8',
-    bids: [{
-      adUnitCode: 'div-gpt-ad-1460505748561-0',
-      auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-      bidId: '2899ec066a91ff8',
-      bidRequestsCount: 1,
-      bidder: 'newspassid',
-      bidderRequestId: '1c1586b27a1b5c8',
-      crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-      params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { banner: { topframe: 1, w: 300, h: 250, format: [{ w: 300, h: 250 }, { w: 300, h: 600 }] }, id: '2899ec066a91ff8', secure: 1, tagid: 'undefined' } ] },
-      sizes: [[300, 250], [300, 600]],
-      transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
-    }],
-    doneCbCallCount: 1,
-    start: 1536838908987,
-    timeout: 3000,
-    gdprConsent: {
-      'consentString': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
-      'vendorData': {
-        'metadata': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
-        'gdprApplies': true,
-        'hasGlobalScope': false,
-        'cookieVersion': '1',
-        'created': '2019-05-31T12:46:48.825',
-        'lastUpdated': '2019-05-31T12:46:48.825',
-        'cmpId': '28',
-        'cmpVersion': '1',
-        'consentLanguage': 'en',
-        'consentScreen': '1',
-        'vendorListVersion': 148,
-        'maxVendorId': 631,
-        'purposeConsents': {
-          '1': true,
-          '2': true,
-          '3': true,
-          '4': true,
-          '5': true
-        },
-        'vendorConsents': {
-          '468': true,
-          '522': true,
-          '524': true,
-          '565': true,
-          '591': true
-        }
-      },
-      'gdprApplies': true
-    }, }
-};
-
-var gdprNone = {};
-
-var gdpr1 = {
-  'consentString': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
-  'vendorData': {
-    'metadata': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
-    'gdprApplies': true,
-    'hasGlobalScope': false,
-    'cookieVersion': '1',
-    'created': '2019-05-31T12:46:48.825',
-    'lastUpdated': '2019-05-31T12:46:48.825',
-    'cmpId': '28',
-    'cmpVersion': '1',
-    'consentLanguage': 'en',
-    'consentScreen': '1',
-    'vendorListVersion': 148,
-    'maxVendorId': 631,
-    'purposeConsents': {
-      '1': true,
-      '2': true,
-      '3': true,
-      '4': true,
-      '5': true
-    },
-    'vendorConsents': {
-      '468': true,
-      '522': true,
-      '524': true,
-      '565': true,
-      '591': true
-    }
-  },
-  'gdprApplies': true
-};
-
-// simulating the Mirror
-var bidderRequestWithPartialGdpr = {
-  bidderRequest: {
-    auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-    auctionStart: 1536838908986,
-    bidderCode: 'newspassid',
-    bidderRequestId: '1c1586b27a1b5c8',
-    bids: [{
-      adUnitCode: 'div-gpt-ad-1460505748561-0',
-      auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-      bidId: '2899ec066a91ff8',
-      bidRequestsCount: 1,
-      bidder: 'newspassid',
-      bidderRequestId: '1c1586b27a1b5c8',
-      crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-      params: {
-        publisherId: '9876abcd12-3',
-        customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}],
-        placementId: '1310000099',
-        siteId: '1234567890',
-        id: 'fea37168-78f1-4a23-a40e-88437a99377e',
-        auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99',
-        imp: [{
-          banner: {topframe: 1, w: 300, h: 250, format: [{w: 300, h: 250}, {w: 300, h: 600}]},
-          id: '2899ec066a91ff8',
-          secure: 1,
-          tagid: 'undefined'
-        }]
-      },
-      sizes: [[300, 250], [300, 600]],
-      transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
-    }],
-    doneCbCallCount: 1,
-    start: 1536838908987,
-    timeout: 3000,
-    gdprConsent: {
-      'consentString': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
-      'gdprApplies': true,
-      'vendorData': {
-        'metadata': 'BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA',
-        'gdprApplies': true
-      }
-    }
-  }
-};
+var emptyObject = {};
 
 // make sure the impid matches the request bidId
 var validResponse = {
@@ -618,92 +328,6 @@ var validResponse = {
   'headers': {}
 };
 
-var validResponse2Bids = {
-  'body': {
-    'id': 'd6198807-7a53-4141-b2db-d2cb754d68ba',
-    'seatbid': [
-      {
-        'bid': [
-          {
-            'id': '677903815252395017',
-            'impid': '2899ec066a91ff8',
-            'price': 0.5,
-            'adm': '<script src="https://fra1-ib.adnxs.com/ab?e=wqT_3QLXB6DXAwAAAwDWAAUBCNDh6dwFENjt4vTs9Y6bWhjxtI3siuOTmREqNgkAAAECCOA_EQEHNAAA4D8ZAAAAgOtR4D8hERIAKREJADERG6gwsqKiBjjtSEDtSEgCUI3J-y5YnPFbYABotc95eMuOBYABAYoBA1VTRJIBAQbwUpgBrAKgAdgEqAEBsAEAuAECwAEDyAEC0AEA2AEA4AEA8AEAigI7dWYoJ2EnLCAyNTI5ODg1LCAxNTM2ODQ4MDgwKTt1ZigncicsIDk4NDkzNTgxNh4A8JySAv0BIWJ6YWpPQWl1c0s0S0VJM0oteTRZQUNDYzhWc3dBRGdBUUFSSTdVaFFzcUtpQmxnQVlQX19fXzhQYUFCd0FYZ0JnQUVCaUFFQmtBRUJtQUVCb0FFQnFBRURzQUVBdVFFcGk0aURBQURnUDhFQktZdUlnd0FBNERfSkFUMDR0TTFxYXZFXzJRRUFBQUFBQUFEd1AtQUJBUFVCBQ8oSmdDQUtBQ0FMVUMFEARMMAkI8FBNQUNBY2dDQWRBQ0FkZ0NBZUFDQU9nQ0FQZ0NBSUFEQVpBREFKZ0RBYWdEcnJDdUNyb0RDVVpTUVRFNk16WTROT0FER2cuLpoCPSFLQXVvRkE2AAFwblBGYklBUW9BRG9KUmxKQk1Ub3pOamcwUUJwSkENAfBAOEQ4LsICL2h0dHA6Ly9wcmViaWQub3JnL2Rldi1kb2NzL2dldHRpbmctc3RhcnRlZC5odG1s2AIA4AKtmEjqAiINOthkZW1vLnRnpS1vem9uZS1wcm9qZWN0LmNvbS_yAhMKD0NVU1RPTV9NT0RFTF9JRBIA8gIaChZDLhYAIExFQUZfTkFNRQEdCB4KGjIzAPCHTEFTVF9NT0RJRklFRBIAgAMAiAMBkAMAmAMUoAMBqgMAwAOsAsgDANgDAOADAOgDAPgDA4AEAJIECS9vcGVucnRiMpgEAKIECTEyNy4wLjAuMagEALIEDAgAEAAYACAAMAA4ALgEAMAEAMgEANIEDjkzMjUjRlJBMTnpNjg02gQCCAHgBADwBEHvIIgFAZgFAKAF_xEBsAGqBSRkNjE5ODgwNy03YTUzLTQxNDEtYjJkYi1kMmNiNzU0ZDY4YmHABQDJBWlQFPA_0gUJCQkMpAAA2AUB4AUB8AWZ9CH6BQQIABAAkAYAmAYAuAYAwQYAAAAAAAAAAMgGAA..&s=ab84b182eef7d9b4e58c74fe8987705c25ed803c&referrer=http%3A%2F%2Fdemo.the-some-project.com%2F&pp=${AUCTION_PRICE}"></script>',
-            'adid': '98493581',
-            'adomain': [
-              'http://prebid.org'
-            ],
-            'iurl': 'https://fra1-ib.adnxs.com/cr?id=98493581',
-            'cid': '9325',
-            'crid': '98493581',
-            'cat': [
-              'IAB3-1'
-            ],
-            'w': 300,
-            'h': 600,
-            'ext': {
-              'prebid': {
-                'type': 'banner'
-              },
-              'bidder': {
-                'appnexus': {
-                  'brand_id': 555545,
-                  'auction_id': 6500448734132353000,
-                  'bidder_id': 2,
-                  'bid_ad_type': 0
-                }
-              }
-            }
-          },
-          {
-            'id': '677903815252395010',
-            'impid': '2899ec066a91ff0',
-            'price': 0.9,
-            'adm': '<script src="test"></script>',
-            'adid': '98493580',
-            'adomain': [
-              'http://prebid.org'
-            ],
-            'iurl': 'https://fra1-ib.adnxs.com/cr?id=98493581',
-            'cid': '9320',
-            'crid': '98493580',
-            'cat': [
-              'IAB3-1'
-            ],
-            'w': 300,
-            'h': 600,
-            'ext': {
-              'prebid': {
-                'type': 'banner'
-              },
-              'bidder': {
-                'appnexus': {
-                  'brand_id': 555540,
-                  'auction_id': 6500448734132353000,
-                  'bidder_id': 2,
-                  'bid_ad_type': 0
-                }
-              }
-            }
-          } ],
-        'seat': 'appnexus'
-      }
-    ],
-    'cur': 'GBP', /* NOTE - this is where cur is, not in the seatbids. */
-    'ext': {
-      'responsetimemillis': {
-        'appnexus': 47,
-        'openx': 30
-      }
-    },
-    'timing': {
-      'start': 1536848078.089177,
-      'end': 1536848078.142203,
-      'TimeTaken': 0.05302619934082031
-    }
-  },
-  'headers': {}
-};
 /*
 A bidder returns a bid for both sizes in an adunit
  */
@@ -783,99 +407,6 @@ var validResponse2BidsSameAdunit = {
       'responsetimemillis': {
         'appnexus': 47,
         'openx': 30
-      }
-    },
-    'timing': {
-      'start': 1536848078.089177,
-      'end': 1536848078.142203,
-      'TimeTaken': 0.05302619934082031
-    }
-  },
-  'headers': {}
-};
-/*
-
-SPECIAL CONSIDERATION FOR VIDEO TESTS:
-
-DO NOT USE _validVideoResponse directly - the interpretResponse function will modify it (adding a renderer!!!) so all
-subsequent calls will already have a renderer attached!!!
-
-*/
-function getCleanValidVideoResponse() {
-  return JSON.parse(JSON.stringify(_validVideoResponse));
-}
-var _validVideoResponse = {
-  'body': {
-    'id': 'd6198807-7a53-4141-b2db-d2cb754d68ba',
-    'seatbid': [
-      {
-        'bid': [
-          {
-            'id': '2899ec066a91ff8',
-            'impid': '2899ec066a91ff8',
-            'price': 31.7,
-            'adm': '<VAST ...></VAST>',
-            'adomain': [
-              'sarr.properties'
-            ],
-            'crid': 'id-655',
-            'cat': [
-              'IAB21'
-            ],
-            'w': 640,
-            'h': 360,
-            'ext': {
-              'prebid': {
-                'type': 'video'
-              }
-            },
-            'adId': '2899ec066a91ff8-2',
-            'cpm': 31.7,
-            'bidId': '2899ec066a91ff8',
-            'requestId': '2899ec066a91ff8',
-            'width': 640,
-            'height': 360,
-            'ad': '<VAST  ...></VAST>',
-            'netRevenue': true,
-            'creativeId': 'id-655',
-            'currency': 'USD',
-            'ttl': 300,
-            'adserverTargeting': {
-              'np_npbeeswax': 'npbeeswax',
-              'np_npbeeswax_pb': '31.7',
-              'np_npbeeswax_crid': 'id-655',
-              'np_npbeeswax_adv': 'sarr.properties',
-              'np_npbeeswax_imp_id': '49d16ccc28663a8',
-              'np_npbeeswax_adId': '49d16ccc28663a8-2',
-              'np_npbeeswax_pb_r': '20.00',
-              'np_npbeeswax_omp': '1',
-              'np_npbeeswax_vid': 'outstream',
-              'np_auc_id': 'efa7fea0-7e87-4811-be86-fefb38c35fbb',
-              'np_winner': 'npbeeswax',
-              'np_response_id': 'efa7fea0-7e87-4811-be86-fefb38c35fbb',
-              'np_winner_auc_id': '49d16ccc28663a8',
-              'np_winner_imp_id': '49d16ccc28663a8',
-              'np_pb_v': '2.4.0',
-              'hb_bidder': 'newspassid',
-              'hb_adid': '49d16ccc28663a8-2',
-              'hb_pb': '20.00',
-              'hb_size': '640x360',
-              'hb_source': 'client',
-              'hb_format': 'banner'
-            },
-            'originalCpm': 31.7,
-            'originalCurrency': 'USD'
-          }
-        ],
-        'seat': 'npbeeswax'
-      }
-    ],
-    'ext': {
-      'responsetimemillis': {
-        'beeswax': 9,
-        'openx': 43,
-        'npappnexus': 31,
-        'npbeeswax': 7
       }
     },
     'timing': {
@@ -1262,30 +793,6 @@ var multiBidderRequest1 = {
       'stack': [
         'http://some.referrer.com'
       ]
-    },
-    'gdprConsent': {
-      'consentString': 'BOvy5sFO1dBa2AKAiBENDP-AAAAwVrv7_77-_9f-_f__9uj3Gr_v_f__32ccL5tv3h_7v-_7fi_-0nV4u_1tft9ydk1-5ctDztp507iakiPHmqNeb9n_mz1eZpRP58E09j53z7Ew_v8_v-b7BCPN_Y3v-8K96kA',
-      'vendorData': {
-        'metadata': 'BOvy5sFO1dBa2AKAiBENDPA',
-        'gdprApplies': true,
-        'hasGlobalConsent': false,
-        'hasGlobalScope': false,
-        'purposeConsents': {
-          '1': true,
-          '2': true,
-          '3': true,
-          '4': true,
-          '5': true
-        },
-        'vendorConsents': {
-          '1': true,
-          '2': true,
-          '3': false,
-          '4': true,
-          '5': true
-        }
-      },
-      'gdprApplies': true
     },
     'start': 1592918645578
   }
@@ -1692,27 +1199,9 @@ describe('newspassid Adapter', function () {
       expect(spec.isBidRequestValid(xBadSite)).to.equal(false);
     });
 
-    var xBadSiteTooLong = {
-      bidder: BIDDER_CODE,
-      params: {
-        placementId: '1234567890',
-        publisherId: '9876abcd12-3',
-        siteId: '12345678901'
-      }
-    };
-
     it('should not validate siteId too long', function () {
       expect(spec.isBidRequestValid(xBadSite)).to.equal(false);
     });
-
-    var xBadSiteTooShort = {
-      bidder: BIDDER_CODE,
-      params: {
-        placementId: '1234567890',
-        publisherId: '9876abcd12-3',
-        siteId: '123456789'
-      }
-    };
 
     it('should not validate siteId too short', function () {
       expect(spec.isBidRequestValid(xBadSite)).to.equal(false);
@@ -1758,7 +1247,7 @@ describe('newspassid Adapter', function () {
       expect(spec.isBidRequestValid(xBadCustomData)).to.equal(false);
     });
 
-    var xBadCustomData_OLD_CUSTOMDATA_VALUE = {
+    var xBadCustomDataOldCustomdataValue = {
       bidder: BIDDER_CODE,
       params: {
         'placementId': '1234567890',
@@ -1769,10 +1258,10 @@ describe('newspassid Adapter', function () {
     };
 
     it('should not validate customData being an object, not an array', function () {
-      expect(spec.isBidRequestValid(xBadCustomData_OLD_CUSTOMDATA_VALUE)).to.equal(false);
+      expect(spec.isBidRequestValid(xBadCustomDataOldCustomdataValue)).to.equal(false);
     });
 
-    var xBadCustomData_zerocd = {
+    var xBadCustomDataZerocd = {
       bidder: BIDDER_CODE,
       params: {
         'placementId': '1111111110',
@@ -1783,10 +1272,10 @@ describe('newspassid Adapter', function () {
     };
 
     it('should not validate customData array having no elements', function () {
-      expect(spec.isBidRequestValid(xBadCustomData_zerocd)).to.equal(false);
+      expect(spec.isBidRequestValid(xBadCustomDataZerocd)).to.equal(false);
     });
 
-    var xBadCustomData_notargeting = {
+    var xBadCustomDataNotargeting = {
       bidder: BIDDER_CODE,
       params: {
         'placementId': '1234567890',
@@ -1796,10 +1285,10 @@ describe('newspassid Adapter', function () {
       }
     };
     it('should not validate customData[] having no "targeting"', function () {
-      expect(spec.isBidRequestValid(xBadCustomData_notargeting)).to.equal(false);
+      expect(spec.isBidRequestValid(xBadCustomDataNotargeting)).to.equal(false);
     });
 
-    var xBadCustomData_tgt_not_obj = {
+    var xBadCustomDataTgtNotObj = {
       bidder: BIDDER_CODE,
       params: {
         'placementId': '1234567890',
@@ -1809,7 +1298,7 @@ describe('newspassid Adapter', function () {
       }
     };
     it('should not validate customData[0].targeting not being an object', function () {
-      expect(spec.isBidRequestValid(xBadCustomData_tgt_not_obj)).to.equal(false);
+      expect(spec.isBidRequestValid(xBadCustomDataTgtNotObj)).to.equal(false);
     });
 
     var xBadCustomParams = {
@@ -1828,23 +1317,23 @@ describe('newspassid Adapter', function () {
 
   describe('buildRequests', function () {
     it('sends bid request to NEWSPASSURI via POST', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       expect(request.url).to.equal(NEWSPASSURI);
       expect(request.method).to.equal('POST');
     });
 
     it('sends data as a string', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       expect(request.data).to.be.a('string');
     });
 
     it('sends all bid parameters', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
     });
 
     it('adds all parameters inside the ext object only', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
       expect(data.imp[0].ext.newspassid.customData).to.be.an('array');
@@ -1854,7 +1343,7 @@ describe('newspassid Adapter', function () {
 
     it('adds all parameters inside the ext object only - lightning', function () {
       let localBidReq = JSON.parse(JSON.stringify(validBidRequests));
-      const request = spec.buildRequests(localBidReq, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(localBidReq, validBidderRequest);
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
       expect(data.imp[0].ext.newspassid.customData).to.be.an('array');
@@ -1863,28 +1352,28 @@ describe('newspassid Adapter', function () {
     });
 
     it('has correct bidder', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       expect(request.bidderRequest.bids[0].bidder).to.equal(BIDDER_CODE);
     });
 
     it('handles mediaTypes element correctly', function () {
-      const request = spec.buildRequests(validBidRequestsWithBannerMediaType, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequestsWithBannerMediaType, validBidderRequest);
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
     });
 
     it('handles no newspassid or custom data', function () {
-      const request = spec.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequestsMinimal, validBidderRequest);
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
     });
 
     it('should not crash when there is no sizes element at all', function () {
-      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
     });
 
     it('should be able to handle non-single requests', function () {
       config.setConfig({'newspassid': {'singleRequest': false}});
-      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
       expect(request).to.be.a('array');
       expect(request[0]).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
       // need to reset the singleRequest config flag:
@@ -1892,19 +1381,7 @@ describe('newspassid Adapter', function () {
     });
 
     it('should not have imp[N].ext.newspassid.userId', function () {
-      let consentString = 'BOcocyaOcocyaAfEYDENCD-AAAAjx7_______9______9uz_Ov_v_f__33e8__9v_l_7_-___u_-33d4-_1vf99yfm1-7ftr3tp_87ues2_Xur__59__3z3_NphLgA==';
-      let bidderRequest = validBidderRequest.bidderRequest;
-      bidderRequest.gdprConsent = {
-        consentString: consentString,
-        gdprApplies: false,
-        vendorData: {
-          metadata: consentString,
-          gdprApplies: true,
-          vendorConsents: {524: true},
-          purposeConsents: {1: true, 2: true, 3: true, 4: true, 5: true}
-        }
-      };
-
+      let bidderRequest = validBidderRequest;
       let bidRequests = validBidRequests;
       // values from http://prebid.org/dev-docs/modules/userId.html#pubcommon-id
       bidRequests[0]['userId'] = {
@@ -1937,14 +1414,14 @@ describe('newspassid Adapter', function () {
         'sharedid': {'id': '01EAJWWNEPN3CYMM5N8M5VXY22', 'third': '01EAJWWNEPN3CYMM5N8M5VXY22'}
       };
       bidRequests[0]['userIdAsEids'] = validBidRequestsWithUserIdData[0]['userIdAsEids'];
-      const request = spec.buildRequests(bidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(bidRequests, validBidderRequest);
       const payload = JSON.parse(request.data);
       expect(payload.ext.newspassid.pubcid).to.equal(bidRequests[0]['crumbs']['pubcid']);
       delete validBidRequests[0].userId; // tidy up now, else it will screw with other tests
     });
 
     it('should add a user.ext.eids object to contain user ID data in the new location (Nov 2019) Updated Aug 2020', function() {
-      const request = spec.buildRequests(validBidRequestsWithUserIdData, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequestsWithUserIdData, validBidderRequest);
       /*
       'pubcid': '12345678',
       'tdid': '1111tdid',
@@ -1978,7 +1455,7 @@ describe('newspassid Adapter', function () {
       spec.propertyBag.config = null;
       let fakeOrigin = 'http://sometestendpoint';
       config.setConfig({'newspassid': {'endpointOverride': {'origin': fakeOrigin}}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       expect(request.url).to.equal(fakeOrigin + '/openrtb2/auction');
       expect(request.method).to.equal('POST');
       const data = JSON.parse(request.data);
@@ -1990,7 +1467,7 @@ describe('newspassid Adapter', function () {
       spec.propertyBag.config = null;
       let fakeurl = 'http://sometestendpoint/myfullurl';
       config.setConfig({'newspassid': {'endpointOverride': {'auctionUrl': fakeurl}}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       expect(request.url).to.equal(fakeurl);
       expect(request.method).to.equal('POST');
       const data = JSON.parse(request.data);
@@ -2000,9 +1477,8 @@ describe('newspassid Adapter', function () {
 
     it('should ignore kvpPrefix', function () {
       spec.propertyBag.config = null;
-      var specMock = utils.deepClone(spec);
       config.setConfig({'newspassid': {'kvpPrefix': 'np'}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       expect(result[0].adserverTargeting).to.have.own.property('np_appnexus_crid');
       expect(utils.deepAccess(result[0].adserverTargeting, 'np_appnexus_crid')).to.equal('98493581');
@@ -2014,8 +1490,7 @@ describe('newspassid Adapter', function () {
     });
     it('should create a meta object on each bid returned', function () {
       spec.propertyBag.config = null;
-      var specMock = utils.deepClone(spec);
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       expect(result[0]).to.have.own.property('meta');
       expect(result[0].meta.advertiserDomains[0]).to.equal('http://prebid.org');
@@ -2028,7 +1503,7 @@ describe('newspassid Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'nptestmode': 'mytestvalue_123'};
       };
-      const request = specMock.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest);
       const data = JSON.parse(request.data);
       expect(data.imp[0].ext.newspassid.customData).to.be.an('array');
       expect(data.imp[0].ext.newspassid.customData[0].targeting.nptestmode).to.equal('mytestvalue_123');
@@ -2039,7 +1514,7 @@ describe('newspassid Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {npf: '1', nppf: '0', nprp: '2', npip: '123'};
       };
-      const request = specMock.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest);
       const data = JSON.parse(request.data);
       expect(data.ext.newspassid.npf).to.equal(1);
       expect(data.ext.newspassid.nppf).to.equal(0);
@@ -2052,7 +1527,7 @@ describe('newspassid Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {npf: 'false', nppf: 'true', nprp: 'xyz', npip: 'hello'};
       };
-      const request = specMock.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest);
       const data = JSON.parse(request.data);
       expect(data.ext.newspassid.npf).to.equal(0);
       expect(data.ext.newspassid.nppf).to.equal(1);
@@ -2065,7 +1540,7 @@ describe('newspassid Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'nptestmode': 'mytestvalue_123'};
       };
-      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
+      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
       const data = JSON.parse(request.data);
       expect(data.imp[0].ext.newspassid.customData).to.be.an('array');
       expect(data.imp[0].ext.newspassid.customData[0].targeting.nptestmode).to.equal('mytestvalue_123');
@@ -2077,7 +1552,7 @@ describe('newspassid Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {};
       };
-      let request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
+      let request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
       let url = request.url;
       expect(url).to.equal('https://bidder.newspassid.com/openrtb2/auction');
       let cookieUrl = specMock.getCookieSyncUrl();
@@ -2089,7 +1564,7 @@ describe('newspassid Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'auction': 'https://www.someurl.com/auction', 'cookiesync': 'https://www.someurl.com/sync'};
       };
-      request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
+      request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
       url = request.url;
       expect(url).to.equal('https://www.someurl.com/auction');
       cookieUrl = specMock.getCookieSyncUrl();
@@ -2101,7 +1576,7 @@ describe('newspassid Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'npstoredrequest': '1122334455'}; // 10 digits are valid
       };
-      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
+      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
       const data = JSON.parse(request.data);
       expect(data.ext.newspassid.np_rw).to.equal(1);
       expect(data.imp[0].ext.prebid.storedrequest.id).to.equal('1122334455');
@@ -2112,7 +1587,7 @@ describe('newspassid Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'npstoredrequest': 'BADVAL'}; // 10 digits are valid
       };
-      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest.bidderRequest);
+      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
       const data = JSON.parse(request.data);
       expect(data.ext.newspassid.np_rw).to.equal(0);
       expect(data.imp[0].ext.prebid.storedrequest.id).to.equal('1310000099');
@@ -2120,7 +1595,7 @@ describe('newspassid Adapter', function () {
 
     it('should pick up the config value of coppa & set it in the request', function () {
       config.setConfig({'coppa': true});
-      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
       const payload = JSON.parse(request.data);
       expect(payload.regs).to.include.keys('coppa');
       expect(payload.regs.coppa).to.equal(1);
@@ -2128,90 +1603,92 @@ describe('newspassid Adapter', function () {
     });
     it('should pick up the config value of coppa & only set it in the request if its true', function () {
       config.setConfig({'coppa': false});
-      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
       const payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'regs.coppa')).to.be.undefined;
       config.resetConfig();
     });
     it('should should contain a unique page view id in the auction request which persists across calls', function () {
-      let request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      let request = spec.buildRequests(validBidRequests, validBidderRequest);
       let payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'ext.newspassid.pv')).to.be.a('string');
-      request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest.bidderRequest);
+      request = spec.buildRequests(validBidRequestsIsThisCamelCaseEnough, validBidderRequest);
       let payload2 = JSON.parse(request.data);
       expect(utils.deepAccess(payload2, 'ext.newspassid.pv')).to.be.a('string');
       expect(utils.deepAccess(payload2, 'ext.newspassid.pv')).to.equal(utils.deepAccess(payload, 'ext.newspassid.pv'));
     });
     it('should indicate that the whitelist was used when it contains valid data', function () {
       config.setConfig({'newspassid': {'np_whitelist_adserver_keys': ['np_appnexus_pb', 'np_appnexus_imp_id']}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const payload = JSON.parse(request.data);
       expect(payload.ext.newspassid.np_kvp_rw).to.equal(1);
       config.resetConfig();
     });
     it('should indicate that the whitelist was not used when it contains no data', function () {
       config.setConfig({'newspassid': {'np_whitelist_adserver_keys': []}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const payload = JSON.parse(request.data);
       expect(payload.ext.newspassid.np_kvp_rw).to.equal(0);
       config.resetConfig();
     });
     it('should indicate that the whitelist was not used when it is not set in the config', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const payload = JSON.parse(request.data);
       expect(payload.ext.newspassid.np_kvp_rw).to.equal(0);
     });
-    it('should handle ortb2 site data', function () {
-      config.setConfig({'ortb2': {
-        'site': {
-          'name': 'example_ortb2_name',
-          'domain': 'page.example.com',
-          'cat': ['IAB2'],
-          'sectioncat': ['IAB2-2'],
-          'pagecat': ['IAB2-2'],
-          'page': 'https://page.example.com/here.html',
-          'ref': 'https://ref.example.com',
-          'keywords': 'power tools, drills',
-          'search': 'drill'
-        }
-      }});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.imp[0].ext.newspassid.customData[0].targeting.name).to.equal('example_ortb2_name');
-      expect(payload.user.ext).to.not.have.property('gender');
-      config.resetConfig();
-    });
-    it('should add ortb2 site data when there is no customData already created', function () {
-      config.setConfig({'ortb2': {
-        'site': {
-          'name': 'example_ortb2_name',
-          'domain': 'page.example.com',
-          'cat': ['IAB2'],
-          'sectioncat': ['IAB2-2'],
-          'pagecat': ['IAB2-2'],
-          'page': 'https://page.example.com/here.html',
-          'ref': 'https://ref.example.com',
-          'keywords': 'power tools, drills',
-          'search': 'drill'
-        }
-      }});
-      const request = spec.buildRequests(validBidRequestsNoCustomData, validBidderRequest.bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.imp[0].ext.newspassid.customData[0].targeting.name).to.equal('example_ortb2_name');
-      expect(payload.imp[0].ext.newspassid.customData[0].targeting).to.not.have.property('gender')
-      config.resetConfig();
-    });
-    it('should add ortb2 user data to the user object', function () {
-      config.setConfig({'ortb2': {
-        'user': {
-          'gender': 'who knows these days'
-        }
-      }});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
-      const payload = JSON.parse(request.data);
-      expect(payload.user.gender).to.equal('who knows these days');
-      config.resetConfig();
-    });
+    // 20220615 temporarily removed due to prebid confusion
+    // it('should handle ortb2 site data', function () {
+    //   config.setConfig({'ortb2': {
+    //     'site': {
+    //       'name': 'example_ortb2_name',
+    //       'domain': 'page.example.com',
+    //       'cat': ['IAB2'],
+    //       'sectioncat': ['IAB2-2'],
+    //       'pagecat': ['IAB2-2'],
+    //       'page': 'https://page.example.com/here.html',
+    //       'ref': 'https://ref.example.com',
+    //       'keywords': 'power tools, drills',
+    //       'search': 'drill'
+    //     }
+    //   }});
+    //   const request = spec.buildRequests(validBidRequests, validBidderRequest);
+    //   const payload = JSON.parse(request.data);
+    //   expect(payload.imp[0].ext.newspassid.customData[0].targeting.name).to.equal('example_ortb2_name');
+    //   expect(payload.user.ext).to.not.have.property('gender');
+    //   config.resetConfig();
+    // });
+    // 20220615 temporarily removed due to prebid confusion
+    // it('should add ortb2 site data when there is no customData already created', function () {
+    //   config.setConfig({'ortb2': {
+    //     'site': {
+    //       'name': 'example_ortb2_name',
+    //       'domain': 'page.example.com',
+    //       'cat': ['IAB2'],
+    //       'sectioncat': ['IAB2-2'],
+    //       'pagecat': ['IAB2-2'],
+    //       'page': 'https://page.example.com/here.html',
+    //       'ref': 'https://ref.example.com',
+    //       'keywords': 'power tools, drills',
+    //       'search': 'drill'
+    //     }
+    //   }});
+    //   const request = spec.buildRequests(validBidRequestsNoCustomData, validBidderRequest);
+    //   const payload = JSON.parse(request.data);
+    //   expect(payload.imp[0].ext.newspassid.customData[0].targeting.name).to.equal('example_ortb2_name');
+    //   expect(payload.imp[0].ext.newspassid.customData[0].targeting).to.not.have.property('gender')
+    //   config.resetConfig();
+    // });
+    // it('should add ortb2 user data to the user object', function () {
+    //   config.setConfig({'ortb2': {
+    //     'user': {
+    //       'gender': 'who knows these days'
+    //     }
+    //   }});
+    //   const request = spec.buildRequests(validBidRequests, validBidderRequest);
+    //   const payload = JSON.parse(request.data);
+    //   expect(payload.user.gender).to.equal('who knows these days');
+    //   config.resetConfig();
+    // });
     it('handles schain object in each bidrequest (will be the same in each br)', function () {
       let br = JSON.parse(JSON.stringify(validBidRequests));
       // I only need to inject this into one of the bidrequests - it will get picked up in the br loop
@@ -2227,7 +1704,7 @@ describe('newspassid Adapter', function () {
         ]
       };
       br[0]['schain'] = schainConfigObject;
-      const request = spec.buildRequests(br, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(br, validBidderRequest);
       const data = JSON.parse(request.data);
       expect(data.source.ext).to.haveOwnProperty('schain');
       expect(data.source.ext.schain).to.deep.equal(schainConfigObject); // .deep.equal() : Target object deeply (but not strictly) equals `{a: 1}`
@@ -2236,13 +1713,13 @@ describe('newspassid Adapter', function () {
 
   describe('interpretResponse', function () {
     it('should build bid array', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       expect(result.length).to.equal(1);
     });
 
     it('should have all relevant fields', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       const bid = result[0];
       expect(bid.cpm).to.equal(validResponse.body.seatbid[0].bid[0].cpm);
@@ -2250,7 +1727,7 @@ describe('newspassid Adapter', function () {
       expect(bid.height).to.equal(validResponse.body.seatbid[0].bid[0].height);
     });
     it('should build bid array with usp/CCPA', function () {
-      let validBR = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr.bidderRequest));
+      let validBR = JSON.parse(JSON.stringify(validBidderRequest));
       validBR.uspConsent = '1YNY';
       const request = spec.buildRequests(validBidRequests, validBR);
       const payload = JSON.parse(request.data);
@@ -2271,19 +1748,19 @@ describe('newspassid Adapter', function () {
     });
 
     it('should correctly parse response where there are more bidders than ad slots', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validBidResponse1adWith2Bidders, request);
       expect(result.length).to.equal(2);
     });
 
     it('should have a ttl of 600', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       expect(result[0].ttl).to.equal(300);
     });
     it('should handle a valid whitelist, removing items not on the list & leaving others', function () {
       config.setConfig({'newspassid': {'np_whitelist_adserver_keys': ['np_appnexus_crid', 'np_appnexus_adId']}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'np_appnexus_adv')).to.be.undefined;
       expect(utils.deepAccess(result[0].adserverTargeting, 'np_appnexus_adId')).to.equal('2899ec066a91ff8-0-np-0');
@@ -2291,7 +1768,7 @@ describe('newspassid Adapter', function () {
     });
     it('should ignore a whitelist if enhancedAdserverTargeting is false', function () {
       config.setConfig({'newspassid': {'np_whitelist_adserver_keys': ['np_appnexus_crid', 'np_appnexus_imp_id'], 'enhancedAdserverTargeting': false}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'np_appnexus_adv')).to.be.undefined;
       expect(utils.deepAccess(result[0].adserverTargeting, 'np_appnexus_imp_id')).to.be.undefined;
@@ -2299,14 +1776,14 @@ describe('newspassid Adapter', function () {
     });
     it('should correctly handle enhancedAdserverTargeting being false', function () {
       config.setConfig({'newspassid': {'enhancedAdserverTargeting': false}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'np_appnexus_adv')).to.be.undefined;
       expect(utils.deepAccess(result[0].adserverTargeting, 'np_appnexus_imp_id')).to.be.undefined;
       config.resetConfig();
     });
     it('should add unique adId values to each bid', function() {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
       let validres = JSON.parse(JSON.stringify(validResponse2BidsSameAdunit));
       const result = spec.interpretResponse(validres, request);
       expect(result.length).to.equal(1);
@@ -2337,32 +1814,32 @@ describe('newspassid Adapter', function () {
 
   describe('userSyncs', function () {
     it('should fail gracefully if no server response', function () {
-      const result = spec.getUserSyncs('bad', false, gdprNone);
+      const result = spec.getUserSyncs('bad', false, emptyObject);
       expect(result).to.be.empty;
     });
     it('should fail gracefully if server response is empty', function () {
-      const result = spec.getUserSyncs('bad', [], gdprNone);
+      const result = spec.getUserSyncs('bad', [], emptyObject);
       expect(result).to.be.empty;
     });
     it('should append the various values if they exist', function() {
       // get the cookie bag populated
-      spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
-      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', gdprNone);
+      spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', emptyObject);
       expect(result).to.be.an('array');
       expect(result[0].url).to.include('publisherId=9876abcd12-3');
       expect(result[0].url).to.include('siteId=1234567890');
     });
     it('should append ccpa (usp data)', function() {
       // get the cookie bag populated
-      spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
-      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', gdprNone, '1YYN');
+      spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', emptyObject, '1YYN');
       expect(result).to.be.an('array');
       expect(result[0].url).to.include('usp_consent=1YYN');
     });
     it('should use "" if no usp is sent to cookieSync', function() {
       // get the cookie bag populated
-      spec.buildRequests(validBidRequests, validBidderRequest.bidderRequest);
-      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', gdprNone);
+      spec.buildRequests(validBidRequests, validBidderRequest);
+      const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', emptyObject);
       expect(result).to.be.an('array');
       expect(result[0].url).to.include('usp_consent=&');
     });
@@ -2406,13 +1883,13 @@ describe('newspassid Adapter', function () {
   describe('blockTheRequest', function() {
     it('should return true if np_request is false', function() {
       config.setConfig({'newspassid': {'np_request': false}});
-      let result = spec.blockTheRequest(bidderRequestWithFullGdpr);
+      let result = spec.blockTheRequest();
       expect(result).to.be.true;
       config.resetConfig();
     });
     it('should return false if np_request is true', function() {
       config.setConfig({'newspassid': {'np_request': true}});
-      let result = spec.blockTheRequest(bidderRequestWithFullGdpr);
+      let result = spec.blockTheRequest();
       expect(result).to.be.false;
       config.resetConfig();
     });

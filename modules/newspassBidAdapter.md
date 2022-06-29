@@ -44,32 +44,3 @@ adUnits = [{
 ```
 
 
-```
-
-//Outstream Video adUnit
-
-adUnits = [{
-                    code: 'id-of-your-video-div',
-                    mediaTypes: {
-                        video: {
-                            playerSize: [640, 360],
-                            mimes: ['video/mp4'],
-                            context: 'outstream',
-                        }
-                    },
-                    bids: [{
-                        bidder: 'newspass',
-                        params: {
-                            publisherId: 'NEWSPASS123', /* an ID to identify the publisher account  - required */
-                            siteId: '4204204201', /* An ID used to identify a site within a publisher account - required */
-							customData: [{"settings": {}, "targeting": { "key": "value", "key2": ["value1", "value2"]}}]
-                            placementId: '0440440442', /* an ID used to identify the piece of inventory - required - for unruly test use 0440440442. */
-							video: {
-                                skippable: true, /* optional */
-                                playback_method: ['auto_play_sound_off'], /* optional */
-                                targetDiv: 'some-different-div-id-to-my-adunitcode' /* optional */
-                            }
-                        }
-                    }]
-                }];
-```
