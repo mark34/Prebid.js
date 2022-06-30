@@ -1,4 +1,4 @@
-import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains } from '../src/utils.js';
+import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains, parseUrl } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
@@ -45,9 +45,8 @@ endpointOverride: {
 const ORIGIN = 'https://bidder.newspassid.com' // applies only to auction & cookie
 const AUCTIONURI = '/openrtb2/auction';
 const NEWSPASSCOOKIESYNC = '/static/load-cookie.html';
-// renamed 20220210 so there's no ozone stuff called at all (the url is a cname pointing to https://prebid.the-ozone-project.com)
 
-const NEWSPASSVERSION = '1.0.0rc20220629';
+const NEWSPASSVERSION = '1.1.0rc20220630';
 
 export const spec = {
   version: NEWSPASSVERSION,
@@ -195,13 +194,15 @@ export const spec = {
     let npRequest = {}; // we only want to set specific properties on this, not validBidRequests[0].params
     delete npRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
 
-    // 20220615 - had to remove this because there is confusion how it should be working now
     // First party data module : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
-    // let fpd = config.getConfig('ortb2');
-    // if (fpd && deepAccess(fpd, 'user')) {
-    //   logInfo('added FPD user object');
-    //   npRequest.user = fpd.user;
-    // }
+    // 20220630 - updated to be correct
+    logInfo('going to get ortb2 from bidder request...');
+    let fpd = deepAccess(bidderRequest, 'ortb2', null);
+    logInfo('got fpd: ', fpd);
+    if (fpd && deepAccess(fpd, 'user')) {
+      logInfo('added FPD user object');
+      npRequest.user = fpd.user;
+    }
     const getParams = this.getGetParametersAsObject();
     const isTestMode = getParams['nptestmode'] || null; // this can be any string, it's used for testing ads
     npRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
@@ -213,7 +214,8 @@ export const spec = {
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(npBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
       obj.id = npBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder newspass made bid for unknown request ID: mb7953.859498327448. Ignoring."
       obj.tagid = placementId;
-      obj.secure = window.location.protocol === 'https:' ? 1 : 0;
+      let parsed = parseUrl(getRefererInfo().page);
+      obj.secure = parsed.protocol === 'https' ? 1 : 0;
       // is there a banner (or nothing declared, so banner is the default)?
       let arrBannerSizes = [];
       if (!npBidRequest.hasOwnProperty('mediaTypes')) {
@@ -268,19 +270,15 @@ export const spec = {
           obj.ext['newspassid'].customData[0].targeting['nptestmode'] = isTestMode;
         }
       }
-      // if (fpd && deepAccess(fpd, 'site')) {
-      //   // attach the site fpd into exactly : imp[n].ext.newspassid.customData.0.targeting
-      //   logInfo('adding fpd.site');
-      //   if (deepAccess(obj, 'ext.newspassid.customData.0.targeting', false)) {
-      //     obj.ext.newspassid.customData[0].targeting = Object.assign(obj.ext.newspassid.customData[0].targeting, fpd.site);
-      //     // let keys = getKeys(fpd.site);
-      //     // for (let i = 0; i < keys.length; i++) {
-      //     //   obj.ext['newspassid'].customData[0].targeting[keys[i]] = fpd.site[keys[i]];
-      //     // }
-      //   } else {
-      //     deepSetValue(obj, 'ext.newspassid.customData.0.targeting', fpd.site);
-      //   }
-      // }
+      if (fpd && deepAccess(fpd, 'site')) {
+        // attach the site fpd into exactly : imp[n].ext.newspassid.customData.0.targeting
+        logInfo('adding fpd.site');
+        if (deepAccess(obj, 'ext.newspassid.customData.0.targeting', false)) {
+          obj.ext.newspassid.customData[0].targeting = Object.assign(obj.ext.newspassid.customData[0].targeting, fpd.site);
+        } else {
+          deepSetValue(obj, 'ext.newspassid.customData.0.targeting', fpd.site);
+        }
+      }
       if (!schain && deepAccess(npBidRequest, 'schain')) {
         schain = npBidRequest.schain;
       }
@@ -300,7 +298,7 @@ export const spec = {
       }
     }
 
-    extObj['newspassid'].pv = this.getPageId(); // attach the page ID that will be common to all auciton calls for this page if refresh() is called
+    extObj['newspassid'].pv = this.getPageId(); // attach the page ID that will be common to all auction calls for this page if refresh() is called
     let whitelistAdserverKeys = config.getConfig('newspassid.np_whitelist_adserver_keys');
     let useWhitelistAdserverKeys = isArray(whitelistAdserverKeys) && whitelistAdserverKeys.length > 0;
     extObj['newspassid']['np_kvp_rw'] = useWhitelistAdserverKeys ? 1 : 0;
@@ -620,7 +618,7 @@ export const spec = {
     let arr = this.getGetParametersAsObject();
     if (arr.hasOwnProperty('npstoredrequest')) {
       if (this.isValidPlacementId(arr['npstoredrequest'])) {
-        logInfo(`using GET ${'np'}storedrequest ` + arr['npstoredrequest'] + ' to replace placementId');
+        logInfo(`using GET npstoredrequest ` + arr['npstoredrequest'] + ' to replace placementId');
         return arr['npstoredrequest'];
       } else {
         logError(`GET npstoredrequest FAILED VALIDATION - will not use it`);
@@ -630,14 +628,18 @@ export const spec = {
   },
   // Try to use this as the mechanism for reading GET params because it's easy to mock it for tests
   getGetParametersAsObject() {
-    let items = location.search.substr(1).split('&');
-    let ret = {};
-    let tmp = null;
-    for (let index = 0; index < items.length; index++) {
-      tmp = items[index].split('=');
-      ret[tmp[0]] = tmp[1];
-    }
-    return ret;
+    // let parsed = parseUrl(getRefererInfo().page);
+    // logInfo('parsed', parsed);
+    // let items = location.search.substr(1).split('&');
+    // let ret = {};
+    // let tmp = null;
+    // for (let index = 0; index < items.length; index++) {
+    //   tmp = items[index].split('=');
+    //   ret[tmp[0]] = tmp[1];
+    // }
+    let parsed = parseUrl(getRefererInfo().page);
+    logInfo('getGetParametersAsObject found:', parsed.search);
+    return parsed.search;
   },
   /**
    * Do we have to block this request? Could be due to config values (no longer checking gdpr)

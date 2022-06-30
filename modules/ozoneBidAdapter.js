@@ -1,4 +1,14 @@
-import { logInfo, logError, deepAccess, logWarn, deepSetValue, isArray, contains, mergeDeep } from '../src/utils.js';
+import {
+  logInfo,
+  logError,
+  deepAccess,
+  logWarn,
+  deepSetValue,
+  isArray,
+  contains,
+  mergeDeep,
+  parseUrl
+} from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
@@ -75,7 +85,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.7.2-20220629';
+const OZONEVERSION = '2.7.2-20220630';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -276,7 +286,8 @@ export const spec = {
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
       obj.id = ozoneBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
       obj.tagid = placementId;
-      obj.secure = window.location.protocol === 'https:' ? 1 : 0;
+      let parsed = parseUrl(getRefererInfo().page);
+      obj.secure = parsed.protocol === 'https' ? 1 : 0;
       // is there a banner (or nothing declared, so banner is the default)?
       let arrBannerSizes = [];
       if (!ozoneBidRequest.hasOwnProperty('mediaTypes')) {
@@ -366,7 +377,7 @@ export const spec = {
       }
       if (fpd && deepAccess(fpd, 'site')) {
         // attach the site fpd into exactly : imp[n].ext.[whitelabel].customData.0.targeting
-        logInfo('added fpd.site');
+        logInfo('adding fpd.site');
         if (deepAccess(obj, 'ext.' + whitelabelBidder + '.customData.0.targeting', false)) {
           obj.ext[whitelabelBidder].customData[0].targeting = Object.assign(obj.ext[whitelabelBidder].customData[0].targeting, fpd.site);
         } else {
@@ -890,14 +901,17 @@ export const spec = {
   },
   // Try to use this as the mechanism for reading GET params because it's easy to mock it for tests
   getGetParametersAsObject() {
-    let items = location.search.substr(1).split('&');
-    let ret = {};
-    let tmp = null;
-    for (let index = 0; index < items.length; index++) {
-      tmp = items[index].split('=');
-      ret[tmp[0]] = tmp[1];
-    }
-    return ret;
+    // let items = location.search.substr(1).split('&');
+    // let ret = {};
+    // let tmp = null;
+    // for (let index = 0; index < items.length; index++) {
+    //   tmp = items[index].split('=');
+    //   ret[tmp[0]] = tmp[1];
+    // }
+    // return ret;
+    let parsed = parseUrl(getRefererInfo().page);
+    logInfo('getGetParametersAsObject found:', parsed.search);
+    return parsed.search;
   },
   /**
    * Do we have to block this request? Could be due to config values (no longer checking gdpr)
@@ -907,7 +921,7 @@ export const spec = {
     // if there is an ozone.oz_request = false then quit now.
     let ozRequest = this.getWhitelabelConfigItem('ozone.oz_request');
     if (typeof ozRequest == 'boolean' && !ozRequest) {
-      logWarn(`Will not allow auction : ${this.propertyBag.whitelabel.keyPrefix}one.${this.propertyBag.whitelabel.keyPrefix}_request is set to false`);
+      logWarn(`Will not allow auction : ${this.propertyBag.whitelabel.keyPrefix}_request is set to false`);
       return true;
     }
     return false;

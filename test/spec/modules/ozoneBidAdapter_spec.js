@@ -2284,7 +2284,6 @@ describe('ozone Adapter', function () {
       const payload = JSON.parse(request.data);
       expect(payload.ext.ozone.oz_kvp_rw).to.equal(0);
     });
-    // removed temporarily due to prebid confusion
     // start of FPD
     it('should handle ortb2 site data', function () {
       let bidderRequest = JSON.parse(JSON.stringify(validBidderRequest));
