@@ -2,7 +2,7 @@
  * This module gives publishers extra set of features to enforce individual purposes of TCF v2
  */
 
-import {deepAccess, hasDeviceAccess, isArray, logWarn} from '../src/utils.js';
+import {deepAccess, hasDeviceAccess, isArray, logWarn, logInfo} from '../src/utils.js';
 import {config} from '../src/config.js';
 import adapterManager, {gdprDataHandler} from '../src/adapterManager.js';
 import {find, includes} from '../src/polyfill.js';
@@ -64,6 +64,7 @@ export const internal = {
  * @return {number} - GVL ID
  */
 export function getGvlid(module) {
+  logInfo(`getGvlid: received module`, module);
   let gvlid = null;
   if (module) {
     // Check user defined GVL Mapping in pbjs.setConfig()
@@ -79,6 +80,7 @@ export function getGvlid(module) {
     }
 
     gvlid = internal.getGvlidForBidAdapter(moduleCode) || internal.getGvlidForUserIdModule(module) || internal.getGvlidForAnalyticsAdapter(moduleCode);
+    logInfo(`getGvlid: gvlid for ${moduleCode} is ${gvlid}`);
   }
   return gvlid;
 }
@@ -129,8 +131,9 @@ function getGvlidForAnalyticsAdapter(code) {
  * @returns {boolean}
  */
 export function validateRules(rule, consentData, currentModule, gvlId, moduleType) {
+  logInfo('gdprEnforcement validateRules.consentData: ' + currentModule, consentData);
   const purposeId = TCF2[Object.keys(TCF2).filter(purposeName => TCF2[purposeName].name === rule.purpose)[0]].id;
-
+  logInfo('purposeId = ' + purposeId);
   // return 'true' if vendor present in 'vendorExceptions'
   if (includes(rule.vendorExceptions || [], currentModule)) {
     return true;
@@ -138,11 +141,17 @@ export function validateRules(rule, consentData, currentModule, gvlId, moduleTyp
 
   // get data from the consent string
   const purposeConsent = deepAccess(consentData, `vendorData.purpose.consents.${purposeId}`);
+  logInfo('gvl:', JSON.parse(JSON.stringify(deepAccess(consentData, `vendorData.vendor.consents`))));
+  logInfo('gvlId: ' + gvlId);
   const vendorConsent = deepAccess(consentData, `vendorData.vendor.consents.${gvlId}`);
   const liTransparency = deepAccess(consentData, `vendorData.purpose.legitimateInterests.${purposeId}`);
 
   const vendorlessModule = includes(VENDORLESS_MODULE_TYPES, moduleType);
 
+  logInfo('purposeConsent', purposeConsent);
+  logInfo('vendorConsent', vendorConsent);
+  logInfo('liTransparency', liTransparency);
+  logInfo('vendorlessModule', vendorlessModule);
   /*
     Since vendor exceptions have already been handled, the purpose as a whole is allowed if it's not being enforced
     or the user has consented. Similar with vendors.
@@ -158,6 +167,9 @@ export function validateRules(rule, consentData, currentModule, gvlId, moduleTyp
   if (purposeId === 2) {
     return (purposeAllowed && vendorAllowed) || (liTransparency === true);
   }
+
+  logInfo('purposeAllowed', purposeAllowed);
+  logInfo('vendorAllowed', vendorAllowed);
 
   return purposeAllowed && vendorAllowed;
 }
@@ -236,6 +248,7 @@ export function userSyncHook(fn, ...args) {
 export function userIdHook(fn, submodules, consentData) {
   if (consentData && consentData.gdprApplies) {
     let userIdModules = submodules.map((submodule) => {
+      logInfo('userIdHook going to get gvlid for ', submodule.submodule);
       const gvlid = getGvlid(submodule.submodule);
       const moduleName = submodule.submodule.name;
       let isAllowed = validateRules(purpose1Rule, consentData, moduleName, gvlid);

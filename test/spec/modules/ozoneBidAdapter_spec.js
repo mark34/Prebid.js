@@ -1726,7 +1726,7 @@ describe('ozone Adapter', function () {
       expect(spec.isBidRequestValid(xBadCustomData)).to.equal(false);
     });
 
-    var xBadCustomData_OLD_CUSTOMDATA_VALUE = {
+    var xBadCustomDataOldCustomdataValue = {
       bidder: BIDDER_CODE,
       params: {
         'placementId': '1234567890',
@@ -1737,10 +1737,10 @@ describe('ozone Adapter', function () {
     };
 
     it('should not validate customData being an object, not an array', function () {
-      expect(spec.isBidRequestValid(xBadCustomData_OLD_CUSTOMDATA_VALUE)).to.equal(false);
+      expect(spec.isBidRequestValid(xBadCustomDataOldCustomdataValue)).to.equal(false);
     });
 
-    var xBadCustomData_zerocd = {
+    var xBadCustomDataZerocd = {
       bidder: BIDDER_CODE,
       params: {
         'placementId': '1111111110',
@@ -1751,10 +1751,10 @@ describe('ozone Adapter', function () {
     };
 
     it('should not validate customData array having no elements', function () {
-      expect(spec.isBidRequestValid(xBadCustomData_zerocd)).to.equal(false);
+      expect(spec.isBidRequestValid(xBadCustomDataZerocd)).to.equal(false);
     });
 
-    var xBadCustomData_notargeting = {
+    var xBadCustomDataNotargeting = {
       bidder: BIDDER_CODE,
       params: {
         'placementId': '1234567890',
@@ -1764,10 +1764,10 @@ describe('ozone Adapter', function () {
       }
     };
     it('should not validate customData[] having no "targeting"', function () {
-      expect(spec.isBidRequestValid(xBadCustomData_notargeting)).to.equal(false);
+      expect(spec.isBidRequestValid(xBadCustomDataNotargeting)).to.equal(false);
     });
 
-    var xBadCustomData_tgt_not_obj = {
+    var xBadCustomDataTgtNotObj = {
       bidder: BIDDER_CODE,
       params: {
         'placementId': '1234567890',
@@ -1777,7 +1777,7 @@ describe('ozone Adapter', function () {
       }
     };
     it('should not validate customData[0].targeting not being an object', function () {
-      expect(spec.isBidRequestValid(xBadCustomData_tgt_not_obj)).to.equal(false);
+      expect(spec.isBidRequestValid(xBadCustomDataTgtNotObj)).to.equal(false);
     });
 
     var xBadCustomParams = {
