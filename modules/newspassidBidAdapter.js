@@ -46,7 +46,7 @@ const ORIGIN = 'https://bidder.newspassid.com' // applies only to auction & cook
 const AUCTIONURI = '/openrtb2/auction';
 const NEWSPASSCOOKIESYNC = '/static/load-cookie.html';
 
-const NEWSPASSVERSION = '1.1.0rc20220630';
+const NEWSPASSVERSION = '1.1.0rc20220706';
 
 export const spec = {
   version: NEWSPASSVERSION,
@@ -192,7 +192,6 @@ export const spec = {
     singleRequest = singleRequest !== false; // undefined & true will be true
     logInfo(`config newspassid.singleRequest : `, singleRequest);
     let npRequest = {}; // we only want to set specific properties on this, not validBidRequests[0].params
-    delete npRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
 
     // First party data module : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
     // 20220630 - updated to be correct
@@ -317,7 +316,7 @@ export const spec = {
       'page': getRefererInfo().page,
       'id': htmlParams.siteId
     };
-    npRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] === 'true') ? 1 : 0;
+    npRequest.test = config.getConfig('debug') ? 1 : 0;
 
     if (bidderRequest && bidderRequest.uspConsent) {
       logInfo('ADDING USP consent info');
@@ -512,7 +511,7 @@ export const spec = {
     }
     if (optionsType.iframeEnabled) {
       var arrQueryString = [];
-      if (getRefererInfo().page.match(/pbjs_debug=true/)) {
+      if (config.getConfig('debug')) {
         arrQueryString.push('pbjs_debug=true');
       }
       arrQueryString.push('usp_consent=' + (usPrivacy || ''));

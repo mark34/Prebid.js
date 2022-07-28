@@ -85,7 +85,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.7.2-20220630';
+const OZONEVERSION = '2.8.0-20220706';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -262,7 +262,6 @@ export const spec = {
     singleRequest = singleRequest !== false; // undefined & true will be true
     logInfo(`config ${whitelabelBidder}.singleRequest : `, singleRequest);
     let ozoneRequest = {}; // we only want to set specific properties on this, not validBidRequests[0].params
-    delete ozoneRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
 
     // First party data module : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
     // NOTE - see https://docs.prebid.org/features/firstPartyData.html
@@ -435,7 +434,7 @@ export const spec = {
       'page': getRefererInfo().page,
       'id': htmlParams.siteId
     };
-    ozoneRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] === 'true') ? 1 : 0;
+    ozoneRequest.test = config.getConfig('debug') ? 1 : 0;
 
     // this should come as late as possible so it overrides any user.ext.consent value
     if (bidderRequest && bidderRequest.gdprConsent) {
@@ -765,7 +764,7 @@ export const spec = {
     }
     if (optionsType.iframeEnabled) {
       var arrQueryString = [];
-      if (getRefererInfo().page.match(/pbjs_debug=true/)) {
+      if (config.getConfig('debug')) {
         arrQueryString.push('pbjs_debug=true');
       }
       arrQueryString.push('gdpr=' + (deepAccess(gdprConsent, 'gdprApplies', false) ? '1' : '0'));
