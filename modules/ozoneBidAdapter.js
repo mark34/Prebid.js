@@ -85,7 +85,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // 20200605 - test js renderer
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.8.0-20220706';
+const OZONEVERSION = '2.8.1-20220826';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -908,7 +908,8 @@ export const spec = {
     //   ret[tmp[0]] = tmp[1];
     // }
     // return ret;
-    let parsed = parseUrl(getRefererInfo().page);
+    // logInfo('getRefererInfo is ', getRefererInfo());
+    let parsed = parseUrl(getRefererInfo().location);
     logInfo('getGetParametersAsObject found:', parsed.search);
     return parsed.search;
   },
