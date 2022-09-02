@@ -1851,7 +1851,7 @@ describe('ozone Adapter', function () {
 
     it('sends all bid parameters', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
-      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
+      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url', 'options']);
     });
 
     it('adds all parameters inside the ext object only', function () {
@@ -1892,29 +1892,29 @@ describe('ozone Adapter', function () {
 
     it('handles mediaTypes element correctly', function () {
       const request = spec.buildRequests(validBidRequestsWithBannerMediaType, validBidderRequest);
-      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
+      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url', 'options']);
     });
 
     it('handles no ozone or custom data', function () {
       const request = spec.buildRequests(validBidRequestsMinimal, validBidderRequest);
-      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
+      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url', 'options']);
     });
 
     it('handles video mediaType element correctly, with outstream video', function () {
       const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest);
-      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
+      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url', 'options']);
     });
 
     it('should not crash when there is no sizes element at all', function () {
       const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
-      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
+      expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url', 'options']);
     });
 
     it('should be able to handle non-single requests', function () {
       config.setConfig({'ozone': {'singleRequest': false}});
       const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
       expect(request).to.be.a('array');
-      expect(request[0]).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
+      expect(request[0]).to.have.all.keys(['bidderRequest', 'data', 'method', 'url', 'options']);
       // need to reset the singleRequest config flag:
       config.setConfig({'ozone': {'singleRequest': true}});
     });

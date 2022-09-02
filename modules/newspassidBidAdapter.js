@@ -46,7 +46,7 @@ const ORIGIN = 'https://bidder.newspassid.com' // applies only to auction & cook
 const AUCTIONURI = '/openrtb2/auction';
 const NEWSPASSCOOKIESYNC = '/static/load-cookie.html';
 
-const NEWSPASSVERSION = '1.1.1rc20220826';
+const NEWSPASSVERSION = '1.1.2rc20220901';
 
 export const spec = {
   version: NEWSPASSVERSION,
@@ -337,6 +337,13 @@ export const spec = {
       deepSetValue(npRequest, 'regs.coppa', 1);
     }
 
+    // 1.1.2 - add headers
+    let options = {}
+    options.customHeaders = {
+      'PBS_PUBLISHER_ID': this.cookieSyncBag.publisherId,
+      'PBS_REFERRER_URL': getRefererInfo().page
+    }
+
     // return the single request object OR the array:
     if (singleRequest) {
       logInfo('buildRequests starting to generate response for a single request');
@@ -350,7 +357,8 @@ export const spec = {
         method: 'POST',
         url: this.getAuctionUrl(),
         data: JSON.stringify(npRequest),
-        bidderRequest: bidderRequest
+        bidderRequest: bidderRequest,
+        options
       };
       logInfo('buildRequests request data for single = ', JSON.parse(JSON.stringify(npRequest)));
       this.propertyBag.buildRequestsEnd = new Date().getTime();
@@ -374,7 +382,8 @@ export const spec = {
         method: 'POST',
         url: this.getAuctionUrl(),
         data: JSON.stringify(npRequestSingle),
-        bidderRequest: bidderRequest
+        bidderRequest: bidderRequest,
+        options
       };
     });
     this.propertyBag.buildRequestsEnd = new Date().getTime();
