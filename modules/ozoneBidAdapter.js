@@ -89,7 +89,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.8.2-20220906-test-headers';
+const OZONEVERSION = '2.8.3-20220906-hybrid-getRefererInfo';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -289,7 +289,7 @@ export const spec = {
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
       obj.id = ozoneBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
       obj.tagid = placementId;
-      let parsed = parseUrl(getRefererInfo().page);
+      let parsed = parseUrl(this.getRefererInfo().page);
       obj.secure = parsed.protocol === 'https' ? 1 : 0;
       // is there a banner (or nothing declared, so banner is the default)?
       let arrBannerSizes = [];
@@ -435,7 +435,7 @@ export const spec = {
     // logInfo('getRefererInfo', getRefererInfo());
     ozoneRequest.site = {
       'publisher': {'id': htmlParams.publisherId},
-      'page': getRefererInfo().page,
+      'page': this.getRefererInfo().page,
       'id': htmlParams.siteId
     };
     ozoneRequest.test = config.getConfig('debug') ? 1 : 0;
@@ -475,8 +475,8 @@ export const spec = {
     // 2.8.2 - add headers
     let options = {}
     options.customHeaders = {
-      'PBS_PUBLISHER_ID': this.cookieSyncBag.publisherId,
-      'PBS_REFERRER_URL': getRefererInfo().page
+      // 'PBS_PUBLISHER_ID': this.cookieSyncBag.publisherId,
+      // 'PBS_REFERRER_URL': this.getRefererInfo().page
       // 'Origin-Domain': document.location.host,
       // 'Publisher-ID': this.cookieSyncBag.publisherId
     }
@@ -924,9 +924,33 @@ export const spec = {
     // }
     // return ret;
     // logInfo('getRefererInfo is ', getRefererInfo());
-    let parsed = parseUrl(getRefererInfo().location);
+    let parsed = parseUrl(this.getRefererInfo().location);
     logInfo('getGetParametersAsObject found:', parsed.search);
     return parsed.search;
+  },
+  /**
+   * This is a wrapper for the src getRefererInfo function, allowing for prebid v6 or v7 to both be OK
+   * We only use it for location and page, so the returned object will contain these 2 properties.
+   * @return Object {location, page}
+   */
+  getRefererInfo() {
+    if (getRefererInfo().hasOwnProperty('location')) {
+      logInfo('FOUND location on getRefererInfo OK (prebid >= 7); will use getRefererInfo for location & page');
+      return getRefererInfo();
+    } else {
+      logInfo('DID NOT FIND location on getRefererInfo (prebid < 7); will use legacy code that ALWAYS worked reliably to get location & page ;-)');
+      try {
+        return {
+          page: top.location.href,
+          location: top.location.href
+        };
+      } catch (e) {
+        return {
+          page: window.location.href,
+          location: window.location.href
+        };
+      }
+    }
   },
   /**
    * Do we have to block this request? Could be due to config values (no longer checking gdpr)
