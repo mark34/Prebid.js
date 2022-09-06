@@ -89,7 +89,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.8.2-20220901';
+const OZONEVERSION = '2.8.2-20220906-test-headers';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -477,6 +477,8 @@ export const spec = {
     options.customHeaders = {
       'PBS_PUBLISHER_ID': this.cookieSyncBag.publisherId,
       'PBS_REFERRER_URL': getRefererInfo().page
+      // 'Origin-Domain': document.location.host,
+      // 'Publisher-ID': this.cookieSyncBag.publisherId
     }
 
     // return the single request object OR the array:

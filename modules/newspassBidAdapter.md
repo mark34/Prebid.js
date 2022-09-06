@@ -1,4 +1,4 @@
-	
+
 # Overview
 
 ```
@@ -14,7 +14,7 @@ Module that connects to the Newspass demand source(s).
 
 The Newspass bid adapter supports Banner and Outstream Video mediaTypes ONLY.
 This is intended for USA audiences only, and does not support GDPR
- 
+
 # Test Parameters
 
 
@@ -42,5 +42,4 @@ adUnits = [{
                     }]
                 }];
 ```
-
 
