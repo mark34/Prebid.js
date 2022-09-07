@@ -14,7 +14,7 @@ import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
-// import {getRefererInfo} from '../src/refererDetection.js';
+import {getRefererInfo} from '../src/refererDetection.js';
 
 // NOTE this allows us to access the pv value outside of prebid after the auction request.
 // import { getStorageManager } from '../src/storageManager.js'
@@ -82,10 +82,14 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-handle-refresh-guardian20200602-with-gpt.js'; // video testing local for guardian
 // const OZONE_RENDERER_URL = 'http://localhost:9888/ozone-renderer-switch.js'; // video testing local
 
-// 20200605 - test js renderer
+// 20200605 - test js renderer- this one includes the headers
+// https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-headers.html?pbjs_debug=true&ozstoredrequest=8000000328
+//
+// - this one doesn't
+// https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.8.0-20220812-compatible-with-pb-6.29.0';
+const OZONEVERSION = '2.8.3-20220906-hybrid-getRefererInfo-pb6-test';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -285,8 +289,8 @@ export const spec = {
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
       obj.id = ozoneBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
       obj.tagid = placementId;
-      // 20220812 fix for 6.29 core
-      obj.secure = document.location.protocol.match(/https/) ? 1 : 0;
+      let parsed = parseUrl(this.getRefererInfo().page);
+      obj.secure = parsed.protocol === 'https' ? 1 : 0;
       // is there a banner (or nothing declared, so banner is the default)?
       let arrBannerSizes = [];
       if (!ozoneBidRequest.hasOwnProperty('mediaTypes')) {
@@ -431,7 +435,7 @@ export const spec = {
     // logInfo('getRefererInfo', getRefererInfo());
     ozoneRequest.site = {
       'publisher': {'id': htmlParams.publisherId},
-      'page': document.location.href,
+      'page': this.getRefererInfo().page,
       'id': htmlParams.siteId
     };
     ozoneRequest.test = config.getConfig('debug') ? 1 : 0;
@@ -468,6 +472,15 @@ export const spec = {
       deepSetValue(ozoneRequest, 'regs.coppa', 1);
     }
 
+    // 2.8.2 - add headers
+    let options = {}
+    options.customHeaders = {
+      // 'PBS_PUBLISHER_ID': this.cookieSyncBag.publisherId,
+      // 'PBS_REFERRER_URL': this.getRefererInfo().page
+      // 'Origin-Domain': document.location.host,
+      // 'Publisher-ID': this.cookieSyncBag.publisherId
+    }
+
     // return the single request object OR the array:
     if (singleRequest) {
       logInfo('buildRequests starting to generate response for a single request');
@@ -481,7 +494,8 @@ export const spec = {
         method: 'POST',
         url: this.getAuctionUrl(),
         data: JSON.stringify(ozoneRequest),
-        bidderRequest: bidderRequest
+        bidderRequest: bidderRequest,
+        options
       };
       logInfo('buildRequests request data for single = ', JSON.parse(JSON.stringify(ozoneRequest)));
       this.propertyBag.buildRequestsEnd = new Date().getTime();
@@ -505,7 +519,8 @@ export const spec = {
         method: 'POST',
         url: this.getAuctionUrl(),
         data: JSON.stringify(ozoneRequestSingle),
-        bidderRequest: bidderRequest
+        bidderRequest: bidderRequest,
+        options
       };
     });
     this.propertyBag.buildRequestsEnd = new Date().getTime();
@@ -900,18 +915,42 @@ export const spec = {
   },
   // Try to use this as the mechanism for reading GET params because it's easy to mock it for tests
   getGetParametersAsObject() {
-    let items = location.search.substr(1).split('&');
-    let ret = {};
-    let tmp = null;
-    for (let index = 0; index < items.length; index++) {
-      tmp = items[index].split('=');
-      ret[tmp[0]] = tmp[1];
+    // let items = location.search.substr(1).split('&');
+    // let ret = {};
+    // let tmp = null;
+    // for (let index = 0; index < items.length; index++) {
+    //   tmp = items[index].split('=');
+    //   ret[tmp[0]] = tmp[1];
+    // }
+    // return ret;
+    // logInfo('getRefererInfo is ', getRefererInfo());
+    let parsed = parseUrl(this.getRefererInfo().location);
+    logInfo('getGetParametersAsObject found:', parsed.search);
+    return parsed.search;
+  },
+  /**
+   * This is a wrapper for the src getRefererInfo function, allowing for prebid v6 or v7 to both be OK
+   * We only use it for location and page, so the returned object will contain these 2 properties.
+   * @return Object {location, page}
+   */
+  getRefererInfo() {
+    if (getRefererInfo().hasOwnProperty('location')) {
+      logInfo('FOUND location on getRefererInfo OK (prebid >= 7); will use getRefererInfo for location & page');
+      return getRefererInfo();
+    } else {
+      logInfo('DID NOT FIND location on getRefererInfo (prebid < 7); will use legacy code that ALWAYS worked reliably to get location & page ;-)');
+      try {
+        return {
+          page: top.location.href,
+          location: top.location.href
+        };
+      } catch (e) {
+        return {
+          page: window.location.href,
+          location: window.location.href
+        };
+      }
     }
-    return ret;
-    // FFS - this is not compatible with 6.29
-    // let parsed = parseUrl(getRefererInfo().page);
-    // logInfo('getGetParametersAsObject found:', parsed.search);
-    // return parsed.search;
   },
   /**
    * Do we have to block this request? Could be due to config values (no longer checking gdpr)
@@ -1163,9 +1202,9 @@ export function getRoundedBid(price, mediaType) {
   logInfo('getRoundedBid. price:', price, 'mediaType:', mediaType, 'configkey:', theConfigKey, 'configObject:', theConfigObject, 'mediaTypeGranularity:', mediaTypeGranularity, 'strBuckets:', strBuckets);
 
   let priceStringsObj = getPriceBucketString(
-    price,
-    theConfigObject,
-    config.getConfig('currency.granularityMultiplier')
+      price,
+      theConfigObject,
+      config.getConfig('currency.granularityMultiplier')
   );
   logInfo('priceStringsObj', priceStringsObj);
   // by default, without any custom granularity set, you get granularity name : 'medium'
