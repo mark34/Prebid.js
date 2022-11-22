@@ -89,7 +89,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.8.3-20220906-hybrid-getRefererInfo';
+const OZONEVERSION = '2.8.3-hybrid-getRefererInfo-no-added-headers';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -473,13 +473,14 @@ export const spec = {
     }
 
     // 2.8.2 - add headers
-    let options = {}
+    let options = {};
     options.customHeaders = {
       // 'PBS_PUBLISHER_ID': this.cookieSyncBag.publisherId,
-      // 'PBS_REFERRER_URL': this.getRefererInfo().page
+      // 'PBS_REFERRER_URL': this.getRefererInfo().page,
       // 'Origin-Domain': document.location.host,
-      // 'Publisher-ID': this.cookieSyncBag.publisherId
-    }
+      // 'Publisher-ID': this.cookieSyncBag.publisherId,
+      // 'Pubcid' : extObj[whitelabelBidder].pubcid || '' /* this is TBC - there might be more too ... */
+    };
 
     // return the single request object OR the array:
     if (singleRequest) {
