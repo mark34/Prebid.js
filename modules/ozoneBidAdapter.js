@@ -5,9 +5,11 @@ import {
   logWarn,
   deepSetValue,
   isArray,
+  isStr,
   contains,
   mergeDeep,
-  parseUrl
+  parseUrl,
+  deepClone
 } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
@@ -89,7 +91,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.8.3-20220906-hybrid-getRefererInfo-pb6-test';
+const OZONEVERSION = '2.8.3-20221123-hybrid-getRefererInfo-pb-6.29.0';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
@@ -284,6 +286,7 @@ export const spec = {
     let placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
     // build the array of params to attach to `imp`
     let schain = null;
+    let commonTargeting = {}; // we will set common targeting in ext.ozone.pageTargeting 20221123
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
@@ -364,7 +367,12 @@ export const spec = {
       obj.ext[whitelabelBidder].adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
       obj.ext[whitelabelBidder].transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
       if (ozoneBidRequest.params.hasOwnProperty('customData')) {
-        obj.ext[whitelabelBidder].customData = ozoneBidRequest.params.customData;
+        // 20221123 - parse params.customData.0.targeting - pull out everything except slotName, hivis & opos and transfer into /ext.ozone.customData.targeting
+        let filteredCustomData = this.getMiniCustomData(ozoneBidRequest.params.customData, ['slotName', 'hivis', 'opos']);
+        obj.ext[whitelabelBidder].customData = filteredCustomData;
+        if (Object.keys(commonTargeting).length === 0) {
+          commonTargeting = this.getCommonCustomData(ozoneBidRequest.params.customData, ['slotName', 'hivis', 'opos']);
+        }
       }
       logInfo(`obj.ext.${whitelabelBidder} is `, obj.ext[whitelabelBidder]);
       if (isTestMode != null) {
@@ -392,12 +400,13 @@ export const spec = {
       }
       return obj;
     });
-
+    commonTargeting['testgroup'] = (Math.floor(99 * Math.random()) + 1).toString(10);
     // in v 2.0.0 we moved these outside of the individual ad slots
     let extObj = {};
     extObj[whitelabelBidder] = {};
     extObj[whitelabelBidder][whitelabelPrefix + '_pb_v'] = OZONEVERSION;
     extObj[whitelabelBidder][whitelabelPrefix + '_rw'] = placementIdOverrideFromGetParam ? 1 : 0;
+    extObj[whitelabelBidder].pageTargeting = commonTargeting;
     if (validBidRequests.length > 0) {
       let userIds = this.cookieSyncBag.userIdObject; // 2021-01-06 - slight optimisation - we've already found this info
       // let userIds = this.findAllUserIds(validBidRequests[0]);
@@ -431,6 +440,11 @@ export const spec = {
     // extObj.ortb2 = config.getConfig('ortb2'); // original test location
     // 20220628 - got rid of special treatment for adserver.org
     let userExtEids = deepAccess(validBidRequests, '0.userIdAsEids', []); // generate the UserIDs in the correct format for UserId module
+    // 20221124 - we have to fall back on the old way of adding pub common id
+    if (userExtEids.length === 0) {
+      logInfo('Failing over to the old way of adding user Eids - bid object does not contain userIdAsEids');
+      userExtEids = this.generateEids(validBidRequests);
+    }
 
     // logInfo('getRefererInfo', getRefererInfo());
     ozoneRequest.site = {
@@ -472,13 +486,13 @@ export const spec = {
       deepSetValue(ozoneRequest, 'regs.coppa', 1);
     }
 
-    // 2.8.2 - add headers
+    // 2.8.2 - add headers - NOTE that these are case inSEnsITivE and the browser will likely send them lower case anyway
     let options = {}
     options.customHeaders = {
       // 'PBS_PUBLISHER_ID': this.cookieSyncBag.publisherId,
       // 'PBS_REFERRER_URL': this.getRefererInfo().page
-      // 'Origin-Domain': document.location.host,
-      // 'Publisher-ID': this.cookieSyncBag.publisherId
+      'origin-domain': document.location.host,
+      'publisher-id': this.cookieSyncBag.publisherId
     }
 
     // return the single request object OR the array:
@@ -502,30 +516,99 @@ export const spec = {
       logInfo(`buildRequests going to return for single at time ${this.propertyBag.buildRequestsEnd} (took ${this.propertyBag.buildRequestsEnd - this.propertyBag.buildRequestsStart}ms): `, ret);
       return ret;
     }
-    // not single request - pull apart the tosendtags array & return an array of objects each containing one element in the imp array.
-    let arrRet = tosendtags.map(imp => {
-      logInfo('buildRequests starting to generate non-single response, working on imp : ', imp);
-      let ozoneRequestSingle = Object.assign({}, ozoneRequest);
-      imp.ext[whitelabelBidder].pageAuctionId = bidderRequest['auctionId']; // make a note in the ext object of what the original auctionId was, in the bidderRequest object
-      ozoneRequestSingle.id = imp.ext[whitelabelBidder].transactionId; // Unique ID of the bid request, provided by the exchange.
-      ozoneRequestSingle.auctionId = imp.ext[whitelabelBidder].transactionId; // not sure if this should be here?
-      ozoneRequestSingle.imp = [imp];
-      ozoneRequestSingle.ext = extObj;
-      deepSetValue(ozoneRequestSingle, 'source.tid', imp.ext[whitelabelBidder].transactionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
-      // ozoneRequestSingle.source = {'tid': imp.ext[whitelabelBidder].transactionId};
-      deepSetValue(ozoneRequestSingle, 'user.ext.eids', userExtEids);
-      logInfo('buildRequests RequestSingle (for non-single) = ', ozoneRequestSingle);
-      return {
-        method: 'POST',
-        url: this.getAuctionUrl(),
-        data: JSON.stringify(ozoneRequestSingle),
-        bidderRequest: bidderRequest,
-        options
-      };
-    });
-    this.propertyBag.buildRequestsEnd = new Date().getTime();
-    logInfo(`buildRequests going to return for non-single at time ${this.propertyBag.buildRequestsEnd} (took ${this.propertyBag.buildRequestsEnd - this.propertyBag.buildRequestsStart}ms): `, arrRet);
+    // not a single request - batch into groups of up to 10:
+
+    let arrRet = []; // return an array of objects containing data describing max 10 bids
+    for (let i = 0; i < tosendtags.length; i += 10) {
+      ozoneRequest.id = bidderRequest.auctionId; // Unique ID of the bid request, provided by the exchange.
+      ozoneRequest.auctionId = bidderRequest.auctionId; // not sure if this should be here?
+      ozoneRequest.imp = tosendtags.slice(i, i + 10);
+      ozoneRequest.ext = extObj;
+      deepSetValue(ozoneRequest, 'source.tid', bidderRequest.auctionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
+      deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
+      if (ozoneRequest.imp.length > 0) {
+        arrRet.push({
+          method: 'POST',
+          url: this.getAuctionUrl(),
+          data: JSON.stringify(ozoneRequest),
+          bidderRequest: bidderRequest,
+          options
+        });
+      }
+    }
+
+    logInfo('batch request going to return : ', arrRet);
     return arrRet;
+  },
+  /**
+   *
+   * These 2 fns added 20221124 because with this build we don't get bid.userId and bid.userIdAsEids
+   * so we have to go back to the old way of doing it.
+   * 20221124 - this is not working with 6.29.0 because there is still no bid.userId
+   *
+   * Produces external userid object
+   */
+  addExternalUserId(eids, value, source, atype) {
+    if (isStr(value)) {
+      eids.push({
+        source,
+        uids: [{
+          id: value,
+          atype
+        }]
+      });
+    }
+  },
+  /**
+   * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
+   * @param validBidRequests
+   * @return {Array}
+   */
+  generateEids(validBidRequests) {
+    let eids = [];
+    const bidRequest = validBidRequests[0];
+    if (bidRequest && bidRequest.userId) {
+      this.addExternalUserId(eids, deepAccess(bidRequest, `userId.pubcid`), 'pubcid', 1);
+      this.addExternalUserId(eids, deepAccess(bidRequest, `userId.pubcid`), 'pubcommon', 1);
+      this.addExternalUserId(eids, deepAccess(bidRequest, `userId.id5id`), 'id5-sync.com', 1);
+      this.addExternalUserId(eids, deepAccess(bidRequest, `userId.criteortus.${BIDDER_CODE}.userid`), 'criteortus', 1);
+      this.addExternalUserId(eids, deepAccess(bidRequest, `userId.idl_env`), 'liveramp.com', 1);
+      this.addExternalUserId(eids, deepAccess(bidRequest, `userId.lipb.lipbid`), 'liveintent.com', 1);
+      this.addExternalUserId(eids, deepAccess(bidRequest, `userId.parrableid`), 'parrable.com', 1);
+    }
+    return eids;
+  },
+  /**
+   * Remove all keys except arrKeys in customData[0].targeting and return customData with these stripped out
+   * @param customData
+   * @param arrKeys
+   */
+  getMiniCustomData: function(customData, arrKeys) {
+    let ret = deepClone(customData);
+    let keys = Object.keys(customData[0].targeting);
+    ret[0].targeting = {};
+    keys.forEach(function(k) {
+      if (arrKeys.indexOf(k) > -1) {
+        ret[0].targeting[k] = customData[0].targeting[k];
+      }
+    });
+    return ret;
+  },
+  /**
+   * Get all the keys=>values from customData[0].targeting that DONT match arrKeys
+   * @param customData
+   * @param arrKeys
+   * @returns {[]|{}}
+   */
+  getCommonCustomData: function(customData, arrKeys) {
+    let ret = {};
+    let keys = Object.keys(customData[0].targeting);
+    keys.forEach(function(k) {
+      if (arrKeys.indexOf(k) < 0) {
+        ret[k] = customData[0].targeting[k];
+      }
+    });
+    return ret;
   },
   /**
    * parse a bidRequestRef that contains getFloor(), get all the data from it for the sizes & media requested for this bid & return an object containing floor data you can send to auction endpoint
@@ -1202,9 +1285,9 @@ export function getRoundedBid(price, mediaType) {
   logInfo('getRoundedBid. price:', price, 'mediaType:', mediaType, 'configkey:', theConfigKey, 'configObject:', theConfigObject, 'mediaTypeGranularity:', mediaTypeGranularity, 'strBuckets:', strBuckets);
 
   let priceStringsObj = getPriceBucketString(
-      price,
-      theConfigObject,
-      config.getConfig('currency.granularityMultiplier')
+    price,
+    theConfigObject,
+    config.getConfig('currency.granularityMultiplier')
   );
   logInfo('priceStringsObj', priceStringsObj);
   // by default, without any custom granularity set, you get granularity name : 'medium'
