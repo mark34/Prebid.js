@@ -16,7 +16,7 @@ var validBidRequests = [
     bidder: 'ozone',
     bidderRequestId: '1c1586b27a1b5c8',
     crumbs: {pubcid: '203a0692-f728-4856-87f6-9a25a6b63715'},
-    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
+    params: { publisherId: '9876abcd12-3', customData: [{'settings': {}, 'targeting': {'slotName': 'testslotname', 'gender': 'bart', 'age': 'low'}}], placementId: '1310000099', siteId: '1234567890', id: 'fea37168-78f1-4a23-a40e-88437a99377e', auctionId: '27dcb421-95c6-4024-a624-3c03816c5f99', imp: [ { id: '2899ec066a91ff8', tagid: 'undefined', secure: 1, banner: { format: [{ w: 300, h: 250 }, { w: 300, h: 600 }], h: 250, topframe: 1, w: 300 } } ] },
     sizes: [[300, 250], [300, 600]],
     transactionId: '2e63c0ed-b10c-4008-aed5-84582cecfe87'
   }
@@ -1839,23 +1839,24 @@ describe('ozone Adapter', function () {
     });
 
     it('sends bid request to OZONEURI via POST', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       expect(request.url).to.equal(OZONEURI);
       expect(request.method).to.equal('POST');
     });
 
-    it('sends data as a string', function () {
+    it('returns an array of batched requests', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
-      expect(request.data).to.be.a('string');
+      expect(request).to.be.an('array');
+      expect(request[0].data).to.be.a('string');
     });
 
     // it('sends all bid parameters', function () {
-    //   const request = spec.buildRequests(validBidRequests, validBidderRequest);
+    //   const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
     //   expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'url']);
     // });
 
     it('adds all parameters inside the ext object only', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
@@ -1865,7 +1866,7 @@ describe('ozone Adapter', function () {
 
     it('adds all parameters inside the ext object only - lightning', function () {
       let localBidReq = JSON.parse(JSON.stringify(validBidRequests));
-      const request = spec.buildRequests(localBidReq, validBidderRequest);
+      const request = spec.buildRequests(localBidReq, validBidderRequest)[0];
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
@@ -1876,7 +1877,7 @@ describe('ozone Adapter', function () {
     it('ignores ozoneData in & after version 2.1.1', function () {
       let validBidRequestsWithOzoneData = JSON.parse(JSON.stringify(validBidRequests));
       validBidRequestsWithOzoneData[0].params.ozoneData = {'networkID': '3048', 'dfpSiteID': 'd.thesun', 'sectionID': 'homepage', 'path': '/', 'sec_id': 'null', 'sec': 'sec', 'topics': 'null', 'kw': 'null', 'aid': 'null', 'search': 'null', 'article_type': 'null', 'hide_ads': '', 'article_slug': 'null'};
-      const request = spec.buildRequests(validBidRequestsWithOzoneData, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsWithOzoneData, validBidderRequest)[0];
       expect(request.data).to.be.a('string');
       var data = JSON.parse(request.data);
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
@@ -1886,37 +1887,35 @@ describe('ozone Adapter', function () {
     });
 
     it('has correct bidder', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       expect(request.bidderRequest.bids[0].bidder).to.equal(BIDDER_CODE);
     });
 
     it('handles mediaTypes element correctly', function () {
-      const request = spec.buildRequests(validBidRequestsWithBannerMediaType, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsWithBannerMediaType, validBidderRequest)[0];
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'options', 'url']);
     });
 
     it('handles no ozone or custom data', function () {
-      const request = spec.buildRequests(validBidRequestsMinimal, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsMinimal, validBidderRequest)[0];
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'options', 'url']);
     });
 
     it('handles video mediaType element correctly, with outstream video', function () {
-      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest)[0];
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'options', 'url']);
     });
 
     it('should not crash when there is no sizes element at all', function () {
-      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest)[0];
       expect(request).to.have.all.keys(['bidderRequest', 'data', 'method', 'options', 'url']);
     });
 
-    it('should be able to handle non-single requests', function () {
+    it('should be able to handle non-single requests, but the response will still be a chunked array', function () {
       config.setConfig({'ozone': {'singleRequest': false}});
       const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
-      expect(request).to.be.a('array');
+      expect(request).to.be.an('array');
       expect(request[0]).to.have.all.keys(['bidderRequest', 'data', 'method', 'options', 'url']);
-      // need to reset the singleRequest config flag:
-      config.setConfig({'ozone': {'singleRequest': true}});
     });
 
     it('should add gdpr consent information to the request when ozone is true', function () {
@@ -1933,7 +1932,7 @@ describe('ozone Adapter', function () {
         }
       }
 
-      const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.regs.ext.gdpr).to.equal(1);
       expect(payload.user.ext.consent).to.equal(consentString);
@@ -1952,7 +1951,7 @@ describe('ozone Adapter', function () {
         }
       }
 
-      const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.regs.ext.gdpr).to.equal(1);
       expect(payload.user.ext.consent).to.equal(consentString);
@@ -1972,7 +1971,7 @@ describe('ozone Adapter', function () {
         }
       };
 
-      const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.regs.ext.gdpr).to.equal(0);
     });
@@ -2003,7 +2002,7 @@ describe('ozone Adapter', function () {
         'sharedid': {'id': '01EAJWWNEPN3CYMM5N8M5VXY22', 'third': '01EAJWWNEPN3CYMM5N8M5VXY22'}
       };
       bidRequests[0]['userIdAsEids'] = validBidRequestsWithUserIdData[0]['userIdAsEids'];
-      const request = spec.buildRequests(bidRequests, bidderRequest);
+      const request = spec.buildRequests(bidRequests, bidderRequest)[0];
       const payload = JSON.parse(request.data);
       let firstBid = payload.imp[0].ext.ozone;
       expect(firstBid).to.not.have.property('userId');
@@ -2023,14 +2022,14 @@ describe('ozone Adapter', function () {
         'sharedid': {'id': '01EAJWWNEPN3CYMM5N8M5VXY22', 'third': '01EAJWWNEPN3CYMM5N8M5VXY22'}
       };
       bidRequests[0]['userIdAsEids'] = validBidRequestsWithUserIdData[0]['userIdAsEids'];
-      const request = spec.buildRequests(bidRequests, validBidderRequest);
+      const request = spec.buildRequests(bidRequests, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.ext.ozone.pubcid).to.equal(bidRequests[0]['crumbs']['pubcid']);
       delete validBidRequests[0].userId; // tidy up now, else it will screw with other tests
     });
 
     it('should add a user.ext.eids object to contain user ID data in the new location (Nov 2019) Updated Aug 2020', function() {
-      const request = spec.buildRequests(validBidRequestsWithUserIdData, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsWithUserIdData, validBidderRequest)[0];
       /*
       'pubcid': '12345678',
       'tdid': '1111tdid',
@@ -2064,7 +2063,7 @@ describe('ozone Adapter', function () {
       spec.propertyBag.whitelabel = null;
       let fakeOrigin = 'http://sometestendpoint';
       config.setConfig({'ozone': {'endpointOverride': {'origin': fakeOrigin}}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       expect(request.url).to.equal(fakeOrigin + '/openrtb2/auction');
       expect(request.method).to.equal('POST');
       const data = JSON.parse(request.data);
@@ -2077,7 +2076,7 @@ describe('ozone Adapter', function () {
       spec.propertyBag.whitelabel = null;
       let fakeurl = 'http://sometestendpoint/myfullurl';
       config.setConfig({'ozone': {'endpointOverride': {'auctionUrl': fakeurl}}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       expect(request.url).to.equal(fakeurl);
       expect(request.method).to.equal('POST');
       const data = JSON.parse(request.data);
@@ -2090,7 +2089,7 @@ describe('ozone Adapter', function () {
       spec.propertyBag.whitelabel = null;
       let fakeUrl = 'http://renderer.com';
       config.setConfig({'ozone': {'endpointOverride': {'rendererUrl': fakeUrl}}});
-      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest1OutstreamVideo2020.bidderRequest);
+      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest1OutstreamVideo2020.bidderRequest)[0];
       const result = spec.interpretResponse(getCleanValidVideoResponse(), validBidderRequest1OutstreamVideo2020);
       const bid = result[0];
       expect(bid.renderer).to.be.an.instanceOf(Renderer);
@@ -2100,7 +2099,7 @@ describe('ozone Adapter', function () {
     });
     it('should generate all the adservertargeting keys correctly named', function () {
       config.setConfig({'ozone': {'kvpPrefix': 'xx'}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(result[0].adserverTargeting).to.have.own.property('xx_appnexus_crid');
       expect(utils.deepAccess(result[0].adserverTargeting, 'xx_appnexus_crid')).to.equal('98493581');
@@ -2111,7 +2110,7 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'xx_bid')).to.equal('true');
     });
     it('should create a meta object on each bid returned', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(result[0]).to.have.own.property('meta');
       expect(result[0].meta.advertiserDomains[0]).to.equal('http://prebid.org');
@@ -2120,7 +2119,7 @@ describe('ozone Adapter', function () {
     it('replaces the kvp prefix ', function () {
       spec.propertyBag.whitelabel = null;
       config.setConfig({'ozone': {'kvpPrefix': 'test'}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const data = JSON.parse(request.data);
       expect(data.ext.ozone).to.haveOwnProperty('test_rw');
       config.setConfig({'ozone': {'kvpPrefix': null}});
@@ -2132,7 +2131,7 @@ describe('ozone Adapter', function () {
       config.setConfig({'lmc': {'kvpPrefix': 'test'}});
       let br = JSON.parse(JSON.stringify(validBidRequests));
       br[0]['bidder'] = 'lmc';
-      const request = spec.buildRequests(br, validBidderRequest);
+      const request = spec.buildRequests(br, validBidderRequest)[0];
       const data = JSON.parse(request.data);
       expect(data.ext.lmc).to.haveOwnProperty('test_rw');
       config.setConfig({'lmc': {'kvpPrefix': null}}); // I cant remove the key so set the value to null
@@ -2144,7 +2143,7 @@ describe('ozone Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'oztestmode': 'mytestvalue_123'};
       };
-      const request = specMock.buildRequests(validBidRequests, validBidderRequest);
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest)[0];
       const data = JSON.parse(request.data);
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
@@ -2155,7 +2154,7 @@ describe('ozone Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {ozf: '1', ozpf: '0', ozrp: '2', ozip: '123'};
       };
-      const request = specMock.buildRequests(validBidRequests, validBidderRequest);
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest)[0];
       const data = JSON.parse(request.data);
       expect(data.ext.ozone.ozf).to.equal(1);
       expect(data.ext.ozone.ozpf).to.equal(0);
@@ -2168,7 +2167,7 @@ describe('ozone Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {ozf: 'false', ozpf: 'true', ozrp: 'xyz', ozip: 'hello'};
       };
-      const request = specMock.buildRequests(validBidRequests, validBidderRequest);
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest)[0];
       const data = JSON.parse(request.data);
       expect(data.ext.ozone.ozf).to.equal(0);
       expect(data.ext.ozone.ozpf).to.equal(1);
@@ -2181,7 +2180,7 @@ describe('ozone Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'oztestmode': 'mytestvalue_123'};
       };
-      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
+      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest)[0];
       const data = JSON.parse(request.data);
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
@@ -2192,7 +2191,7 @@ describe('ozone Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {};
       };
-      let request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
+      let request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest)[0];
       let url = request.url;
       expect(url).to.equal('https://elb.the-ozone-project.com/openrtb2/auction');
       let cookieUrl = specMock.getCookieSyncUrl();
@@ -2204,7 +2203,7 @@ describe('ozone Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'auction': 'dev', 'cookiesync': 'dev'};
       };
-      request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
+      request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest)[0];
       url = request.url;
       expect(url).to.equal('https://test.ozpr.net/openrtb2/auction');
       cookieUrl = specMock.getCookieSyncUrl();
@@ -2216,7 +2215,7 @@ describe('ozone Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'ozstoredrequest': '1122334455'}; // 10 digits are valid
       };
-      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
+      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest)[0];
       const data = JSON.parse(request.data);
       expect(data.ext.ozone.oz_rw).to.equal(1);
       expect(data.imp[0].ext.prebid.storedrequest.id).to.equal('1122334455');
@@ -2227,7 +2226,7 @@ describe('ozone Adapter', function () {
       specMock.getGetParametersAsObject = function() {
         return {'ozstoredrequest': 'BADVAL'}; // 10 digits are valid
       };
-      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest);
+      const request = specMock.buildRequests(validBidRequestsMinimal, validBidderRequest)[0];
       const data = JSON.parse(request.data);
       expect(data.ext.ozone.oz_rw).to.equal(0);
       expect(data.imp[0].ext.prebid.storedrequest.id).to.equal('1310000099');
@@ -2235,52 +2234,52 @@ describe('ozone Adapter', function () {
 
     it('should pick up the config value of coppa & set it in the request', function () {
       config.setConfig({'coppa': true});
-      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.regs).to.include.keys('coppa');
       expect(payload.regs.coppa).to.equal(1);
     });
     it('should pick up the config value of coppa & only set it in the request if its true', function () {
       config.setConfig({'coppa': false});
-      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'regs.coppa')).to.be.undefined;
     });
     it('should handle oz_omp_floor correctly', function () {
       config.setConfig({'ozone': {'oz_omp_floor': 1.56}});
-      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'ext.ozone.oz_omp_floor')).to.equal(1.56);
     });
     it('should ignore invalid oz_omp_floor values', function () {
       config.setConfig({'ozone': {'oz_omp_floor': '1.56'}});
-      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'ext.ozone.oz_omp_floor')).to.be.undefined;
     });
     it('should should contain a unique page view id in the auction request which persists across calls', function () {
-      let request = spec.buildRequests(validBidRequests, validBidderRequest);
+      let request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       let payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'ext.ozone.pv')).to.be.a('string');
-      request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest);
+      request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest)[0];
       let payload2 = JSON.parse(request.data);
       expect(utils.deepAccess(payload2, 'ext.ozone.pv')).to.be.a('string');
       expect(utils.deepAccess(payload2, 'ext.ozone.pv')).to.equal(utils.deepAccess(payload, 'ext.ozone.pv'));
     });
     it('should indicate that the whitelist was used when it contains valid data', function () {
       config.setConfig({'ozone': {'oz_whitelist_adserver_keys': ['oz_ozappnexus_pb', 'oz_ozappnexus_imp_id']}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.ext.ozone.oz_kvp_rw).to.equal(1);
     });
     it('should indicate that the whitelist was not used when it contains no data', function () {
       config.setConfig({'ozone': {'oz_whitelist_adserver_keys': []}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.ext.ozone.oz_kvp_rw).to.equal(0);
     });
     it('should indicate that the whitelist was not used when it is not set in the config', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.ext.ozone.oz_kvp_rw).to.equal(0);
     });
@@ -2301,7 +2300,7 @@ describe('ozone Adapter', function () {
           'search': 'drill'
         }
       };
-      const request = spec.buildRequests(validBidRequests, bidderRequest);
+      const request = spec.buildRequests(validBidRequests, bidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.imp[0].ext.ozone.customData[0].targeting.name).to.equal('example_ortb2_name');
       expect(payload.user.ext).to.not.have.property('gender');
@@ -2322,7 +2321,7 @@ describe('ozone Adapter', function () {
           'search': 'drill'
         }
       };
-      const request = spec.buildRequests(validBidRequestsNoCustomData, bidderRequest);
+      const request = spec.buildRequests(validBidRequestsNoCustomData, bidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.imp[0].ext.ozone.customData[0].targeting.name).to.equal('example_ortb2_name');
       expect(payload.imp[0].ext.ozone.customData[0].targeting).to.not.have.property('gender')
@@ -2335,7 +2334,7 @@ describe('ozone Adapter', function () {
           'gender': 'I identify as a box of rocks'
         }
       };
-      const request = spec.buildRequests(validBidRequests, bidderRequest);
+      const request = spec.buildRequests(validBidRequests, bidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.user.gender).to.equal('I identify as a box of rocks');
     });
@@ -2350,7 +2349,7 @@ describe('ozone Adapter', function () {
           }
         }
       };
-      const request = spec.buildRequests(validBidRequests, bidderRequest);
+      const request = spec.buildRequests(validBidRequests, bidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(payload.user.ext.consent2).to.equal('this should be set');
       expect(payload.user.ext.consent).to.equal('BOh7mtYOh7mtYAcABBENCU-AAAAncgPIXJiiAoao0PxBFkgCAC8ACIAAQAQQAAIAAAIAAAhBGAAAQAQAEQgAAAAAAABAAAAAAAAAAAAAAACAAAAAAAACgAAAAABAAAAQAAAAAAA');
@@ -2358,7 +2357,7 @@ describe('ozone Adapter', function () {
     // end of FPD...
     it('should have openrtb video params', function() {
       let allowed = ['mimes', 'minduration', 'maxduration', 'protocols', 'w', 'h', 'startdelay', 'placement', 'linearity', 'skip', 'skipmin', 'skipafter', 'sequence', 'battr', 'maxextended', 'minbitrate', 'maxbitrate', 'boxingallowed', 'playbackmethod', 'playbackend', 'delivery', 'pos', 'companionad', 'api', 'companiontype', 'ext'];
-      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       const vid = (payload.imp[0].video);
       const keys = Object.keys(vid);
@@ -2388,7 +2387,7 @@ describe('ozone Adapter', function () {
       });
       let localBidRequest = JSON.parse(JSON.stringify(validBidRequestsWithBannerMediaType));
       localBidRequest[0].getFloor = function(x) { return {'currency': 'USD', 'floor': 0.8} };
-      const request = spec.buildRequests(localBidRequest, validBidderRequest);
+      const request = spec.buildRequests(localBidRequest, validBidderRequest)[0];
       const payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'imp.0.floor.banner.currency')).to.equal('USD');
       expect(utils.deepAccess(payload, 'imp.0.floor.banner.floor')).to.equal(0.8);
@@ -2409,10 +2408,33 @@ describe('ozone Adapter', function () {
         ]
       };
       br[0]['schain'] = schainConfigObject;
-      const request = spec.buildRequests(br, validBidderRequest);
+      const request = spec.buildRequests(br, validBidderRequest)[0];
       const data = JSON.parse(request.data);
       expect(data.source.ext).to.haveOwnProperty('schain');
       expect(data.source.ext.schain).to.deep.equal(schainConfigObject); // .deep.equal() : Target object deeply (but not strictly) equals `{a: 1}`
+    });
+
+    it('should move page params into ext.ozone.pageTargeting if usePageTargeting is true', function () {
+      var specMock = utils.deepClone(spec);
+      specMock.usePageTargeting = true;
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest);
+      expect(request).to.be.an('array');
+      expect(request[0]).to.have.all.keys(['bidderRequest', 'data', 'method', 'options', 'url']);
+      const data = JSON.parse(request[0].data);
+      expect(data.ext.ozone.pageTargeting).to.be.an('object');
+      expect(data.ext.ozone.pageTargeting).to.have.all.keys('gender', 'age', 'testgroup');
+      expect(data.imp[0].ext.ozone.customData[0].targeting).to.have.all.keys('slotName');
+    });
+    it('should not move page params into ext.ozone.pageTargeting if usePageTargeting is false', function () {
+      var specMock = utils.deepClone(spec);
+      specMock.usePageTargeting = false;
+      const request = specMock.buildRequests(validBidRequests, validBidderRequest);
+      expect(request).to.be.an('array');
+      expect(request[0]).to.have.all.keys('bidderRequest', 'data', 'method', 'options', 'url');
+      const data = JSON.parse(request[0].data);
+      expect(data.imp[0].ext.ozone.customData[0].targeting).to.have.all.keys('slotName', 'age', 'gender');
+      expect(data.ext.ozone.pageTargeting).to.not.have.any.keys('gender', 'age');
+      expect(data.ext.ozone.pageTargeting).to.have.all.keys('testgroup');
     });
   });
 
@@ -2422,13 +2444,13 @@ describe('ozone Adapter', function () {
     })
 
     it('should build bid array', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(result.length).to.equal(1);
     });
 
     it('should have all relevant fields', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       const bid = result[0];
       expect(bid.cpm).to.equal(validResponse.body.seatbid[0].bid[0].cpm);
@@ -2439,14 +2461,14 @@ describe('ozone Adapter', function () {
     it('should build bid array with gdpr', function () {
       let validBR = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
       validBR.gdprConsent = {'gdprApplies': 1, 'consentString': 'This is the gdpr consent string'};
-      const request = spec.buildRequests(validBidRequests, validBR); // works the old way, with GDPR not enforced by default
+      const request = spec.buildRequests(validBidRequests, validBR)[0]; // works the old way, with GDPR not enforced by default
       const result = spec.interpretResponse(validResponse, request);
       expect(result.length).to.equal(1);
     });
     it('should build bid array with usp/CCPA', function () {
       let validBR = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
       validBR.uspConsent = '1YNY';
-      const request = spec.buildRequests(validBidRequests, validBR);
+      const request = spec.buildRequests(validBidRequests, validBR)[0];
       const payload = JSON.parse(request.data);
       expect(payload.user.ext.uspConsent).not.to.exist;
       expect(payload.regs.ext.us_privacy).to.equal('1YNY');
@@ -2455,7 +2477,7 @@ describe('ozone Adapter', function () {
     it('should build bid array with only partial gdpr', function () {
       var validBidderRequestWithGdpr = bidderRequestWithPartialGdpr.bidderRequest;
       validBidderRequestWithGdpr.gdprConsent = {'gdprApplies': 1, 'consentString': 'This is the gdpr consent string'};
-      const request = spec.buildRequests(validBidRequests, validBidderRequestWithGdpr);
+      const request = spec.buildRequests(validBidRequests, validBidderRequestWithGdpr)[0];
       const payload = JSON.parse(request.data);
       expect(payload.user.ext.consent).to.be.a('string');
     });
@@ -2473,7 +2495,7 @@ describe('ozone Adapter', function () {
     });
 
     it('should have video renderer for outstream video', function () {
-      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest1OutstreamVideo2020.bidderRequest);
+      const request = spec.buildRequests(validBidRequests1OutstreamVideo2020, validBidderRequest1OutstreamVideo2020.bidderRequest)[0];
       const result = spec.interpretResponse(getCleanValidVideoResponse(), validBidderRequest1OutstreamVideo2020);
       const bid = result[0];
       expect(bid.renderer).to.be.an.instanceOf(Renderer);
@@ -2484,43 +2506,43 @@ describe('ozone Adapter', function () {
       instreamRequestsObj[0].mediaTypes.video.context = 'instream';
       let instreamBidderReq = JSON.parse(JSON.stringify(validBidderRequest1OutstreamVideo2020));
       instreamBidderReq.bidderRequest.bids[0].mediaTypes.video.context = 'instream';
-      const request = spec.buildRequests(instreamRequestsObj, validBidderRequest1OutstreamVideo2020.bidderRequest);
+      const request = spec.buildRequests(instreamRequestsObj, validBidderRequest1OutstreamVideo2020.bidderRequest)[0];
       const result = spec.interpretResponse(getCleanValidVideoResponse(), instreamBidderReq);
       const bid = result[0];
       expect(bid.hasOwnProperty('renderer')).to.be.false;
     });
 
     it('should correctly parse response where there are more bidders than ad slots', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validBidResponse1adWith2Bidders, request);
       expect(result.length).to.equal(2);
     });
 
     it('should have a ttl of 600', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(result[0].ttl).to.equal(300);
     });
 
     it('should handle oz_omp_floor_dollars correctly, inserting 1 as necessary', function () {
       config.setConfig({'ozone': {'oz_omp_floor': 0.01}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_omp')).to.equal('1');
     });
     it('should handle oz_omp_floor_dollars correctly, inserting 0 as necessary', function () {
       config.setConfig({'ozone': {'oz_omp_floor': 2.50}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_omp')).to.equal('0');
     });
     it('should handle missing oz_omp_floor_dollars correctly, inserting nothing', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_omp')).to.be.undefined;
     });
     it('should handle ext.bidder.ozone.floor correctly, setting flr & rid as necessary', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       let vres = JSON.parse(JSON.stringify(validResponse));
       vres.body.seatbid[0].bid[0].ext.bidder.ozone = {floor: 1, ruleId: 'ZjbsYE1q'};
       const result = spec.interpretResponse(vres, request);
@@ -2528,7 +2550,7 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_rid')).to.equal('ZjbsYE1q');
     });
     it('should handle ext.bidder.ozone.floor correctly, inserting 0 as necessary', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       let vres = JSON.parse(JSON.stringify(validResponse));
       vres.body.seatbid[0].bid[0].ext.bidder.ozone = {floor: 0, ruleId: 'ZjbXXE1q'};
       const result = spec.interpretResponse(vres, request);
@@ -2536,7 +2558,7 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_rid')).to.equal('ZjbXXE1q');
     });
     it('should handle ext.bidder.ozone.floor correctly, inserting nothing as necessary', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       let vres = JSON.parse(JSON.stringify(validResponse));
       vres.body.seatbid[0].bid[0].ext.bidder.ozone = {};
       const result = spec.interpretResponse(vres, request);
@@ -2544,7 +2566,7 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_rid', null)).to.equal(null);
     });
     it('should handle ext.bidder.ozone.floor correctly, when bidder.ozone is not there', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       let vres = JSON.parse(JSON.stringify(validResponse));
       const result = spec.interpretResponse(vres, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_flr', null)).to.equal(null);
@@ -2552,27 +2574,27 @@ describe('ozone Adapter', function () {
     });
     it('should handle a valid whitelist, removing items not on the list & leaving others', function () {
       config.setConfig({'ozone': {'oz_whitelist_adserver_keys': ['oz_appnexus_crid', 'oz_appnexus_adId']}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adv')).to.be.undefined;
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adId')).to.equal('2899ec066a91ff8-0-oz-0');
     });
     it('should ignore a whitelist if enhancedAdserverTargeting is false', function () {
       config.setConfig({'ozone': {'oz_whitelist_adserver_keys': ['oz_appnexus_crid', 'oz_appnexus_imp_id'], 'enhancedAdserverTargeting': false}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adv')).to.be.undefined;
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_imp_id')).to.be.undefined;
     });
     it('should correctly handle enhancedAdserverTargeting being false', function () {
       config.setConfig({'ozone': {'enhancedAdserverTargeting': false}});
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_adv')).to.be.undefined;
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_imp_id')).to.be.undefined;
     });
     it('should add flr into ads request if floor exists in the auction response', function () {
-      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest)[0];
       let validres = JSON.parse(JSON.stringify(validResponse2Bids));
       validres.body.seatbid[0].bid[0].ext.bidder.ozone = {'floor': 1};
       const result = spec.interpretResponse(validres, request);
@@ -2580,7 +2602,7 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[1].adserverTargeting, 'oz_appnexus_flr', '')).to.equal('');
     });
     it('should add rid into ads request if ruleId exists in the auction response', function () {
-      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest)[0];
       let validres = JSON.parse(JSON.stringify(validResponse2Bids));
       validres.body.seatbid[0].bid[0].ext.bidder.ozone = {'ruleId': 123};
       const result = spec.interpretResponse(validres, request);
@@ -2588,13 +2610,13 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[1].adserverTargeting, 'oz_appnexus_rid', '')).to.equal('');
     });
     it('should add oz_ozappnexus_sid (cid value) for all appnexus bids', function () {
-      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest)[0];
       let validres = JSON.parse(JSON.stringify(validResponse2BidsSameAdunit));
       const result = spec.interpretResponse(validres, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_ozappnexus_sid')).to.equal(result[0].cid);
     });
     it('should add unique adId values to each bid', function() {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       let validres = JSON.parse(JSON.stringify(validResponse2BidsSameAdunit));
       const result = spec.interpretResponse(validres, request);
       expect(result.length).to.equal(1);
@@ -2603,7 +2625,7 @@ describe('ozone Adapter', function () {
     });
     it('should correctly process an auction with 2 adunits & multiple bidders one of which bids for both adslots', function() {
       let validres = JSON.parse(JSON.stringify(multiResponse1));
-      let request = spec.buildRequests(multiRequest1, multiBidderRequest1);
+      let request = spec.buildRequests(multiRequest1, multiBidderRequest1)[0];
       let result = spec.interpretResponse(validres, request);
       expect(result.length).to.equal(4); // one of the 5 bids will have been removed
       expect(result[1]['price']).to.equal(0.521);
@@ -2614,7 +2636,7 @@ describe('ozone Adapter', function () {
       validres = JSON.parse(JSON.stringify(multiResponse1));
       validres.body.seatbid[0].bid[1].price = 1.1;
       validres.body.seatbid[0].bid[1].cpm = 1.1;
-      request = spec.buildRequests(multiRequest1, multiBidderRequest1);
+      request = spec.buildRequests(multiRequest1, multiBidderRequest1)[0];
       result = spec.interpretResponse(validres, request);
       expect(result[1]['price']).to.equal(1.1);
       expect(result[1]['impid']).to.equal('3025f169863b7f8');
@@ -2622,7 +2644,7 @@ describe('ozone Adapter', function () {
       expect(result[1]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('3025f169863b7f8-0-oz-1');
     });
     it('should add mediaType: banner for a banner ad', function () {
-      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      const request = spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.interpretResponse(validResponse, request);
       expect(result[0].mediaType).to.equal('banner');
     });
@@ -2648,7 +2670,7 @@ describe('ozone Adapter', function () {
     });
     it('should append the various values if they exist', function() {
       // get the cookie bag populated
-      spec.buildRequests(validBidRequests, validBidderRequest);
+      spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', gdpr1);
       expect(result).to.be.an('array');
       expect(result[0].url).to.include('publisherId=9876abcd12-3');
@@ -2658,14 +2680,14 @@ describe('ozone Adapter', function () {
     });
     it('should append ccpa (usp data)', function() {
       // get the cookie bag populated
-      spec.buildRequests(validBidRequests, validBidderRequest);
+      spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', gdpr1, '1YYN');
       expect(result).to.be.an('array');
       expect(result[0].url).to.include('usp_consent=1YYN');
     });
     it('should use "" if no usp is sent to cookieSync', function() {
       // get the cookie bag populated
-      spec.buildRequests(validBidRequests, validBidderRequest);
+      spec.buildRequests(validBidRequests, validBidderRequest)[0];
       const result = spec.getUserSyncs({iframeEnabled: true}, 'good server response', gdpr1);
       expect(result).to.be.an('array');
       expect(result[0].url).to.include('usp_consent=&');
@@ -2726,7 +2748,7 @@ describe('ozone Adapter', function () {
       expect(result).to.be.null;
     });
     it('should add oz_appnexus_dealid into ads request if dealid exists in the auction response', function () {
-      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest)[0];
       let validres = JSON.parse(JSON.stringify(validResponse2Bids));
       validres.body.seatbid[0].bid[0].dealid = '1234';
       const result = spec.interpretResponse(validres, request);

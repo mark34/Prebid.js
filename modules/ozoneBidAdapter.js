@@ -90,8 +90,10 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.8.3-20221124-2.6-compat-batched';
+const OZONEVERSION = '2.8.3-20221130-2.6-compat-reach-batched-on-pagetargeting-on';
 export const spec = {
+  // usePageTargeting is a switch - do we pull out common targeting from imps & put it into ext.ozone.pageTargeting ?
+  usePageTargeting: true,
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
   version: OZONEVERSION,
@@ -285,7 +287,7 @@ export const spec = {
     let placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
     // build the array of params to attach to `imp`
     let schain = null;
-    let commonTargeting = {}; // we will set common targeting in ext.ozone.pageTargeting 20221123
+    let commonTargeting = {}; // we will set common targeting in ext.ozone.pageTargeting 20221123 IF this.usePageTargeting is true
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
@@ -366,11 +368,15 @@ export const spec = {
       obj.ext[whitelabelBidder].adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
       obj.ext[whitelabelBidder].transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
       if (ozoneBidRequest.params.hasOwnProperty('customData')) {
-        // 20221123 - parse params.customData.0.targeting - pull out everything except slotName, hivis & opos and transfer into /ext.ozone.customData.targeting
-        let filteredCustomData = this.getMiniCustomData(ozoneBidRequest.params.customData, ['slotName', 'hivis', 'opos']);
-        obj.ext[whitelabelBidder].customData = filteredCustomData;
-        if (Object.keys(commonTargeting).length === 0) {
-          commonTargeting = this.getCommonCustomData(ozoneBidRequest.params.customData, ['slotName', 'hivis', 'opos']);
+        if (this.usePageTargeting) {
+          // 20221123 - parse params.customData.0.targeting - pull out everything except slotName, hivis & opos and transfer into /ext.ozone.customData.targeting
+          let filteredCustomData = this.getMiniCustomData(ozoneBidRequest.params.customData, ['slotName', 'hivis', 'opos']);
+          obj.ext[whitelabelBidder].customData = filteredCustomData;
+          if (Object.keys(commonTargeting).length === 0) {
+            commonTargeting = this.getCommonCustomData(ozoneBidRequest.params.customData, ['slotName', 'hivis', 'opos']);
+          }
+        } else {
+          obj.ext[whitelabelBidder].customData = ozoneBidRequest.params.customData;
         }
       }
       logInfo(`obj.ext.${whitelabelBidder} is `, obj.ext[whitelabelBidder]);
@@ -399,12 +405,14 @@ export const spec = {
       }
       return obj;
     });
+    // this is unconditional
     commonTargeting['testgroup'] = (Math.floor(99 * Math.random()) + 1).toString(10);
     // in v 2.0.0 we moved these outside of the individual ad slots
     let extObj = {};
     extObj[whitelabelBidder] = {};
     extObj[whitelabelBidder][whitelabelPrefix + '_pb_v'] = OZONEVERSION;
     extObj[whitelabelBidder][whitelabelPrefix + '_rw'] = placementIdOverrideFromGetParam ? 1 : 0;
+    // commonTargeting might only contain `testgroup`, or also common keys
     extObj[whitelabelBidder].pageTargeting = commonTargeting;
     if (validBidRequests.length > 0) {
       let userIds = this.cookieSyncBag.userIdObject; // 2021-01-06 - slight optimisation - we've already found this info
@@ -530,7 +538,7 @@ export const spec = {
     return ret;
   },
   /**
-   * Get all the keys=>values from customData[0].targeting that DONT match arrKeys
+   * Get all the keys=>values from customData[0].targeting that DON'T match arrKeys
    * @param customData
    * @param arrKeys
    * @returns {[]|{}}
