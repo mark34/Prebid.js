@@ -46,7 +46,7 @@ const ORIGIN = 'https://bidder.newspassid.com' // applies only to auction & cook
 const AUCTIONURI = '/openrtb2/auction';
 const NEWSPASSCOOKIESYNC = '/static/load-cookie.html';
 
-const NEWSPASSVERSION = '1.1.3rc20220906';
+const NEWSPASSVERSION = '1.1.3rc20221228-updated';
 
 export const spec = {
   version: NEWSPASSVERSION,
