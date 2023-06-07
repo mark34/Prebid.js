@@ -90,7 +90,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.8.3-20221130-2.6-compat-reach-batched-on-pagetargeting-on';
+const OZONEVERSION = '2.8.3-20230216-2.6-compat-reach-batched-on-pagetargeting-on-pb_vd';
 export const spec = {
   // usePageTargeting is a switch - do we pull out common targeting from imps & put it into ext.ozone.pageTargeting ?
   usePageTargeting: true,
@@ -732,6 +732,13 @@ export const spec = {
           logInfo('Going to filter out adserver targeting keys not in the whitelist: ', ozWhitelistAdserverKeys);
           Object.keys(adserverTargeting).forEach(function(key) { if (ozWhitelistAdserverKeys.indexOf(key) === -1) { delete adserverTargeting[key]; } });
         }
+        if (isVideo) {
+          adserverTargeting[whitelabelPrefix + '_vd'] = String(this.getVideoLengthFromAdm(thisBid.adm)); // try & find length, else 30
+          adserverTargeting[whitelabelPrefix + '_vd2'] = 'fixedstring'; // try & find length, else 30
+          adserverTargeting['thisisavideo_vd3'] = 'fixedstring'; // try & find length, else 30
+        } else {
+          adserverTargeting['not_vd'] = String(this.getVideoLengthFromAdm('')); // try & find length, else 30
+        }
         thisBid.adserverTargeting = adserverTargeting;
         arrAllBids.push(thisBid);
       }
@@ -740,6 +747,29 @@ export const spec = {
     logInfo(`interpretResponse going to return at time ${endTime} (took ${endTime - startTime}ms) Time from buildRequests Start -> interpretRequests End = ${endTime - this.propertyBag.buildRequestsStart}ms`);
     logInfo('interpretResponse arrAllBids (serialised): ', JSON.parse(JSON.stringify(arrAllBids))); // this is ok to log because the renderer has not been attached yet
     return arrAllBids;
+  },
+  /**
+   * for video bids, see the adm; if it's inline video then get the duration & round it, else return 30
+   * @param adm
+   * @return int
+   */
+  getVideoLengthFromAdm(adm) {
+    let secondsMatch = adm.match(/<Duration>\d\d:\d\d:(\d\d)<\/Duration>/);
+    let l = '30';
+    if (Array.isArray(secondsMatch) && secondsMatch.length > 1) {
+      l = parseInt(secondsMatch[1]);
+      if (l <= 5) {
+        l = Math.max(l, 5);
+      } else if (l <= 10) {
+        l = Math.max(l, 10);
+      } else if (l <= 15) {
+        l = Math.max(l, 15);
+      } else {
+        l = 30;
+      }
+    }
+    logInfo('getVideoLengthFromAdm return ' + String(l));
+    return String(l);
   },
   /**
    * brought in from the 2.7.0 test instream branch, this is needed for instream video
