@@ -91,7 +91,6 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // --- END REMOVE FOR RELEASE
 const OZONEVERSION = '2.8.3-hybrid-getRefererInfo-no-added-headers-updated';
 export const spec = {
-  
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}],
   version: OZONEVERSION,
