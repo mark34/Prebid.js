@@ -1,5 +1,6 @@
 /**
  * analytics adapter for ozone analytics
+ * 20240222 update - unconditionally batch all events, checking whether to send them off after (config.batchIntervalSecs) default 1
  */
 
 // import { _each, logMessage } from '../src/utils.js';
@@ -42,7 +43,8 @@ pbjs.enableAnalytics({
     options: {
         doBatch: true,
         maxBatchEvents: 20, // optional; when batching when we reach this number then send, as well as when the natural trigger is reached
-        sampled: Math.random() > .5 // eg. you only want to sample 50% randomly chosen of all page hits
+        sampled: Math.random() > .5, // eg. you only want to sample 50% randomly chosen of all page hits
+        batchIntervalSecs: 1
     }
 });
 
@@ -50,7 +52,10 @@ pbjs.enableAnalytics({
 
 // override all of these in the config (we will do an Object.assign)
 var configOptions = {
-  doBatch: true, maxBatchEvents: 10, sampled: true /* include this page in calls to server? (is this to be included in your sampled data?) */
+  doBatch: true, /* include this page in calls to server? (is this to be included in your sampled data?) */
+  maxBatchEvents: 10,
+  sampled: true,
+  batchIntervalSecs: 1
 };
 
 var publisherId, siteId; // persist these into all server calls after we receive them
@@ -122,8 +127,8 @@ let ozoneAnalytics = Object.assign(adapter({
       case BID_RESPONSE:
         handleEvent('bid_response', mapObject(eventType, args), configOptions.doBatch);
         break;
-      case NO_BID: // these must be sent in real time, regardless of the batch value. These come in AFTER ACTION_END when there was no bid for an adunit - once for each adunit
-        handleEvent('no_bid', mapObject(eventType, args), false);
+      case NO_BID: // These come in AFTER ACTION_END when there was no bid for an adunit - once for each adunit
+        handleEvent('no_bid', mapObject(eventType, args), configOptions.doBatch);
         break;
       case BID_TIMEOUT:
         if (Array.isArray(args) && args.length > 0) { // this is an array of bid objects
@@ -135,8 +140,8 @@ let ozoneAnalytics = Object.assign(adapter({
           handleEvent('timeout', mapObject(eventType, toSend), configOptions.doBatch);
         }
         break;
-      case BID_WON: // these must be sent in real time, regardless of the batch value. These come in AFTER ACTION_END
-        handleEvent('bid_won', mapObject(eventType, args), false);
+      case BID_WON: // These come in AFTER ACTION_END
+        handleEvent('bid_won', mapObject(eventType, args), configOptions.doBatch);
         break;
       case BIDDER_ERROR: // you can cause this by pointing to an invalid url
         toSend = {'auctionId': 'Failed to get any data'};
@@ -150,34 +155,55 @@ let ozoneAnalytics = Object.assign(adapter({
         handleEvent('bid_rejected', mapObject(eventType, args), configOptions.doBatch);
         break;
       case AD_RENDER_SUCCEEDED:
-        handleEvent('render_succeeded', mapObject(eventType, args.bid), false);
+        handleEvent('render_succeeded', mapObject(eventType, args.bid), configOptions.doBatch);
         break;
       case AD_RENDER_FAILED:
-        handleEvent('render_failed', mapObject(eventType, args.bid), false);
+        handleEvent('render_failed', mapObject(eventType, args.bid), configOptions.doBatch);
         break;
       case BID_VIEWABLE: // note - for this to fire you need pbjs.setConfig({bidViewability: {enabled: true}})
-        handleEvent('bid_viewable', mapObject(eventType, args), false);
+        handleEvent('bid_viewable', mapObject(eventType, args), configOptions.doBatch);
         break;
       case STALE_RENDER:
         handleEvent('stale_render', mapObject(eventType, args), configOptions.doBatch);
         break;
       case SET_TARGETING: // args is an object like {leaderboard: {}, mpu: {}, ... } - we are going to log just the keys
-        toSend = {adUnitCodes: String(Object.keys(args))};
-        handleEvent('set_targeting', mapObject(eventType, toSend), false); // this happens after auction end
+        // NOTE - removed 20240226 - this is not tied to a bid/auction - it seems to be for all adunits across multiple auctions so not useful
         break;
       case AUCTION_END: // NOTE in testing I am getting 3 'bidWon' events AFTER this
         handleEvent('auction_end', mapObject(eventType, args), configOptions.doBatch);
-        if (configOptions.doBatch && _analyticsQueue.length > 0) {
-          const currentQ = _analyticsQueue;
-          _analyticsQueue = [];
-          logInfo('Auction end: sending data now');
-          sendData(currentQ);
-        } else {
-          logInfo('Auction end: nothing to do');
-        }
     }
   }
 });
+
+/**
+ * Unconditionally send the batch
+ */
+function ozoneSendBatch(waitMs) {
+  if (configOptions.doBatch && _analyticsQueue.length > 0) {
+    const currentQ = _analyticsQueue;
+    _analyticsQueue = [];
+    logInfo(`ozoneSendBatch: sending data now: ${currentQ.length} items`);
+    sendData(currentQ);
+  } else {
+    logInfo('ozoneSendBatch: nothing to do');
+  }
+  setTimeout(function() { ozoneSendBatch(waitMs); }, waitMs);
+}
+
+// kick off the batch sending loop if we are set to batch mode
+if (configOptions.doBatch) {
+  setTimeout(function () { ozoneSendBatch(configOptions.batchIntervalSecs * 1000); }, configOptions.batchIntervalSecs * 1000);
+  window.onbeforeunload = (e) => {
+    const currentQ = _analyticsQueue;
+    _analyticsQueue = [];
+    if (currentQ.length > 0) {
+      logInfo(`ozone analytics: sending final data now before page unload: ${currentQ.length} items`);
+      sendData(currentQ);
+    } else {
+      logInfo(`ozone analytics: no final data to send before page unload`);
+    }
+  }
+}
 
 /**
  * Deal with this event type (name) & arbitrary object - ideally batch it up, but could be sent right now depending on config
@@ -189,18 +215,19 @@ function handleEvent(type, obj, batch) {
   if (batch) {
     logInfo(`handleEvent (${type}): batch mode`);
     // push into the array
-    obj.eventType = type;
+    obj.event_type = type;
     _analyticsQueue.push(obj);
     // have we reached our batch limit?
     if (configOptions.maxBatchEvents <= _analyticsQueue.length) {
       logInfo(`Batch length of ${configOptions.maxBatchEvents} reached, going to send batch & truncate the queue`);
-      sendData(_analyticsQueue);
+      let aq = _analyticsQueue;
       _analyticsQueue = [];
+      sendData(aq);
     }
   } else {
     // send right now
     logInfo(`handleEvent (${type}): will send single obj (as an array with one element)`);
-    obj.eventType = type;
+    obj.event_type = type;
     sendData([obj]); // keep it consistent - so we always send an array.
   }
 }

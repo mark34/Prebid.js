@@ -80,3 +80,6 @@ typings/
 
 # MacOS system files
 .DS_Store
+
+# ignore the comment-stripped txt files
+/*.txt
