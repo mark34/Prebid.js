@@ -8,7 +8,7 @@ import {
   contains,
   mergeDeep,
   parseUrl,
-  generateUUID, isInteger
+  generateUUID
 } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
@@ -16,6 +16,12 @@ import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
 import {getRefererInfo} from '../src/refererDetection.js';
+import * as utils from "../src/utils.js";
+import {ortbConverter} from '../libraries/ortbConverter/converter.js';
+import {convertTypes} from '../libraries/transformParamsUtils/convertTypes.js';
+
+const bidderConfig = 'hb_pb_ortb';
+const bidderVersion = '2.0';
 
 // NOTE this allows us to access the pv value outside of prebid after the auction request.
 // import { getStorageManager } from '../src/storageManager.js'
@@ -41,7 +47,7 @@ whitelabelPrefix + 'storedrequest'=[a valid stored request ID]
 // NOTE THAT the gvl is available at https://iabeurope.eu/vendor-list-tcf-v2-0/
 
 // testing fake endpoint for cookie sync new code with postMessage
-// const OZONECOOKIE = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
+// const OZONECOOKIESYNC = 'http://local.bussongs.com/prebid-cookie-sync-development.html';
 // const OZONECOOKIESYNC = 'https://betalyst.local/prebid-cookie-sync-development.html';
 
 // *** DEV-ozpr
@@ -90,7 +96,140 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.9.2';
+const OZONEVERSION = '2.9.2-TESTING_OPENX_FLEDGE';
+
+// CODE lifted from openx - using core functionality to see whether this automatically adds bid[].ext.ae=1
+// also from information on https://github.com/prebid/Prebid.js/blob/master/libraries/ortbConverter/README.md
+const converter = ortbConverter({
+  context: {
+    netRevenue: true,
+    ttl: 30
+  }
+  // ,
+  // imp(buildImp, bidRequest, context) {
+  //   const imp = buildImp(bidRequest, context);
+  //   mergeDeep(imp, {
+  //     tagid: bidRequest.params.unit,
+  //     ext: {
+  //       divid: bidRequest.adUnitCode
+  //     }
+  //   });
+  //   if (bidRequest.params.customParams) {
+  //     utils.deepSetValue(imp, 'ext.customParams', bidRequest.params.customParams);
+  //   }
+  //   if (bidRequest.params.customFloor && !imp.bidfloor) {
+  //     imp.bidfloor = bidRequest.params.customFloor;
+  //   }
+  //   return imp;
+  // },
+  // request(buildRequest, imps, bidderRequest, context) {
+  //   const req = buildRequest(imps, bidderRequest, context);
+  //   mergeDeep(req, {
+  //     at: 1,
+  //     ext: {
+  //       bc: `${bidderConfig}_${bidderVersion}`,
+  //       pv: '$prebid.version$'
+  //     }
+  //   })
+  //   const bid = context.bidRequests[0];
+  //   if (bid.params.coppa) {
+  //     utils.deepSetValue(req, 'regs.coppa', 1);
+  //   }
+  //   if (bid.params.doNotTrack) {
+  //     utils.deepSetValue(req, 'device.dnt', 1);
+  //   }
+  //   if (bid.params.platform) {
+  //     utils.deepSetValue(req, 'ext.platform', bid.params.platform);
+  //   }
+  //   if (bid.params.delDomain) {
+  //     utils.deepSetValue(req, 'ext.delDomain', bid.params.delDomain);
+  //   }
+  //   if (bid.params.response_template_name) {
+  //     utils.deepSetValue(req, 'ext.response_template_name', bid.params.response_template_name);
+  //   }
+  //   if (bid.params.test) {
+  //     req.test = 1
+  //   }
+  //   return req;
+  // },
+  // bidResponse(buildBidResponse, bid, context) {
+  //   const bidResponse = buildBidResponse(bid, context);
+  //   if (bid.ext) {
+  //     bidResponse.meta.networkId = bid.ext.dsp_id;
+  //     bidResponse.meta.advertiserId = bid.ext.buyer_id;
+  //     bidResponse.meta.brandId = bid.ext.brand_id;
+  //   }
+  //   const {ortbResponse} = context;
+  //   if (ortbResponse.ext && ortbResponse.ext.paf) {
+  //     bidResponse.meta.paf = Object.assign({}, ortbResponse.ext.paf);
+  //     bidResponse.meta.paf.content_id = utils.deepAccess(bid, 'ext.paf.content_id');
+  //   }
+  //   return bidResponse;
+  // },
+  // response(buildResponse, bidResponses, ortbResponse, context) {
+  //   // pass these from request to the responses for use in userSync
+  //   const {ortbRequest} = context;
+  //   if (ortbRequest.ext) {
+  //     if (ortbRequest.ext.delDomain) {
+  //       utils.deepSetValue(ortbResponse, 'ext.delDomain', ortbRequest.ext.delDomain);
+  //     }
+  //     if (ortbRequest.ext.platform) {
+  //       utils.deepSetValue(ortbResponse, 'ext.platform', ortbRequest.ext.platform);
+  //     }
+  //   }
+  //   const response = buildResponse(bidResponses, ortbResponse, context);
+  //   // TODO: we may want to standardize this and move fledge logic to ortbConverter
+  //   let fledgeAuctionConfigs = utils.deepAccess(ortbResponse, 'ext.fledge_auction_configs');
+  //   if (fledgeAuctionConfigs) {
+  //     fledgeAuctionConfigs = Object.entries(fledgeAuctionConfigs).map(([bidId, cfg]) => {
+  //       return {
+  //         bidId,
+  //         config: mergeDeep(Object.assign({}, cfg), {
+  //           auctionSignals: {
+  //             ortb2Imp: context.impContext[bidId]?.imp,
+  //           },
+  //         }),
+  //       }
+  //     });
+  //     return {
+  //       bids: response.bids,
+  //       fledgeAuctionConfigs,
+  //     }
+  //   } else {
+  //     return response.bids
+  //   }
+  // },
+  // overrides: {
+  //   imp: {
+  //     bidfloor(setBidFloor, imp, bidRequest, context) {
+  //       // enforce floors should always be in USD
+  //       // TODO: does it make sense that request.cur can be any currency, but request.imp[].bidfloorcur must be USD?
+  //       const floor = {};
+  //       setBidFloor(floor, bidRequest, {...context, currency: 'USD'});
+  //       if (floor.bidfloorcur === 'USD') {
+  //         Object.assign(imp, floor);
+  //       }
+  //     },
+  //     video(orig, imp, bidRequest, context) {
+  //       if (FEATURES.VIDEO) {
+  //         // `orig` is the video imp processor, which looks at bidRequest.mediaTypes[VIDEO]
+  //         // to populate imp.video
+  //         // alter its input `bidRequest` to also pick up parameters from `bidRequest.params`
+  //         let videoParams = bidRequest.mediaTypes[VIDEO];
+  //         if (videoParams) {
+  //           videoParams = Object.assign({}, videoParams, bidRequest.params.video);
+  //           bidRequest = {...bidRequest, mediaTypes: {[VIDEO]: videoParams}}
+  //         }
+  //         orig(imp, bidRequest, context);
+  //         if (imp.video && videoParams?.context === 'outstream') {
+  //           imp.video.placement = imp.video.placement || 4;
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+});
+
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}, {code: 'venatus', gvlid: 524}],
@@ -289,8 +428,12 @@ export const spec = {
     if (this.blockTheRequest()) {
       return [];
     }
+
     // detect if FLEDGE is enabled:
-    let fledgeEnabled = !!bidderRequest.fledgeEnabled; // IF true then this is added as each bid[].ext.ae=1
+    // let fledgeEnabled = !!bidderRequest.fledgeEnabled;
+
+    let data = converter.toORTB({validBidRequests, bidderRequest});
+    logInfo('*** converter data = ', JSON.parse(JSON.stringify(data)));
 
     let htmlParams = {'publisherId': '', 'siteId': ''};
     if (validBidRequests.length > 0) {
@@ -436,18 +579,6 @@ export const spec = {
       if (gpid) {
         deepSetValue(obj, 'ext.gpid', gpid);
       }
-
-      // 20240227 - adding support for fledge
-      if (fledgeEnabled) { // fledge is enabled at some config level - pbjs.setBidderConfig or pbjs.setConfig
-        const auctionEnvironment = deepAccess(ozoneBidRequest, 'ortb2Imp.ext.ae'); // this will be set for one of 3 reasons; adunit, setBidderConfig, setConfig
-        if (isInteger(auctionEnvironment)) {
-          deepSetValue(obj, 'ext.prebid.ae', auctionEnvironment);
-        } else {
-          logError('ortb2Imp.ext.ae is not an integer - ignoring it for obj.id=' + obj.id);
-        }
-        // deepSetValue(obj, 'ext.prebid.ae', 1);
-      }
-
       return obj;
     });
 
@@ -799,59 +930,10 @@ export const spec = {
         arrAllBids.push(thisBid);
       }
     }
-
-    let ret = arrAllBids;
-    // before returning - decide - was this a fledge-type auction (ae=1)?
-
-    // openx type of implementation
-    // let fledgeAuctionConfigs = utils.deepAccess(serverResponse, 'ext.fledge_auction_configs'); // we will need to adjust this to where ozone puts the object
-    // if (fledgeAuctionConfigs) {
-    //   fledgeAuctionConfigs = Object.entries(fledgeAuctionConfigs).map(([bidId, cfg]) => {
-    //     return {
-    //       bidId,
-    //       config: mergeDeep(Object.assign({}, cfg), {
-    //         auctionSignals: {
-    //           ortb2Imp: this.getBidRequestForBidId(bidId, request.bidderRequest.bids) /* this is the bid object; {banner/video, ext, id, placement, secure, tagid} */
-    //           // ortb2Imp: context.impContext[bidId]?.imp, /* from openx: this is literally the imp object for this bid */
-    //         },
-    //       }),
-    //     }
-    //   });
-    //   ret = {
-    //     bids: arrAllBids,
-    //     fledgeAuctionConfigs,
-    //   }
-    // }
-
-    // ix type of implementation - this is more like what ozone want to do - don't modify the auctionConfigs
-    let fledgeAuctionConfigs = deepAccess(serverResponse, 'ext.protectedAudienceAuctionConfigs') || [];
-    if (Array.isArray(fledgeAuctionConfigs) && fledgeAuctionConfigs.length > 0) {
-      // Validate and filter fledgeAuctionConfigs
-      fledgeAuctionConfigs = fledgeAuctionConfigs.filter(config => {
-        if (!this.isValidAuctionConfig(config)) {
-          logWarn('Malformed auction config detected:', config);
-          return false;
-        }
-        return true;
-      });
-      ret = {
-        bids: arrAllBids,
-        fledgeAuctionConfigs,
-      };
-    }
-
     let endTime = new Date().getTime();
     logInfo(`interpretResponse going to return at time ${endTime} (took ${endTime - startTime}ms) Time from buildRequests Start -> interpretRequests End = ${endTime - this.propertyBag.buildRequestsStart}ms`);
-    logInfo('interpretResponse arrAllBids (serialised): ', JSON.parse(JSON.stringify(ret))); // this is ok to log because the renderer has not been attached yet
-    return ret;
-  },
-  /**
-   * Checks if auction config is valid
-   * @param {object} config
-   * @returns bool
-   */
-  isValidAuctionConfig(config) {
-    return typeof config === 'object' && config !== null;
+    logInfo('interpretResponse arrAllBids (serialised): ', JSON.parse(JSON.stringify(arrAllBids))); // this is ok to log because the renderer has not been attached yet
+    return arrAllBids;
   },
   /**
    * brought in from the 2.7.0 test instream branch, this is needed for instream video
