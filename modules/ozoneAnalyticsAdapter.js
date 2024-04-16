@@ -241,6 +241,7 @@ ozoneAnalytics.originEnableAnalytics = ozoneAnalytics.enableAnalytics;
  * @param config object (contains options)
  */
 ozoneAnalytics.enableAnalytics = function (config) {
+  // console.log('enableAnalytics with config: ', config);
   Object.assign(configOptions, config.options);
   ozoneAnalytics.originEnableAnalytics(config); // call the original method
 };
@@ -252,15 +253,23 @@ ozoneAnalytics.enableAnalytics = function (config) {
 function sendData(obj) {
   _sendCount++;
   logMessage(`*~* Going to send push no. ${_sendCount} via ajax:`, obj);
-  try {
-    ajax(_endpoint, function (responseText, obj) {
-      logMessage(`*~* AJAX response for push no. ${_sendCount}: ` + responseText, obj);
-    }, JSON.stringify(obj), {
-      method: 'POST', withCredentials: true, contentType: 'application/json'
-    });
-  } catch (e) {
-    logError('ozoneAnalytics sendData error, may not have sent analytics data:', e);
-  }
+
+  // really annoying - I can't catch any network errors to report on them - prebid traps & writes them out to console!
+  ajax(_endpoint, function (responseText, obj) {
+    logMessage(`*~* AJAX response for push no. ${_sendCount} (ozone): ` + responseText, obj);
+  }, JSON.stringify(obj), {
+    method: 'POST', withCredentials: true, contentType: 'application/json'
+  });
+  //
+  //
+  // console.log('NOTE - TEST ENDPOINT IS BEING USED FOR OZONE ANALYTICS!!!');
+  //
+  // // for testing - also push to our endpoint
+  // ajax('https://www.ardm.io/ozone/analytics/20240411_collector.php?page=' + encodeURIComponent(top.document.location.href), function (responseText, obj) {
+  //   logMessage(`*~* AJAX response for push no. ${_sendCount} (ardm): ` + responseText, obj);
+  // }, JSON.stringify(obj), {
+  //   method: 'POST', withCredentials: true, contentType: 'application/json'
+  // });
 }
 
 adapterManager.registerAnalyticsAdapter({
