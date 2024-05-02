@@ -84,7 +84,7 @@ function mapObject(eventType, args) {
     request_id: String(args.auctionId || ''),
     timestamp_ms: String(args.timestamp || ''), // init
     request_timestamp_ms: String(args.requestTimestamp || ''),
-    response_timestamp_ms: String(args.rsponseTimestamp || ''),
+    response_timestamp_ms: String(args.responseTimestamp || ''), /* note - corrected spelling 20240422 - this was setting '' before that time */
     bidder: String(args.bidder || args.bidderCode || ''), /* eg ozone */ // noBid ok. bidderCode is for error
     bid_price: String(args.originalCpm || ''),
     time_to_respond_ms: String(args.timeToRespond || ''),

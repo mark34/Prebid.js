@@ -98,7 +98,7 @@ export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
   cookieSyncBag: {publisherId: null, siteId: null, userIdObject: {}}, // variables we want to make available to cookie sync
-  propertyBag: {pageId: null, buildRequestsStart: 0, buildRequestsEnd: 0, endpointOverride: null}, /* allow us to store vars in instance scope - needs to be an object to be mutable */
+  propertyBag: {pageId: null, buildRequestsStart: 0, buildRequestsEnd: 0, endpointOverride: null, cookieDeprecationLabel: null}, /* allow us to store vars in instance scope - needs to be an object to be mutable */
   whitelabel_defaults: {
     'logId': 'OZONE',
     'bidder': 'ozone',
@@ -530,6 +530,13 @@ export const spec = {
       deepSetValue(ozoneRequest, 'regs.coppa', 1);
     }
 
+    // 20240416 - setting the value for chrome's cookie deprecation
+    if (this.propertyBag.cookieDeprecationLabel) {
+      extObj[whitelabelBidder].cookieDeprecationLabel = this.propertyBag.cookieDeprecationLabel;
+    } else {
+      extObj[whitelabelBidder].cookieDeprecationLabel = 'none';
+    }
+
     let ozUuid = generateUUID();
 
     // are we to batch the requests (used by reach)
@@ -746,6 +753,7 @@ export const spec = {
             adserverTargeting[whitelabelPrefix + '_' + bidderName + '_adv'] = String(allBidsForThisBidid[bidderName].adomain);
             adserverTargeting[whitelabelPrefix + '_' + bidderName + '_adId'] = String(allBidsForThisBidid[bidderName].adId);
             adserverTargeting[whitelabelPrefix + '_' + bidderName + '_pb_r'] = getRoundedBid(allBidsForThisBidid[bidderName].price, allBidsForThisBidid[bidderName].ext.prebid.type);
+            adserverTargeting[whitelabelPrefix + '_' + bidderName + '_size'] = String(allBidsForThisBidid[bidderName].width) + 'x' + String(allBidsForThisBidid[bidderName].height);
             if (allBidsForThisBidid[bidderName].hasOwnProperty('dealid')) {
               adserverTargeting[whitelabelPrefix + '_' + bidderName + '_dealid'] = String(allBidsForThisBidid[bidderName].dealid);
             }
@@ -1497,6 +1505,16 @@ function outstreamRender(bid) {
     logInfo('Going to execute window.ozoneVideo.outstreamRender');
     window.ozoneVideo.outstreamRender(bid);
   });
+}
+// 20240416 - see if there's a chrome cookieDeprecationLabel
+if ('cookieDeprecationLabel' in navigator) {
+  // Request value and resolve promise - note this is usually sub-1ms
+  navigator.cookieDeprecationLabel.getValue().then((label) => {
+    logInfo(`Ozone found browser cookie deprecation label: ${label}`);
+    spec.propertyBag.cookieDeprecationLabel = label;
+  });
+} else {
+  logInfo('browser is not in cookie deprecation test group');
 }
 
 registerBidder(spec);
