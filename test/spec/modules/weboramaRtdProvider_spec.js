@@ -48,6 +48,120 @@ describe('weboramaRtdProvider', function() {
       };
       expect(weboramaSubmodule.init(moduleConfig)).to.equal(true);
     });
+
+    it('instantiate with empty sfbxLiteData should return true', function() {
+      const moduleConfig = {
+        params: {
+          sfbxLiteDataConf: {},
+        }
+      };
+      expect(weboramaSubmodule.init(moduleConfig)).to.equal(true);
+    });
+
+    describe('webo user data should check gdpr consent', function() {
+      it('should initialize if gdpr does not applies', function() {
+        const moduleConfig = {
+          params: {
+            weboUserDataConf: {}
+          }
+        };
+        const userConsent = {
+          gdpr: {
+            gdprApplies: false,
+          },
+        }
+        expect(weboramaSubmodule.init(moduleConfig, userConsent)).to.equal(true);
+      });
+      it('should initialize if gdpr applies and consent is ok', function() {
+        const moduleConfig = {
+          params: {
+            weboUserDataConf: {}
+          }
+        };
+        const userConsent = {
+          gdpr: {
+            gdprApplies: true,
+            vendorData: {
+              purpose: {
+                consents: {
+                  1: true,
+                  3: true,
+                  4: true,
+                  5: true,
+                  6: true,
+                  9: true,
+                },
+              },
+              specialFeatureOptins: {
+                1: true,
+              },
+              vendor: {
+                consents: {
+                  284: true,
+                },
+              }
+            },
+          },
+        }
+        expect(weboramaSubmodule.init(moduleConfig, userConsent)).to.equal(true);
+      });
+      it('should NOT initialize if gdpr applies and consent is nok: miss consent vendor id', function() {
+        const moduleConfig = {
+          params: {
+            weboUserDataConf: {}
+          }
+        };
+        const userConsent = {
+          gdpr: {
+            gdprApplies: true,
+            vendorData: {
+              purpose: {
+                consents: {
+                  1: true,
+                  3: true,
+                  4: true,
+                },
+              },
+              specialFeatureOptins: {},
+              vendor: {
+                consents: {
+                  284: false,
+                },
+              }
+            },
+          },
+        }
+        expect(weboramaSubmodule.init(moduleConfig, userConsent)).to.equal(false);
+      });
+      it('should NOT initialize if gdpr applies and consent is nok: miss one purpose id', function() {
+        const moduleConfig = {
+          params: {
+            weboUserDataConf: {}
+          }
+        };
+        const userConsent = {
+          gdpr: {
+            gdprApplies: true,
+            vendorData: {
+              purpose: {
+                consents: {
+                  1: false,
+                  3: true,
+                  4: true,
+                },
+              },
+              specialFeatureOptins: {},
+              vendor: {
+                consents: {
+                  284: true,
+                },
+              }
+            },
+          },
+        }
+        expect(weboramaSubmodule.init(moduleConfig, userConsent)).to.equal(false);
+      });
+    });
   });
 
   describe('Handle Set Targeting and Bid Request', function() {
@@ -130,19 +244,19 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('webo_ctx=foo;webo_ctx=bar;webo_ds=baz');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('webo_ctx=foo,bar|webo_ds=baz');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(data);
-        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
-          inventory: data
-        });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          site: {
-            ext: {
-              data: data
-            },
-          }
-        });
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: data
+              },
+            }
+          });
+        })
         expect(onDataResponse).to.deep.equal({
           data: data,
           meta: {
@@ -151,6 +265,289 @@ describe('weboramaRtdProvider', function() {
             isDefault: false,
           },
         });
+      });
+
+      it('should use asset id when available and set gam targeting and send to bidders by default', function() {
+        let onDataResponse = {};
+        const moduleConfig = {
+          params: {
+            weboCtxConf: {
+              token: 'foo',
+              assetID: 'datasource:docId',
+              targetURL: 'https://prebid.org',
+              onData: (data, meta) => {
+                onDataResponse = {
+                  data: data,
+                  meta: meta,
+                };
+              },
+            }
+          }
+        };
+        const data = {
+          webo_vctx: ['foo', 'bar'],
+        };
+        const adUnitCode = 'adunit1';
+        const reqBidsConfigObj = {
+          ortb2Fragments: {
+            global: {},
+            bidder: {}
+          },
+          adUnits: [{
+            code: adUnitCode,
+            bids: [{
+              bidder: 'smartadserver'
+            }, {
+              bidder: 'pubmatic'
+            }, {
+              bidder: 'appnexus'
+            }, {
+              bidder: 'rubicon'
+            }, {
+              bidder: 'other'
+            }]
+          }]
+        };
+
+        const onDoneSpy = sinon.spy();
+
+        expect(weboramaSubmodule.init(moduleConfig)).to.be.true;
+        weboramaSubmodule.getBidRequestData(reqBidsConfigObj, onDoneSpy, moduleConfig);
+
+        let request = server.requests[0];
+
+        expect(request.method).to.equal('GET');
+        expect(request.url).to.equal('https://ctx.weborama.com/api/document-profile?token=foo&assetId=datasource%3AdocId&url=https%3A%2F%2Fprebid.org&');
+        expect(request.withCredentials).to.be.false;
+
+        request.respond(200, responseHeader, JSON.stringify(data));
+
+        expect(onDoneSpy.calledOnce).to.be.true;
+
+        const targeting = weboramaSubmodule.getTargetingData([adUnitCode], moduleConfig);
+
+        expect(targeting).to.deep.equal({
+          'adunit1': data,
+        });
+
+        expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(data);
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: data
+              },
+            }
+          });
+        })
+        expect(onDataResponse).to.deep.equal({
+          data: data,
+          meta: {
+            user: false,
+            source: 'contextual',
+            isDefault: false,
+          },
+        });
+      });
+
+      it('should use asset id as callback when available and set gam targeting and send to bidders by default', function() {
+        let onDataResponse = {};
+        const moduleConfig = {
+          params: {
+            weboCtxConf: {
+              token: 'foo',
+              assetID: () => 'datasource:docId',
+              targetURL: 'https://prebid.org',
+              onData: (data, meta) => {
+                onDataResponse = {
+                  data: data,
+                  meta: meta,
+                };
+              },
+            }
+          }
+        };
+        const data = {
+          webo_vctx: ['foo', 'bar'],
+        };
+        const adUnitCode = 'adunit1';
+        const reqBidsConfigObj = {
+          ortb2Fragments: {
+            global: {},
+            bidder: {}
+          },
+          adUnits: [{
+            code: adUnitCode,
+            bids: [{
+              bidder: 'smartadserver'
+            }, {
+              bidder: 'pubmatic'
+            }, {
+              bidder: 'appnexus'
+            }, {
+              bidder: 'rubicon'
+            }, {
+              bidder: 'other'
+            }]
+          }]
+        };
+
+        const onDoneSpy = sinon.spy();
+
+        expect(weboramaSubmodule.init(moduleConfig)).to.be.true;
+        weboramaSubmodule.getBidRequestData(reqBidsConfigObj, onDoneSpy, moduleConfig);
+
+        let request = server.requests[0];
+
+        expect(request.method).to.equal('GET');
+        expect(request.url).to.equal('https://ctx.weborama.com/api/document-profile?token=foo&assetId=datasource%3AdocId&url=https%3A%2F%2Fprebid.org&');
+        expect(request.withCredentials).to.be.false;
+
+        request.respond(200, responseHeader, JSON.stringify(data));
+
+        expect(onDoneSpy.calledOnce).to.be.true;
+
+        const targeting = weboramaSubmodule.getTargetingData([adUnitCode], moduleConfig);
+
+        expect(targeting).to.deep.equal({
+          'adunit1': data,
+        });
+
+        expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(data);
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: data
+              },
+            }
+          });
+        })
+        expect(onDataResponse).to.deep.equal({
+          data: data,
+          meta: {
+            user: false,
+            source: 'contextual',
+            isDefault: false,
+          },
+        });
+      });
+
+      it('should handle exception from asset id callback', function() {
+        let onDataResponse = {};
+        const moduleConfig = {
+          params: {
+            weboCtxConf: {
+              token: 'foo',
+              assetID: () => {
+                throw new Error('ops');
+              },
+              targetURL: 'https://prebid.org',
+              onData: (data, meta) => {
+                onDataResponse = {
+                  data: data,
+                  meta: meta,
+                };
+              },
+            }
+          }
+        };
+        const adUnitCode = 'adunit1';
+        const reqBidsConfigObj = {
+          ortb2Fragments: {
+            global: {},
+            bidder: {}
+          },
+          adUnits: [{
+            code: adUnitCode,
+            bids: [{
+              bidder: 'smartadserver'
+            }, {
+              bidder: 'pubmatic'
+            }, {
+              bidder: 'appnexus'
+            }, {
+              bidder: 'rubicon'
+            }, {
+              bidder: 'other'
+            }]
+          }]
+        };
+
+        const onDoneSpy = sinon.spy();
+
+        expect(weboramaSubmodule.init(moduleConfig)).to.be.true;
+        weboramaSubmodule.getBidRequestData(reqBidsConfigObj, onDoneSpy, moduleConfig);
+
+        expect(server.requests.length).to.equal(0);
+
+        expect(onDoneSpy.calledOnce).to.be.true;
+
+        const targeting = weboramaSubmodule.getTargetingData([adUnitCode], moduleConfig);
+
+        expect(targeting).to.deep.equal({});
+      });
+
+      it('should handle case when callback return falsy value', function() {
+        let onDataResponse = {};
+        const moduleConfig = {
+          params: {
+            weboCtxConf: {
+              token: 'foo',
+              assetID: () => '',
+              targetURL: 'https://prebid.org',
+              onData: (data, meta) => {
+                onDataResponse = {
+                  data: data,
+                  meta: meta,
+                };
+              },
+            }
+          }
+        };
+
+        const adUnitCode = 'adunit1';
+        const reqBidsConfigObj = {
+          ortb2Fragments: {
+            global: {},
+            bidder: {}
+          },
+          adUnits: [{
+            code: adUnitCode,
+            bids: [{
+              bidder: 'smartadserver'
+            }, {
+              bidder: 'pubmatic'
+            }, {
+              bidder: 'appnexus'
+            }, {
+              bidder: 'rubicon'
+            }, {
+              bidder: 'other'
+            }]
+          }]
+        };
+
+        const onDoneSpy = sinon.spy();
+
+        expect(weboramaSubmodule.init(moduleConfig)).to.be.true;
+        weboramaSubmodule.getBidRequestData(reqBidsConfigObj, onDoneSpy, moduleConfig);
+
+        expect(server.requests.length).to.equal(0);
+
+        expect(onDoneSpy.calledOnce).to.be.true;
+
+        const targeting = weboramaSubmodule.getTargetingData([adUnitCode], moduleConfig);
+
+        expect(targeting).to.deep.equal({});
       });
 
       describe('should set gam targeting and send to one specific bidder and multiple adunits', function() {
@@ -260,9 +657,22 @@ describe('weboramaRtdProvider', function() {
               expect(adUnit.bids[1].params).to.be.undefined;
               expect(adUnit.bids[2].params.keywords).to.deep.equal(data);
               expect(adUnit.bids[3].params).to.be.undefined;
-              expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
             });
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              if (v == 'appnexus') {
+                expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+                  site: {
+                    ext: {
+                      data: data
+                    },
+                  }
+                });
 
+                return;
+              }
+
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
             expect(onDataResponse).to.deep.equal({
               data: data,
               meta: {
@@ -526,9 +936,10 @@ describe('weboramaRtdProvider', function() {
                   baz: 'bam',
                 }
               });
-
-              expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
             });
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
           });
         });
       });
@@ -668,9 +1079,10 @@ describe('weboramaRtdProvider', function() {
                   baz: 'bam',
                 }
               });
-
-              expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
             });
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
           });
         });
       });
@@ -822,8 +1234,8 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('foo=bar;webo_ctx=foo;webo_ctx=bar;webo_ds=baz');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('foo=bar|webo_ctx=foo,bar|webo_ds=baz');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('foo=bar');
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('foo=bar');
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal({
           foo: ['bar'],
           webo_ctx: ['foo', 'bar'],
@@ -832,20 +1244,20 @@ describe('weboramaRtdProvider', function() {
         expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
           inventory: {
             foo: 'bar',
-            webo_ctx: ['foo', 'bar'],
-            webo_ds: ['baz'],
           },
           visitor: {
             baz: 'bam',
           }
         });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          site: {
-            ext: {
-              data: data
-            },
-          }
-        });
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: data
+              },
+            }
+          });
+        })
       });
 
       it('should use default profile in case of api error', function() {
@@ -913,19 +1325,19 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('webo_ctx=baz');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('webo_ctx=baz');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(defaultProfile);
-        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
-          inventory: defaultProfile
-        });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          site: {
-            ext: {
-              data: defaultProfile
-            },
-          }
-        });
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: defaultProfile
+              },
+            }
+          });
+        })
         expect(onDataResponse).to.deep.equal({
           data: defaultProfile,
           meta: {
@@ -1033,20 +1445,35 @@ describe('weboramaRtdProvider', function() {
 
         reqBidsConfigObj.adUnits.forEach(adUnit => {
           expect(adUnit.bids.length).to.equal(5);
-          expect(adUnit.bids[0].params.target).to.equal('webo_ctx=foo;webo_ctx=bar;webo_ds=baz');
-          expect(adUnit.bids[1].params.dctr).to.equal('webo_ctx=foo,bar|webo_ds=baz');
-          expect(adUnit.bids[3].params).to.deep.equal({
-            inventory: data
-          });
-          expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
+          expect(adUnit.bids[0].params).to.be.undefined;
+          expect(adUnit.bids[1].params).to.be.undefined;
+          expect(adUnit.bids[3].params).to.be.undefined;
+        });
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          if (v == 'appnexus') {
+            expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+              site: {
+                ext: {
+                  data: {
+                    webo_ctx: ['foo', 'bar'],
+                    webo_ds: ['baz'],
+                    webo_bar: ['baz'],
+                  }
+                },
+              }
+            });
+
+            return
+          }
+
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
             site: {
               ext: {
                 data: data
               },
             }
           });
-        });
-
+        })
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal({
           webo_ctx: ['foo', 'bar'],
           webo_ds: ['baz'],
@@ -1090,6 +1517,7 @@ describe('weboramaRtdProvider', function() {
           targeting: data,
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
         sandbox.stub(storage, 'getDataFromLocalStorage')
           .withArgs(DEFAULT_LOCAL_STORAGE_USER_PROFILE_KEY)
@@ -1130,19 +1558,19 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('webo_cs=foo;webo_cs=bar;webo_audiences=baz');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('webo_cs=foo,bar|webo_audiences=baz');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(data);
-        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
-          visitor: data
-        });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          user: {
-            ext: {
-              data: data
-            },
-          }
-        });
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            user: {
+              ext: {
+                data: data
+              },
+            }
+          });
+        })
         expect(onDataResponse).to.deep.equal({
           data: data,
           meta: {
@@ -1199,6 +1627,7 @@ describe('weboramaRtdProvider', function() {
               targeting: data,
             };
 
+            sandbox.stub(storage, 'hasLocalStorage').returns(true);
             sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
             sandbox.stub(storage, 'getDataFromLocalStorage')
               .withArgs(DEFAULT_LOCAL_STORAGE_USER_PROFILE_KEY)
@@ -1260,8 +1689,21 @@ describe('weboramaRtdProvider', function() {
               expect(adUnit.bids[2].params.keywords).to.deep.equal(data);
               expect(adUnit.bids[3].params).to.be.undefined;
             });
-            expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              if (v == 'appnexus') {
+                expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+                  user: {
+                    ext: {
+                      data: data
+                    },
+                  }
+                });
 
+                return
+              }
+
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
             expect(onDataResponse).to.deep.equal({
               data: data,
               meta: {
@@ -1311,6 +1753,7 @@ describe('weboramaRtdProvider', function() {
               targeting: data,
             };
 
+            sandbox.stub(storage, 'hasLocalStorage').returns(true);
             sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
             sandbox.stub(storage, 'getDataFromLocalStorage')
               .withArgs(DEFAULT_LOCAL_STORAGE_USER_PROFILE_KEY)
@@ -1371,7 +1814,21 @@ describe('weboramaRtdProvider', function() {
               expect(adUnit.bids[1].params).to.be.undefined;
               expect(adUnit.bids[3].params).to.be.undefined;
             });
-            expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              if (v == 'appnexus') {
+                expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+                  user: {
+                    ext: {
+                      data: data
+                    },
+                  }
+                });
+
+                return
+              }
+
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
 
             expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(data);
             expect(reqBidsConfigObj.adUnits[1].bids[2].params).to.be.undefined;
@@ -1418,6 +1875,7 @@ describe('weboramaRtdProvider', function() {
               targeting: data,
             };
 
+            sandbox.stub(storage, 'hasLocalStorage').returns(true);
             sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
             sandbox.stub(storage, 'getDataFromLocalStorage')
               .withArgs(DEFAULT_LOCAL_STORAGE_USER_PROFILE_KEY)
@@ -1526,7 +1984,9 @@ describe('weboramaRtdProvider', function() {
                 }
               });
             });
-            expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
           });
         });
       });
@@ -1560,6 +2020,7 @@ describe('weboramaRtdProvider', function() {
               targeting: data,
             };
 
+            sandbox.stub(storage, 'hasLocalStorage').returns(true);
             sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
             sandbox.stub(storage, 'getDataFromLocalStorage')
               .withArgs(DEFAULT_LOCAL_STORAGE_USER_PROFILE_KEY)
@@ -1668,7 +2129,9 @@ describe('weboramaRtdProvider', function() {
                 }
               });
             });
-            expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
           });
         });
       });
@@ -1700,6 +2163,7 @@ describe('weboramaRtdProvider', function() {
           targeting: data,
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
         sandbox.stub(storage, 'getDataFromLocalStorage')
           .withArgs(DEFAULT_LOCAL_STORAGE_USER_PROFILE_KEY)
@@ -1760,6 +2224,7 @@ describe('weboramaRtdProvider', function() {
           targeting: data,
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
         sandbox.stub(storage, 'getDataFromLocalStorage')
           .withArgs(DEFAULT_LOCAL_STORAGE_USER_PROFILE_KEY)
@@ -1819,8 +2284,8 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('foo=bar;webo_cs=foo;webo_cs=bar;webo_audiences=baz');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('foo=bar|webo_cs=foo,bar|webo_audiences=baz');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('foo=bar');
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('foo=bar');
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal({
           foo: ['bar'],
           webo_cs: ['foo', 'bar'],
@@ -1832,17 +2297,17 @@ describe('weboramaRtdProvider', function() {
           },
           visitor: {
             baz: 'bam',
-            webo_cs: ['foo', 'bar'],
-            webo_audiences: ['baz'],
           }
         });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          user: {
-            ext: {
-              data: data
-            },
-          }
-        });
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            user: {
+              ext: {
+                data: data
+              },
+            }
+          });
+        })
       });
 
       it('should use default profile in case of nothing on local storage', function() {
@@ -1859,6 +2324,7 @@ describe('weboramaRtdProvider', function() {
           }
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
 
         const adUnitCode = 'adunit1';
@@ -1896,19 +2362,19 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('webo_audiences=baz');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('webo_audiences=baz');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(defaultProfile);
-        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
-          visitor: defaultProfile
-        });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          user: {
-            ext: {
-              data: defaultProfile
-            },
-          }
-        });
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            user: {
+              ext: {
+                data: defaultProfile
+              },
+            }
+          });
+        })
       });
 
       it('should use default profile if cant read from local storage', function() {
@@ -1932,6 +2398,7 @@ describe('weboramaRtdProvider', function() {
           }
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(false);
 
         const adUnitCode = 'adunit1';
@@ -1969,19 +2436,19 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('webo_audiences=baz');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('webo_audiences=baz');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(defaultProfile);
-        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
-          visitor: defaultProfile
-        });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          user: {
-            ext: {
-              data: defaultProfile
-            },
-          }
-        });
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            user: {
+              ext: {
+                data: defaultProfile
+              },
+            }
+          });
+        })
         expect(onDataResponse).to.deep.equal({
           data: defaultProfile,
           meta: {
@@ -2029,6 +2496,7 @@ describe('weboramaRtdProvider', function() {
           targeting: data,
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
         sandbox.stub(storage, 'getDataFromLocalStorage')
           .withArgs(DEFAULT_LOCAL_STORAGE_USER_PROFILE_KEY)
@@ -2090,26 +2558,35 @@ describe('weboramaRtdProvider', function() {
 
         reqBidsConfigObj.adUnits.forEach(adUnit => {
           expect(adUnit.bids.length).to.equal(5);
-          expect(adUnit.bids[0].params.target).to.equal('webo_cs=foo;webo_cs=bar;webo_audiences=baz');
-          expect(adUnit.bids[1].params.dctr).to.equal('webo_cs=foo,bar|webo_audiences=baz');
-          expect(adUnit.bids[3].params).to.deep.equal({
-            visitor: data
-          });
-          expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
+          expect(adUnit.bids[0].params).to.be.undefined;
+          expect(adUnit.bids[1].params).to.be.undefined;
+          expect(adUnit.bids[3].params).to.be.undefined;
+        });
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          if (v == 'appnexus') {
+            expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+              user: {
+                ext: {
+                  data: {
+                    webo_cs: ['foo', 'bar'],
+                    webo_audiences: ['baz'],
+                    webo_bar: ['baz'],
+                  }
+                },
+              }
+            });
+
+            return
+          }
+
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
             user: {
               ext: {
                 data: data
               },
             }
           });
-        });
-
-        expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal({
-          webo_cs: ['foo', 'bar'],
-          webo_audiences: ['baz'],
-          webo_bar: ['baz'],
-        });
-        expect(reqBidsConfigObj.adUnits[1].bids[2].params.keywords).to.deep.equal(data);
+        })
 
         expect(onDataResponse).to.deep.equal({
           data: data,
@@ -2146,6 +2623,7 @@ describe('weboramaRtdProvider', function() {
           webo: data,
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
         sandbox.stub(storage, 'getDataFromLocalStorage')
           .withArgs(DEFAULT_LOCAL_STORAGE_LITE_PROFILE_KEY)
@@ -2186,19 +2664,19 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('lite_occupation=gérant;lite_occupation=bénévole;lite_hobbies=sport;lite_hobbies=cinéma');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('lite_occupation=gérant,bénévole|lite_hobbies=sport,cinéma');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(data);
-        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
-          inventory: data,
-        });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          site: {
-            ext: {
-              data: data,
-            },
-          },
-        });
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: data
+              },
+            }
+          });
+        })
         expect(onDataResponse).to.deep.equal({
           data: data,
           meta: {
@@ -2254,6 +2732,7 @@ describe('weboramaRtdProvider', function() {
               webo: data,
             };
 
+            sandbox.stub(storage, 'hasLocalStorage').returns(true);
             sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
             sandbox.stub(storage, 'getDataFromLocalStorage')
               .withArgs(DEFAULT_LOCAL_STORAGE_LITE_PROFILE_KEY)
@@ -2315,7 +2794,21 @@ describe('weboramaRtdProvider', function() {
               expect(adUnit.bids[2].params.keywords).to.deep.equal(data);
               expect(adUnit.bids[3].params).to.be.undefined;
             });
-            expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              if (v == 'appnexus') {
+                expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+                  site: {
+                    ext: {
+                      data: data
+                    },
+                  }
+                });
+
+                return
+              }
+
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
 
             expect(onDataResponse).to.deep.equal({
               data: data,
@@ -2365,6 +2858,7 @@ describe('weboramaRtdProvider', function() {
               webo: data,
             };
 
+            sandbox.stub(storage, 'hasLocalStorage').returns(true);
             sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
             sandbox.stub(storage, 'getDataFromLocalStorage')
               .withArgs(DEFAULT_LOCAL_STORAGE_LITE_PROFILE_KEY)
@@ -2425,10 +2919,25 @@ describe('weboramaRtdProvider', function() {
               expect(adUnit.bids[1].params).to.be.undefined;
               expect(adUnit.bids[3].params).to.be.undefined;
             });
-            expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
 
             expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(data);
             expect(reqBidsConfigObj.adUnits[1].bids[2].params).to.be.undefined;
+
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              if (v == 'appnexus') {
+                expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+                  site: {
+                    ext: {
+                      data: data
+                    },
+                  }
+                });
+
+                return
+              }
+
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
 
             expect(onDataResponse).to.deep.equal({
               data: data,
@@ -2471,6 +2980,7 @@ describe('weboramaRtdProvider', function() {
               webo: data,
             };
 
+            sandbox.stub(storage, 'hasLocalStorage').returns(true);
             sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
             sandbox.stub(storage, 'getDataFromLocalStorage')
               .withArgs(DEFAULT_LOCAL_STORAGE_LITE_PROFILE_KEY)
@@ -2579,7 +3089,9 @@ describe('weboramaRtdProvider', function() {
                 }
               });
             });
-            expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
           });
         });
       });
@@ -2612,6 +3124,7 @@ describe('weboramaRtdProvider', function() {
               webo: data,
             };
 
+            sandbox.stub(storage, 'hasLocalStorage').returns(true);
             sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
             sandbox.stub(storage, 'getDataFromLocalStorage')
               .withArgs(DEFAULT_LOCAL_STORAGE_LITE_PROFILE_KEY)
@@ -2720,7 +3233,9 @@ describe('weboramaRtdProvider', function() {
                 }
               });
             });
-            expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.be.undefined;
+            ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+              expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.be.undefined;
+            })
           });
         });
       });
@@ -2751,6 +3266,7 @@ describe('weboramaRtdProvider', function() {
           webo: data,
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
         sandbox.stub(storage, 'getDataFromLocalStorage')
           .withArgs(DEFAULT_LOCAL_STORAGE_LITE_PROFILE_KEY)
@@ -2814,6 +3330,7 @@ describe('weboramaRtdProvider', function() {
           webo: data,
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
         sandbox.stub(storage, 'getDataFromLocalStorage')
           .withArgs(DEFAULT_LOCAL_STORAGE_LITE_PROFILE_KEY)
@@ -2873,8 +3390,8 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('foo=bar;lite_occupation=gérant;lite_occupation=bénévole;lite_hobbies=sport;lite_hobbies=cinéma');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('foo=bar|lite_occupation=gérant,bénévole|lite_hobbies=sport,cinéma');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('foo=bar');
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('foo=bar');
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal({
           foo: ['bar'],
           lite_occupation: ['gérant', 'bénévole'],
@@ -2883,20 +3400,20 @@ describe('weboramaRtdProvider', function() {
         expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
           inventory: {
             foo: 'bar',
-            lite_occupation: ['gérant', 'bénévole'],
-            lite_hobbies: ['sport', 'cinéma'],
           },
           visitor: {
             baz: 'bam',
           }
         });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          site: {
-            ext: {
-              data: data,
-            },
-          },
-        });
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: data
+              },
+            }
+          });
+        })
       });
 
       it('should use default profile in case of nothing on local storage', function() {
@@ -2912,6 +3429,7 @@ describe('weboramaRtdProvider', function() {
           }
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
 
         const adUnitCode = 'adunit1';
@@ -2949,19 +3467,19 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('lite_hobbies=sport;lite_hobbies=cinéma');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('lite_hobbies=sport,cinéma');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(defaultProfile);
-        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
-          inventory: defaultProfile,
-        });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          site: {
-            ext: {
-              data: defaultProfile,
-            },
-          },
-        });
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: defaultProfile
+              },
+            }
+          });
+        })
       });
 
       it('should use default profile if cant read from local storage', function() {
@@ -2984,6 +3502,7 @@ describe('weboramaRtdProvider', function() {
           }
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(false);
 
         const adUnitCode = 'adunit1';
@@ -3021,12 +3540,10 @@ describe('weboramaRtdProvider', function() {
         });
 
         expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
-        expect(reqBidsConfigObj.adUnits[0].bids[0].params.target).to.equal('lite_hobbies=sport;lite_hobbies=cinéma');
-        expect(reqBidsConfigObj.adUnits[0].bids[1].params.dctr).to.equal('lite_hobbies=sport,cinéma');
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(defaultProfile);
-        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.deep.equal({
-          inventory: defaultProfile,
-        });
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
         expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
           site: {
             ext: {
@@ -3034,6 +3551,15 @@ describe('weboramaRtdProvider', function() {
             },
           },
         });
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: defaultProfile,
+              },
+            }
+          });
+        })
         expect(onDataResponse).to.deep.equal({
           data: defaultProfile,
           meta: {
@@ -3044,6 +3570,85 @@ describe('weboramaRtdProvider', function() {
         });
       });
 
+      it('should use default profile if has no local storage', function() {
+        const defaultProfile = {
+          lite_hobbies: ['sport', 'cinéma'],
+        };
+        let onDataResponse = {};
+        const moduleConfig = {
+          params: {
+            sfbxLiteDataConf: {
+              setPrebidTargeting: true,
+              defaultProfile: defaultProfile,
+              onData: (data, meta) => {
+                onDataResponse = {
+                  data: data,
+                  meta: meta,
+                };
+              },
+            }
+          }
+        };
+
+        sandbox.stub(storage, 'hasLocalStorage').returns(false);
+
+        const adUnitCode = 'adunit1';
+        const reqBidsConfigObj = {
+          ortb2Fragments: {
+            global: {},
+            bidder: {},
+          },
+          adUnits: [{
+            code: adUnitCode,
+            bids: [{
+              bidder: 'smartadserver'
+            }, {
+              bidder: 'pubmatic'
+            }, {
+              bidder: 'appnexus'
+            }, {
+              bidder: 'rubicon'
+            }, {
+              bidder: 'other'
+            }]
+          }]
+        };
+        const onDoneSpy = sinon.spy();
+
+        expect(weboramaSubmodule.init(moduleConfig)).to.be.true;
+        weboramaSubmodule.getBidRequestData(reqBidsConfigObj, onDoneSpy, moduleConfig);
+
+        expect(onDoneSpy.calledOnce).to.be.true;
+
+        const targeting = weboramaSubmodule.getTargetingData([adUnitCode], moduleConfig);
+
+        expect(targeting).to.deep.equal({
+          'adunit1': defaultProfile,
+        });
+
+        expect(reqBidsConfigObj.adUnits[0].bids.length).to.equal(5);
+        expect(reqBidsConfigObj.adUnits[0].bids[0].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[1].params).to.be.undefined;
+        expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal(defaultProfile);
+        expect(reqBidsConfigObj.adUnits[0].bids[3].params).to.be.undefined;
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: defaultProfile
+              },
+            }
+          });
+        })
+        expect(onDataResponse).to.deep.equal({
+          data: defaultProfile,
+          meta: {
+            user: false,
+            source: 'lite',
+            isDefault: true,
+          },
+        });
+      });
       it('should be possible update profile from callbacks for a given bidder/adUnitCode', function() {
         let onDataResponse = {};
         const moduleConfig = {
@@ -3080,6 +3685,7 @@ describe('weboramaRtdProvider', function() {
           webo: data,
         };
 
+        sandbox.stub(storage, 'hasLocalStorage').returns(true);
         sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
         sandbox.stub(storage, 'getDataFromLocalStorage')
           .withArgs(DEFAULT_LOCAL_STORAGE_LITE_PROFILE_KEY)
@@ -3141,19 +3747,35 @@ describe('weboramaRtdProvider', function() {
 
         reqBidsConfigObj.adUnits.forEach(adUnit => {
           expect(adUnit.bids.length).to.equal(5);
-          expect(adUnit.bids[0].params.target).to.equal('lite_occupation=gérant;lite_occupation=bénévole;lite_hobbies=sport;lite_hobbies=cinéma');
-          expect(adUnit.bids[1].params.dctr).to.equal('lite_occupation=gérant,bénévole|lite_hobbies=sport,cinéma');
-          expect(adUnit.bids[3].params).to.deep.equal({
-            inventory: data,
+          expect(adUnit.bids[0].params).to.be.undefined;
+          expect(adUnit.bids[1].params).to.be.undefined;
+          expect(adUnit.bids[3].params).to.be.undefined;
+        });
+        ['smartadserver', 'pubmatic', 'appnexus', 'rubicon', 'other'].forEach((v) => {
+          if (v == 'appnexus') {
+            expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+              site: {
+                ext: {
+                  data: {
+                    lite_occupation: ['gérant', 'bénévole'],
+                    lite_hobbies: ['sport', 'cinéma'],
+                    lito_bar: ['baz'],
+                  },
+                },
+              }
+            });
+
+            return
+          }
+
+          expect(reqBidsConfigObj.ortb2Fragments.bidder[v]).to.deep.equal({
+            site: {
+              ext: {
+                data: data,
+              },
+            }
           });
-        });
-        expect(reqBidsConfigObj.ortb2Fragments.bidder.other).to.deep.equal({
-          site: {
-            ext: {
-              data: data,
-            },
-          },
-        });
+        })
 
         expect(reqBidsConfigObj.adUnits[0].bids[2].params.keywords).to.deep.equal({
           lite_occupation: ['gérant', 'bénévole'],

@@ -1,9 +1,31 @@
-import { logError, deepAccess, isArray, getBidIdParameter, getDNT, deepSetValue, isEmpty, _each, logMessage, logWarn, isBoolean, isNumber, isPlainObject, isFn, setScriptAttributes } from '../src/utils.js';
+import {
+  logError,
+  deepAccess,
+  isArray,
+  getDNT,
+  deepSetValue,
+  isEmpty,
+  _each,
+  logMessage,
+  logWarn,
+  isBoolean,
+  isNumber,
+  isPlainObject,
+  isFn,
+  setScriptAttributes,
+  getBidIdParameter
+} from '../src/utils.js';
 import { config } from '../src/config.js';
 import { Renderer } from '../src/Renderer.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { VIDEO } from '../src/mediaTypes.js';
 import { loadExternalScript } from '../src/adloader.js';
+
+/**
+ * @typedef {import('../src/adapters/bidderFactory.js').BidRequest} BidRequest
+ * @typedef {import('../src/adapters/bidderFactory.js').Bid} Bid
+ * @typedef {import('../src/adapters/bidderFactory.js').ServerRequest} ServerRequest
+ */
 
 const BIDDER_CODE = 'spotx';
 const URL = 'https://search.spotxchange.com/openrtb/2.3/dados/';
@@ -149,7 +171,7 @@ export const spec = {
         }
       }
 
-      const mimes = getBidIdParameter('mimes', bid.params) || ['application/javascript', 'video/mp4', 'video/webm'];
+      const mimes = getBidIdParameter('mimes', bid.params) || deepAccess(bid, 'mediaTypes.video.mimes') || ['application/javascript', 'video/mp4', 'video/webm'];
 
       const spotxReq = {
         id: bid.bidId,
@@ -176,28 +198,29 @@ export const spec = {
         spotxReq.bidfloor = getBidIdParameter('price_floor', bid.params);
       }
 
-      if (getBidIdParameter('start_delay', bid.params) != '') {
-        spotxReq.video.startdelay = 0 + Boolean(getBidIdParameter('start_delay', bid.params));
+      const startdelay = getBidIdParameter('start_delay', bid.params) || deepAccess(bid, 'mediaTypes.video.startdelay');
+      if (startdelay) {
+        spotxReq.video.startdelay = 0 + Boolean(startdelay);
       }
 
-      if (getBidIdParameter('min_duration', bid.params) != '') {
-        spotxReq.video.minduration = getBidIdParameter('min_duration', bid.params);
+      const minduration = getBidIdParameter('min_duration', bid.params) || deepAccess(bid, 'mediaTypes.video.minduration');
+      if (minduration) {
+        spotxReq.video.minduration = minduration;
       }
 
-      if (getBidIdParameter('max_duration', bid.params) != '') {
-        spotxReq.video.maxduration = getBidIdParameter('max_duration', bid.params);
+      const maxduration = getBidIdParameter('max_duration', bid.params) || deepAccess(bid, 'mediaTypes.video.maxduration');
+      if (maxduration) {
+        spotxReq.video.maxduration = maxduration;
       }
 
-      if (getBidIdParameter('placement_type', bid.params) != '') {
-        spotxReq.video.ext.placement = getBidIdParameter('placement_type', bid.params);
+      const placement = getBidIdParameter('placement_type', bid.params) || deepAccess(bid, 'mediaTypes.video.placement');
+      if (placement) {
+        spotxReq.video.ext.placement = placement;
       }
 
-      if (getBidIdParameter('position', bid.params) != '') {
-        spotxReq.video.ext.pos = getBidIdParameter('position', bid.params);
-      } else {
-        if (deepAccess(bid, 'mediaTypes.video.pos')) {
-          spotxReq.video.ext.pos = deepAccess(bid, 'mediaTypes.video.pos');
-        }
+      const position = getBidIdParameter('position', bid.params) || deepAccess(bid, 'mediaTypes.video.pos');
+      if (position) {
+        spotxReq.video.ext.pos = position;
       }
 
       if (bid.crumbs && bid.crumbs.pubcid) {
@@ -257,18 +280,17 @@ export const spec = {
         deepSetValue(requestPayload, 'regs.ext.us_privacy', bidderRequest.uspConsent);
       }
 
-      // ID5 fied
-      if (deepAccess(bid, 'userId.id5id.uid')) {
-        userExt.eids = userExt.eids || [];
-        userExt.eids.push(
-          {
-            source: 'id5-sync.com',
-            uids: [{
-              id: bid.userId.id5id.uid,
-              ext: bid.userId.id5id.ext || {}
-            }]
+      if (bid.userIdAsEids) {
+        userExt.eids = bid.userIdAsEids;
+
+        userExt.eids.forEach(eid => {
+          if (eid.source === 'uidapi.com') {
+            eid.uids.forEach(uid => {
+              uid.ext = uid.ext || {};
+              uid.ext.rtiPartner = 'UID2'
+            });
           }
-        );
+        });
       }
 
       // Add common id if available
@@ -283,21 +305,6 @@ export const spec = {
             schain: bid.schain
           }
         };
-      }
-
-      if (bid && bid.userId && bid.userId.tdid) {
-        userExt.eids = userExt.eids || [];
-        userExt.eids.push(
-          {
-            source: 'adserver.org',
-            uids: [{
-              id: bid.userId.tdid,
-              ext: {
-                rtiPartner: 'TDID'
-              }
-            }]
-          }
-        );
       }
 
       // Only add the user object if it's not empty
@@ -381,6 +388,7 @@ export const spec = {
             const renderer = Renderer.install({
               id: 0,
               renderNow: true,
+              url: '/',
               config: {
                 adText: 'SpotX Outstream Video Ad via Prebid.js',
                 player_width: playersize[0][0],
