@@ -9,14 +9,19 @@
  *
  */
 
-$src = file('./modules/ozoneBidAdapter.js');
-$spec = file('./test/spec/modules/ozoneBidAdapter_spec.js');
-$srcOut = './ozoneBidAdapter.js.' . date("Y-m-d_H_i_s") . '.txt';
-$specOut = './ozoneBidAdapter_spec.js.' . date("Y-m-d_H_i_s") . '.txt';
-file_put_contents($srcOut, '');
-file_put_contents($specOut, '');
-$writeLine = true;
-foreach([$srcOut => $src, $specOut => $spec] as $out => $arr) {
+$arrConfig = [
+    ['in' => './modules/ozoneBidAdapter.js', 'out' => './ozoneBidAdapter.js.' . date("Y-m-d_H_i_s") . '.txt'],
+    ['in' => './test/spec/modules/ozoneBidAdapter_spec.js', 'out' => './ozoneBidAdapter_spec.js.' . date("Y-m-d_H_i_s") . '.txt']
+//    ,
+//    ['in' => './modules/newspassidBidAdapter.js', 'out' => './newspassidBidAdapter.js.' . date("Y-m-d_H_i_s") . '.txt'],
+//    ['in' => './test/spec/modules/newspassidBidAdapter_spec.js', 'out' => './newspassidBidAdapter_spec.js.' . date("Y-m-d_H_i_s") . '.txt'],
+];
+
+foreach($arrConfig as $config) {
+    $arr = file($config['in']);
+    $outFile = $config['out'];
+    file_put_contents($outFile, '');
+    $writeLine = true;
     foreach($arr as $line) {
         if(strpos($line, '--- START REMOVE FOR RELEASE') !== false ) {
             $writeLine = false;
@@ -26,12 +31,27 @@ foreach([$srcOut => $src, $specOut => $spec] as $out => $arr) {
             $writeLine = true;
             continue;
         }
+
+        // remove javadoc comments
+        if(preg_match('~^[ \t]*/\*\*?[ \t]*$~', $line)) {
+            $writeLine = false;
+            continue;
+        }
+        if(preg_match('~^[ \t]*\*/[ \t]*$~', $line)) {
+            $writeLine = true;
+            continue;
+        }
+
         if($writeLine) {
-            file_put_contents($out, $line, FILE_APPEND);
+            // second level. Remove commented lines ONLY if the comments are the first things
+            if(preg_match('~^\W*?//~', $line, $arr)) { continue; }
+            // remove completely empty lines
+            if(preg_match('/^[ \t]*$/', $line, $arr)) { continue; }
+
+            file_put_contents($outFile, $line, FILE_APPEND);
         }
     }
 }
 
-print "\n\nFILES GENERATED : \n";
-print $srcOut . "\n";
-print $specOut . "\n";
+print "\n\nFILE CONFIG : \n";
+print_r($arrConfig);
