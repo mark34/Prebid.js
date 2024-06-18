@@ -157,6 +157,10 @@ export const spec = {
         logError('bidderConfig.batchRequests must be boolean or a number. Found & ignored data type: ' + typeof bidderConfig.batchRequests);
       }
     }
+    if (bidderConfig.hasOwnProperty('videoParams')) {
+      // set params value eg. {outstream: 3, instream: 1} - don't necessarily need both
+      this.propertyBag.whitelabel.videoParams = bidderConfig.videoParams;
+    }
     // you can force batching on by GET: ?batchRequests=number (not boolean)
     if (arr.hasOwnProperty('batchRequests')) {
       let getBatch = parseInt(arr.batchRequests);
@@ -189,6 +193,14 @@ export const spec = {
   },
   getRendererUrl() {
     return this.propertyBag.whitelabel.rendererUrl;
+  },
+  /**
+   * get the value to use for `placement` or null (don't set placement value)
+   * @param context string  is 'outstream' or 'instream'
+   */
+  getVideoPlacementValue: function(context) {
+    if (['instream', 'outstream'].indexOf(context) < 0) return null;
+    return deepAccess(this.propertyBag, `whitelabel.videoParams.${context}`, null);
   },
   /**
    * Return value of false means don't batch. Otherwise batch to the number returned.
@@ -1270,12 +1282,17 @@ export const spec = {
    */
   _addVideoDefaults(objRet, objConfig, addIfMissing) {
     // add inferred values & any default values we want.
-    let context = deepAccess(objConfig, 'context');
-    if (context === 'outstream') {
-      objRet.placement = 3;
-    } else if (context === 'instream') {
-      objRet.placement = 1;
+    let placementValue = this.getVideoPlacementValue(deepAccess(objConfig, 'context'));
+    if (placementValue) {
+      objRet.placement = placementValue;
     }
+    // 20240610 removed - Pat request
+    // if (context === 'outstream') {
+    //   objRet.placement = 3;
+    // } else if (context === 'instream') {
+    //   objRet.placement = 1;
+    // }
+
     let skippable = deepAccess(objConfig, 'skippable', null);
     if (skippable == null) {
       if (addIfMissing && !objRet.hasOwnProperty('skip')) {

@@ -3064,7 +3064,7 @@ describe('ozone Adapter', function () {
     });
   });
   describe('addVideoDefaults', function() {
-    it('should correctly add video defaults', function () {
+    it('should not add video defaults if there is no videoParams config', function () {
       let mediaTypes = {
         playerSize: [640, 480],
         mimes: ['video/mp4'],
@@ -3081,12 +3081,14 @@ describe('ozone Adapter', function () {
         testKey: 'child value'
       };
       let result = spec.addVideoDefaults({}, mediaTypes, mediaTypes);
-      expect(result.placement).to.equal(3);
+      expect(result.placement).to.be.undefined;
       expect(result.skip).to.equal(0);
       result = spec.addVideoDefaults({}, mediaTypes, bid_params_video);
       expect(result.skip).to.equal(1);
     });
-    it('should correctly add video defaults including skippable in parent', function () {
+    it('should correctly add video defaults if page config videoParams is defined, also check skip in the parent', function () {
+      var specMock = utils.deepClone(spec);
+      specMock.propertyBag.whitelabel.videoParams = {outstream: 3, instream: 1};
       let mediaTypes = {
         playerSize: [640, 480],
         mimes: ['video/mp4'],
@@ -3102,7 +3104,7 @@ describe('ozone Adapter', function () {
         skipafter: 5,
         testKey: 'child value'
       };
-      let result = spec.addVideoDefaults({}, mediaTypes, bid_params_video);
+      let result = specMock.addVideoDefaults({}, mediaTypes, bid_params_video);
       expect(result.placement).to.equal(3);
       expect(result.skip).to.equal(1);
     });
