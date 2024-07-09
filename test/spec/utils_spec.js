@@ -1170,6 +1170,44 @@ describe('Utils', function () {
     });
   });
 
+  describe('getUnixTimestampFromNow', () => {
+    it('correctly obtains unix timestamp', () => {
+      const nowValue = new Date('2024-01-01').valueOf();
+      sinon.stub(Date, 'now').returns(nowValue);
+      let val = utils.getUnixTimestampFromNow();
+      expect(val).equal(nowValue);
+
+      val = utils.getUnixTimestampFromNow(1);
+      expect(val).equal(nowValue + (1000 * 60 * 60 * 24));
+
+      val = utils.getUnixTimestampFromNow(1, 'd');
+      expect(val).equal(nowValue + (1000 * 60 * 60 * 24));
+
+      val = utils.getUnixTimestampFromNow(1, 'm');
+      expect(val).equal(nowValue + (1000 * 60 * 60 * 24 / 1440));
+
+      val = utils.getUnixTimestampFromNow(2, 'm');
+      expect(val).equal(nowValue + (1000 * 60 * 60 * 24 * 2 / 1440));
+
+      // any value that isn't 'm' or 'd' gets treated as Date.now();
+      val = utils.getUnixTimestampFromNow(10, 'o');
+      expect(val).equal(nowValue);
+    });
+  });
+
+  describe('convertObjectToArray', () => {
+    it('correctly converts object to array', () => {
+      const obj = {key: 1, anotherKey: 'fred', third: ['fred'], fourth: {sub: {obj: 'test'}}};
+      const array = utils.convertObjectToArray(obj);
+
+      expect(JSON.stringify(array[0])).equal(JSON.stringify({'key': 1}))
+      expect(JSON.stringify(array[1])).equal(JSON.stringify({'anotherKey': 'fred'}))
+      expect(JSON.stringify(array[2])).equal(JSON.stringify({'third': ['fred']}))
+      expect(JSON.stringify(array[3])).equal(JSON.stringify({'fourth': {sub: {obj: 'test'}}}));
+      expect(array.length).to.equal(4);
+    });
+  });
+
   describe('setScriptAttributes', () => {
     it('correctly adds attributes from an object', () => {
       const script = document.createElement('script'),
@@ -1183,6 +1221,25 @@ describe('Utils', function () {
       expect(script.dataset['first_prop']).to.equal('1');
       expect(script.dataset.second_prop).to.equal('b');
       expect(script.id).to.equal('newId');
+    });
+  });
+
+  describe('safeJSONParse', () => {
+    it('correctly encodes valid input', () => {
+      const jsonObj = {
+        key1: 'val1',
+        key2: {
+          key3: 100,
+          key4: true
+        }
+      };
+      const result = utils.safeJSONEncode(jsonObj);
+      expect(result).to.equal(`{"key1":"val1","key2":{"key3":100,"key4":true}}`);
+    });
+    it('return empty string for stringify errors', () => {
+      const jsonObj = {k: 2n};
+      const result = utils.safeJSONEncode(jsonObj);
+      expect(result).to.equal('');
     });
   });
 });
