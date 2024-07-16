@@ -90,7 +90,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.9.3';
+const OZONEVERSION = '2.9.4';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'lmc', gvlid: 524}, {code: 'venatus', gvlid: 524}],
@@ -335,6 +335,14 @@ export const spec = {
     let placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
     // build the array of params to attach to `imp`
     let schain = null;
+    // 20240715 - reintroduced for publishers who opt in. NOTE that there might be a bug so that this is set to "0" which evaluates to true
+    // if auctionId contains a valid value then we will use this as the root id, else we will generate our own
+    // we will also add it into the imp
+    var auctionId = deepAccess(validBidRequests, '0.ortb2.source.tid');
+    if (auctionId === '0') {
+      auctionId = null;
+    }
+
     let tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
@@ -450,6 +458,16 @@ export const spec = {
         deepSetValue(obj, 'ext.gpid', gpid);
       }
 
+      // 20240715 - adding these
+      let transactionId = deepAccess(ozoneBidRequest, 'ortb2Imp.ext.tid');
+      if (transactionId) {
+        obj.ext[whitelabelBidder].transactionId = transactionId; // this is the transactionId PER adUnit, common across bidders for this unit
+      }
+      // NOTE we need to use the sanitised version of auctionIs because we are seeing bad data of "0"
+      if (auctionId) {
+        obj.ext[whitelabelBidder].auctionId = auctionId; // we were sent a valid auctionId to use - this will also be used as the root id value for the request
+      }
+
       // 20240227 - adding support for fledge
       if (fledgeEnabled) { // fledge is enabled at some config level - pbjs.setBidderConfig or pbjs.setConfig
         const auctionEnvironment = deepAccess(ozoneBidRequest, 'ortb2Imp.ext.ae'); // this will be set for one of 3 reasons; adunit, setBidderConfig, setConfig
@@ -461,7 +479,6 @@ export const spec = {
         }
         // deepSetValue(obj, 'ext.prebid.ae', 1);
       }
-
       return obj;
     });
 
@@ -555,7 +572,14 @@ export const spec = {
     extObj[whitelabelBidder].cookieDeprecationLabel = deepAccess(bidderRequest, 'ortb2.device.ext.cdep', 'none');
     logInfo('cookieDeprecationLabel from bidderRequest object = ' + extObj[whitelabelBidder].cookieDeprecationLabel);
 
-    let ozUuid = generateUUID();
+    /*
+    For a bid request, no matter whether single, batch or non-single:
+====================++==============================++===========
+id = unique random, always
+source.tid AND imp[].ext.ozone.auctionId = auctionId (validBidRequests[].ortb2.source.tid) if pub opts in & it is set
+imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.tid) if pub opts in & it is set
+
+     */
 
     // are we to batch the requests (used by reach)
     let batchRequestsVal = this.getBatchRequests(); // false|numeric
@@ -563,20 +587,13 @@ export const spec = {
       logInfo('going to batch the requests');
       let arrRet = []; // return an array of objects containing data describing max 10 bids
       for (let i = 0; i < tosendtags.length; i += batchRequestsVal) {
-        if (bidderRequest.auctionId) {
-          // pbjs.setConfig({enableTIDs: true}) will make this happen
-          logInfo('Found bidderRequest.auctionId - will pass these values through & not generate our own id');
-          ozoneRequest.id = bidderRequest.auctionId;
-          ozoneRequest.auctionId = bidderRequest.auctionId;
-          // RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges). This tends to be set the same as the auctionId
-          deepSetValue(ozoneRequest, 'source.tid', deepAccess(bidderRequest, 'ortb2.source.tid'));
-        } else {
-          logInfo('Did not find bidderRequest.auctionId - will generate our own id');
-          ozoneRequest.id = ozUuid; // Unique ID of the bid request, provided by the exchange. (REQUIRED)
-          // ozoneRequest.auctionId = ozUuid;
-          // deepSetValue(ozoneRequest, 'source.tid', ozUuid);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
-        }
+        // 20240715 either use the valid auctionId value or our own generated one
+        ozoneRequest.id = generateUUID(); // Unique ID of the bid request, provided by the exchange. (REQUIRED)
         deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
+        // https://www.iab.com/wp-content/uploads/2016/03/OpenRTB-API-Specification-Version-2-5-FINAL.pdf
+        if (auctionId) {
+          deepSetValue(ozoneRequest, 'source.tid', auctionId);
+        }
         ozoneRequest.imp = tosendtags.slice(i, i + batchRequestsVal);
         ozoneRequest.ext = extObj;
         if (ozoneRequest.imp.length > 0) {
@@ -596,23 +613,15 @@ export const spec = {
     // Not batched - return the single request object OR the array:
     if (singleRequest) {
       logInfo('buildRequests starting to generate response for a single request');
-      if (bidderRequest.auctionId) {
-        // pbjs.setConfig({enableTIDs: true}) will make this happen
-        logInfo('Found bidderRequest.auctionId - will pass these values through & not generate our own id');
-        ozoneRequest.id = bidderRequest.auctionId;
-        ozoneRequest.auctionId = bidderRequest.auctionId;
-        // RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges). This tends to be set the same as the auctionId
-        deepSetValue(ozoneRequest, 'source.tid', deepAccess(bidderRequest, 'ortb2.source.tid'));
-      } else {
-        logInfo('Did not find bidderRequest.auctionId - will generate our own id');
-        ozoneRequest.id = ozUuid; // Unique ID of the bid request, provided by the exchange. (REQUIRED)
-        // ozoneRequest.auctionId = ozUuid;
-        // ozoneRequest.auctionId = ozUuid; // not sure if this should be here?
-      }
+      // 20240715 either use the valid auctionId value or our own generated one
+      ozoneRequest.id = generateUUID(); // Unique ID of the bid request, provided by the exchange. (REQUIRED)
       ozoneRequest.imp = tosendtags;
       ozoneRequest.ext = extObj;
-      // deepSetValue(ozoneRequest, 'source.tid', ozUuid);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
       deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
+      // https://www.iab.com/wp-content/uploads/2016/03/OpenRTB-API-Specification-Version-2-5-FINAL.pdf
+      if (auctionId) {
+        deepSetValue(ozoneRequest, 'source.tid', auctionId);
+      }
       var ret = {
         method: 'POST',
         url: this.getAuctionUrl(),
@@ -628,20 +637,16 @@ export const spec = {
     let arrRet = tosendtags.map(imp => {
       logInfo('buildRequests starting to generate non-single response, working on imp : ', imp);
       let ozoneRequestSingle = Object.assign({}, ozoneRequest);
-      // imp.ext[whitelabelBidder].pageAuctionId = bidderRequest['auctionId']; // make a note in the ext object of what the original auctionId was, in the bidderRequest object
-
-      // imp.ext[whitelabelBidder].transactionId is no longer available in prebid 8
-      // ozoneRequestSingle.id = imp.ext[whitelabelBidder].transactionId; // Unique ID of the bid request, provided by the exchange.
-      // ozoneRequestSingle.auctionId = imp.ext[whitelabelBidder].transactionId; // not sure if this should be here?
-      // deepSetValue(ozoneRequestSingle, 'source.tid', imp.ext[whitelabelBidder].transactionId);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
-
-      // deepSetValue(ozoneRequestSingle, 'source.tid', ozUuid);// RTB 2.5 : tid is Transaction ID that must be common across all participants in this bid request (e.g., potentially multiple exchanges).
       ozoneRequestSingle.id = generateUUID(); // Unique ID of the bid request, provided by the exchange. (REQUIRED)
 
       ozoneRequestSingle.imp = [imp];
       ozoneRequestSingle.ext = extObj;
       // ozoneRequestSingle.source = {'tid': imp.ext[whitelabelBidder].transactionId};
       deepSetValue(ozoneRequestSingle, 'user.ext.eids', userExtEids);
+      // https://www.iab.com/wp-content/uploads/2016/03/OpenRTB-API-Specification-Version-2-5-FINAL.pdf
+      if (auctionId) {
+        deepSetValue(ozoneRequestSingle, 'source.tid', auctionId);
+      }
       logInfo('buildRequests RequestSingle (for non-single) = ', ozoneRequestSingle);
       return {
         method: 'POST',
@@ -1279,7 +1284,7 @@ export const spec = {
     }
     return objRet;
   },
-  // NOTE we can't stringify bid object in prebid7 because of curcular refs!
+  // NOTE we can't stringify bid object in prebid7 because of circular refs!
   getLoggableBidObject(bid) {
     let logObj = {
       ad: bid.ad,
@@ -1303,7 +1308,9 @@ export const spec = {
       params: bid.params,
       price: bid.price,
       transactionId: bid.transactionId,
-      ttl: bid.ttl
+      ttl: bid.ttl,
+      ortb2: deepAccess(bid, 'ortb2'),
+      ortb2Imp: deepAccess(bid, 'ortb2Imp'),
     };
     if (bid.hasOwnProperty('floorData')) {
       logObj.floorData = bid.floorData;
