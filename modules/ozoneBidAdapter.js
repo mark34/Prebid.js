@@ -331,7 +331,8 @@ export const spec = {
     const getParams = this.getGetParametersAsObject();
     const wlOztestmodeKey = whitelabelPrefix + 'testmode';
     const isTestMode = getParams[wlOztestmodeKey] || null; // this can be any string, it's used for testing ads
-    ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
+    // ozoneRequest.device = {'w': window.innerWidth, 'h': window.innerHeight};
+    ozoneRequest.device = bidderRequest?.ortb2?.device || {}; // 20240925 rupesh changed this
     let placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
     // build the array of params to attach to `imp`
     let schain = null;
