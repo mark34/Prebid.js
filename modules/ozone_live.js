@@ -31,9 +31,9 @@ export const spec = {
     'rendererUrl': OZONE_RENDERER_URL
   },
   /**
-     * make sure that the whitelabel/default values are available in the propertyBag
-     * @param bid Object : the bid
-     */
+   * make sure that the whitelabel/default values are available in the propertyBag
+   * @param bid Object : the bid
+   */
   loadWhitelabelData(bid) {
     if (this.propertyBag.whitelabel) { return; }
     this.propertyBag.whitelabel = JSON.parse(JSON.stringify(this.whitelabel_defaults));
@@ -92,10 +92,10 @@ export const spec = {
     return this.propertyBag.whitelabel.rendererUrl;
   },
   /**
-     * Basic check to see whether required parameters are in the request.
-     * @param bid
-     * @returns {boolean}
-     */
+   * Basic check to see whether required parameters are in the request.
+   * @param bid
+   * @returns {boolean}
+   */
   isBidRequestValid(bid) {
     this.loadWhitelabelData(bid);
     logInfo('isBidRequestValid : ', config.getConfig(), bid);
@@ -161,9 +161,9 @@ export const spec = {
   },
 
   /**
-     * Split this out so that we can validate the placementId and also the override GET parameter ozstoredrequest
-     * @param placementId
-     */
+   * Split this out so that we can validate the placementId and also the override GET parameter ozstoredrequest
+   * @param placementId
+   */
   isValidPlacementId(placementId) {
     return placementId.toString().match(/^[0-9]{10}$/);
   },
@@ -411,18 +411,18 @@ export const spec = {
     return arrRet;
   },
   /**
-     * parse a bidRequestRef that contains getFloor(), get all the data from it for the sizes & media requested for this bid & return an object containing floor data you can send to auciton endpoint
-     * @param bidRequestRef object = a valid bid request object reference
-     * @return object
-     *
-     * call:
-     * bidObj.getFloor({
+   * parse a bidRequestRef that contains getFloor(), get all the data from it for the sizes & media requested for this bid & return an object containing floor data you can send to auciton endpoint
+   * @param bidRequestRef object = a valid bid request object reference
+   * @return object
+   *
+   * call:
+   * bidObj.getFloor({
       currency: 'USD', <- currency to return the value in
       mediaType: ‘banner’,
       size: ‘*’ <- or [300,250] or [[300,250],[640,480]]
-     * });
-     *
-     */
+   * });
+   *
+   */
   getFloorObjectForAuction(bidRequestRef) {
     const mediaTypesSizes = {
       banner: deepAccess(bidRequestRef, 'mediaTypes.banner.sizes', null),
@@ -444,15 +444,15 @@ export const spec = {
     return ret;
   },
   /**
-     * Interpret the response if the array contains BIDDER elements, in the format: [ [bidder1 bid 1, bidder1 bid 2], [bidder2 bid 1, bidder2 bid 2] ]
-     * NOte that in singleRequest mode this will be called once, else it will be called for each adSlot's response
-     *
-     * Updated April 2019 to return all bids, not just the one we decide is the 'winner'
-     *
-     * @param serverResponse
-     * @param request
-     * @returns {*}
-     */
+   * Interpret the response if the array contains BIDDER elements, in the format: [ [bidder1 bid 1, bidder1 bid 2], [bidder2 bid 1, bidder2 bid 2] ]
+   * NOte that in singleRequest mode this will be called once, else it will be called for each adSlot's response
+   *
+   * Updated April 2019 to return all bids, not just the one we decide is the 'winner'
+   *
+   * @param serverResponse
+   * @param request
+   * @returns {*}
+   */
   interpretResponse(serverResponse, request) {
     if (request && request.bidderRequest && request.bidderRequest.bids) { this.loadWhitelabelData(request.bidderRequest.bids[0]); }
     let startTime = new Date().getTime();
@@ -570,12 +570,12 @@ export const spec = {
     return arrAllBids;
   },
   /**
-     * Use this to get all config values
-     * Now it's getting complicated with whitelabeling, this simplifies the code for getting config values.
-     * eg. to get whitelabelled version you just sent the ozone default string like ozone.oz_omp_floor
-     * @param ozoneVersion string like 'ozone.oz_omp_floor'
-     * @return {string|object}
-     */
+   * Use this to get all config values
+   * Now it's getting complicated with whitelabeling, this simplifies the code for getting config values.
+   * eg. to get whitelabelled version you just sent the ozone default string like ozone.oz_omp_floor
+   * @param ozoneVersion string like 'ozone.oz_omp_floor'
+   * @return {string|object}
+   */
   getWhitelabelConfigItem(ozoneVersion) {
     if (this.propertyBag.whitelabel.bidder == 'ozone') { return config.getConfig(ozoneVersion); }
     let whitelabelledSearch = ozoneVersion.replace('ozone', this.propertyBag.whitelabel.bidder);
@@ -583,9 +583,9 @@ export const spec = {
     return config.getConfig(whitelabelledSearch);
   },
   /**
-     * If a bidder bids for > 1 size for an adslot, allow only the highest bid
-     * @param seatbid object (serverResponse.seatbid)
-     */
+   * If a bidder bids for > 1 size for an adslot, allow only the highest bid
+   * @param seatbid object (serverResponse.seatbid)
+   */
   removeSingleBidderMultipleBids(seatbid) {
     var ret = [];
     for (let i = 0; i < seatbid.length; i++) {
@@ -642,10 +642,10 @@ export const spec = {
     }
   },
   /**
-     * Find the bid matching the bidId in the request object
-     * get instream or outstream if this was a video request else null
-     * @return object|null
-     */
+   * Find the bid matching the bidId in the request object
+   * get instream or outstream if this was a video request else null
+   * @return object|null
+   */
   getBidRequestForBidId(bidId, arrBids) {
     for (let i = 0; i < arrBids.length; i++) {
       if (arrBids[i].bidId === bidId) { // bidId in the request comes back as impid in the seatbid bids
@@ -655,12 +655,12 @@ export const spec = {
     return null;
   },
   /**
-     * Locate the bid inside the arrBids for this bidId, then discover the video context, and return it.
-     * IF the bid cannot be found return null, else return a string.
-     * @param bidId
-     * @param arrBids
-     * @return string|null
-     */
+   * Locate the bid inside the arrBids for this bidId, then discover the video context, and return it.
+   * IF the bid cannot be found return null, else return a string.
+   * @param bidId
+   * @param arrBids
+   * @return string|null
+   */
   getVideoContextForBidId(bidId, arrBids) {
     let requestBid = this.getBidRequestForBidId(bidId, arrBids);
     if (requestBid != null) {
@@ -669,10 +669,10 @@ export const spec = {
     return null;
   },
   /**
-     * This is used for cookie sync, not auction call
-     *  Look for pubcid & all the other IDs according to http://prebid.org/dev-docs/modules/userId.html
-     *  @return map
-     */
+   * This is used for cookie sync, not auction call
+   *  Look for pubcid & all the other IDs according to http://prebid.org/dev-docs/modules/userId.html
+   *  @return map
+   */
   findAllUserIds(bidRequest) {
     var ret = {};
     let searchKeysSingle = ['pubcid', 'tdid', 'idl_env', 'criteoId', 'lotamePanoramaId', 'fabrickId'];
@@ -720,19 +720,19 @@ export const spec = {
     return ret;
   },
   /**
-     * Convenient method to get the value we need for the placementId - ONLY from the bidRequest - NOT taking into account any GET override ID
-     * @param bidRequest
-     * @return string
-     */
+   * Convenient method to get the value we need for the placementId - ONLY from the bidRequest - NOT taking into account any GET override ID
+   * @param bidRequest
+   * @return string
+   */
   getPlacementId(bidRequest) {
     return (bidRequest.params.placementId).toString();
   },
   /**
-     * GET parameter introduced in 2.2.0 : ozstoredrequest
-     * IF the GET parameter exists then it must validate for placementId correctly
-     * IF there's a $_GET['ozstoredrequest'] & it's valid then return this. Else return null.
-     * @returns null|string
-     */
+   * GET parameter introduced in 2.2.0 : ozstoredrequest
+   * IF the GET parameter exists then it must validate for placementId correctly
+   * IF there's a $_GET['ozstoredrequest'] & it's valid then return this. Else return null.
+   * @returns null|string
+   */
   getPlacementIdOverrideFromGetParam() {
     let whitelabelPrefix = this.propertyBag.whitelabel.keyPrefix;
     let arr = this.getGetParametersAsObject();
@@ -747,11 +747,11 @@ export const spec = {
     return null;
   },
   /**
-     * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
-     * http://prebid.org/dev-docs/modules/userId.html
-     * @param validBidRequests
-     * @return {Array}
-     */
+   * Generate an object we can append to the auction request, containing user data formatted correctly for different ssps
+   * http://prebid.org/dev-docs/modules/userId.html
+   * @param validBidRequests
+   * @return {Array}
+   */
   generateEids(validBidRequests) {
     let eids;
     const bidRequest = validBidRequests[0];
@@ -793,9 +793,9 @@ export const spec = {
     return ret;
   },
   /**
-     * Do we have to block this request? Could be due to config values (no longer checking gdpr)
-     * @return {boolean|*[]} true = block the request, else false
-     */
+   * Do we have to block this request? Could be due to config values (no longer checking gdpr)
+   * @return {boolean|*[]} true = block the request, else false
+   */
   blockTheRequest() {
     let ozRequest = this.getWhitelabelConfigItem('ozone.oz_request');
     if (typeof ozRequest == 'boolean' && !ozRequest) {
@@ -805,9 +805,9 @@ export const spec = {
     return false;
   },
   /**
-     * This returns a random ID for this page. It starts off with the current ms timestamp then appends a random component
-     * @return {string}
-     */
+   * This returns a random ID for this page. It starts off with the current ms timestamp then appends a random component
+   * @return {string}
+   */
   getPageId: function() {
     if (this.propertyBag.pageId == null) {
       let randPart = '';
@@ -826,13 +826,13 @@ export const spec = {
     return ret;
   },
   /**
-     *
-     * look in ONE object to get video config (we need to call this multiple times, so child settings override parent)
-     * @param ret
-     * @param objConfig
-     * @return {*}
-     * @private
-     */
+   *
+   * look in ONE object to get video config (we need to call this multiple times, so child settings override parent)
+   * @param ret
+   * @param objConfig
+   * @return {*}
+   * @private
+   */
   _unpackVideoConfigIntoIABformat(ret, objConfig) {
     let arrVideoKeysAllowed = ['mimes', 'minduration', 'maxduration', 'protocols', 'w', 'h', 'startdelay', 'placement', 'linearity', 'skip', 'skipmin', 'skipafter', 'sequence', 'battr', 'maxextended', 'minbitrate', 'maxbitrate', 'boxingallowed', 'playbackmethod', 'playbackend', 'delivery', 'pos', 'companionad', 'api', 'companiontype'];
     for (const key in objConfig) {
@@ -862,13 +862,13 @@ export const spec = {
     return objRet;
   },
   /**
-     * modify objRet, adding in default values
-     * @param objRet
-     * @param objConfig
-     * @param addIfMissing
-     * @return {*}
-     * @private
-     */
+   * modify objRet, adding in default values
+   * @param objRet
+   * @param objConfig
+   * @param addIfMissing
+   * @return {*}
+   * @private
+   */
   _addVideoDefaults(objRet, objConfig, addIfMissing) {
     let context = deepAccess(objConfig, 'context');
     if (context === 'outstream') {
