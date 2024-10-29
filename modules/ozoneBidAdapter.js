@@ -8,7 +8,7 @@ import {
   contains,
   mergeDeep,
   parseUrl,
-  generateUUID, isInteger, deepClone
+  generateUUID, isInteger, deepClone, getBidIdParameter
 } from '../src/utils.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
@@ -29,10 +29,6 @@ const BIDDER_CODE = 'ozone';
 GET parameters (20211022):
 pbjs_debug=true
 renderer=https%3A%2F%2Fwww.ardm.io%2Fozone%2Fvideo-testing%2Fprod%2Fhtml5-renderer%2Fozone-renderer-20210406-scroll-listener-noviewportfix.js
-ozf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
-ozpf (pass in adapter as 0 or 1 based on true/false or 0/1 being passed as the query parameter value)
-ozrp (possible values: 0-3 / basically any integer which we just pass along)
-ozip (integer again as a value)
 auction=dev
 cookiesync=dev
 whitelabelPrefix + 'storedrequest'=[a valid stored request ID]
@@ -90,10 +86,10 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.9.4';
+const OZONEVERSION = '2.9.4-refactor';
 export const spec = {
   gvlid: 524,
-  aliases: [{code: 'lmc', gvlid: 524}, {code: 'venatus', gvlid: 524}],
+  aliases: [{code: 'venatus', gvlid: 524}],
   version: OZONEVERSION,
   code: BIDDER_CODE,
   supportedMediaTypes: [VIDEO, BANNER],
@@ -223,8 +219,8 @@ export const spec = {
     this.loadWhitelabelData(bid);
     logInfo('isBidRequestValid : ', config.getConfig(), bid);
     let adUnitCode = bid.adUnitCode; // adunit[n].code
-    let err1 = 'VALIDATION FAILED : missing {param} : siteId, placementId and publisherId are REQUIRED'
-    if (!(bid.params.hasOwnProperty('placementId'))) {
+    let err1 = 'VALIDATION FAILED : missing {param} : siteId, placementId and publisherId are REQUIRED';
+    if (!(getBidIdParameter('placementId', bid.params))) {
       logError(err1.replace('{param}', 'placementId'), adUnitCode);
       return false;
     }
@@ -232,7 +228,7 @@ export const spec = {
       logError('VALIDATION FAILED : placementId must be exactly 10 numeric characters', adUnitCode);
       return false;
     }
-    if (!(bid.params.hasOwnProperty('publisherId'))) {
+    if (!(getBidIdParameter('publisherId', bid.params))) {
       logError(err1.replace('{param}', 'publisherId'), adUnitCode);
       return false;
     }
@@ -240,7 +236,7 @@ export const spec = {
       logError('VALIDATION FAILED : publisherId must be exactly 12 alphanumeric characters including hyphens', adUnitCode);
       return false;
     }
-    if (!(bid.params.hasOwnProperty('siteId'))) {
+    if (!(getBidIdParameter('siteId', bid.params))) {
       logError(err1.replace('{param}', 'siteId'), adUnitCode);
       return false;
     }
@@ -271,11 +267,11 @@ export const spec = {
       }
     }
     if (bid.hasOwnProperty('mediaTypes') && bid.mediaTypes.hasOwnProperty(VIDEO)) {
-      if (!bid.mediaTypes[VIDEO].hasOwnProperty('context')) {
+      if (!bid.mediaTypes?.[VIDEO]?.context) {
         logError('No video context key/value in bid. Rejecting bid: ', bid);
         return false;
       }
-      if (bid.mediaTypes[VIDEO].context !== 'instream' && bid.mediaTypes[VIDEO].context !== 'outstream') {
+      if (['instream', 'outstream'].indexOf(bid.mediaTypes?.[VIDEO]?.context) < 0) {
         logError('video.context is invalid. Only instream/outstream video is supported. Rejecting bid: ', bid);
         return false;
       }
@@ -349,8 +345,7 @@ export const spec = {
       let placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest); // prefer to use a valid override param, else the bidRequest placement Id
       obj.id = ozoneBidRequest.bidId; // this causes an error if we change it to something else, even if you update the bidRequest object: "WARNING: Bidder ozone made bid for unknown request ID: mb7953.859498327448. Ignoring."
       obj.tagid = placementId;
-      let parsed = parseUrl(this.getRefererInfo().page);
-      obj.secure = parsed.protocol === 'https' ? 1 : 0;
+      obj.secure = parseUrl(getRefererInfo().page).protocol === 'https' ? 1 : 0;
       // is there a banner (or nothing declared, so banner is the default)?
       let arrBannerSizes = [];
       if (!ozoneBidRequest.hasOwnProperty('mediaTypes')) {
@@ -511,11 +506,6 @@ export const spec = {
       logInfo('setting aliases object');
       extObj.prebid = {aliases: {'ozone': whitelabelBidder}};
     }
-    // 20210413 - adding a set of GET params to pass to auction
-    if (getParams.hasOwnProperty('ozf')) { extObj[whitelabelBidder]['ozf'] = getParams.ozf === 'true' || getParams.ozf === '1' ? 1 : 0; }
-    if (getParams.hasOwnProperty('ozpf')) { extObj[whitelabelBidder]['ozpf'] = getParams.ozpf === 'true' || getParams.ozpf === '1' ? 1 : 0; }
-    if (getParams.hasOwnProperty('ozrp') && getParams.ozrp.match(/^[0-3]$/)) { extObj[whitelabelBidder]['ozrp'] = parseInt(getParams.ozrp); }
-    if (getParams.hasOwnProperty('ozip') && getParams.ozip.match(/^\d+$/)) { extObj[whitelabelBidder]['ozip'] = parseInt(getParams.ozip); }
     if (this.propertyBag.endpointOverride != null) { extObj[whitelabelBidder]['origin'] = this.propertyBag.endpointOverride; }
 
     // extObj.ortb2 = config.getConfig('ortb2'); // original test location
@@ -525,7 +515,7 @@ export const spec = {
     // logInfo('getRefererInfo', getRefererInfo());
     ozoneRequest.site = {
       'publisher': {'id': htmlParams.publisherId},
-      'page': this.getRefererInfo().page,
+      'page': getRefererInfo().page,
       'id': htmlParams.siteId
     };
     ozoneRequest.test = config.getConfig('debug') ? 1 : 0;
@@ -1150,34 +1140,11 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
   },
   // Try to use this as the mechanism for reading GET params because it's easy to mock it for tests
   getGetParametersAsObject() {
-    let parsed = parseUrl(this.getRefererInfo().location);
+    let parsed = parseUrl(getRefererInfo().location);
     logInfo('getGetParametersAsObject found:', parsed.search);
     return parsed.search;
   },
-  /**
-   * This is a wrapper for the src getRefererInfo function, allowing for prebid v6 or v7 to both be OK
-   * We only use it for location and page, so the returned object will contain these 2 properties.
-   * @returns Object {location, page}
-   */
-  getRefererInfo() {
-    if (getRefererInfo().hasOwnProperty('location')) {
-      logInfo('FOUND location on getRefererInfo OK (prebid >= 7); will use getRefererInfo for location & page');
-      return getRefererInfo();
-    } else {
-      logInfo('DID NOT FIND location on getRefererInfo (prebid < 7); will use legacy code that ALWAYS worked reliably to get location & page ;-)');
-      try {
-        return {
-          page: top.location.href,
-          location: top.location.href
-        };
-      } catch (e) {
-        return {
-          page: window.location.href,
-          location: window.location.href
-        };
-      }
-    }
-  },
+
   /**
    * Do we have to block this request? Could be due to config values (no longer checking gdpr)
    * @returns {boolean|*[]} true = block the request, else false

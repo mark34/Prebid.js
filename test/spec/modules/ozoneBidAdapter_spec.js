@@ -8,6 +8,16 @@ import {deepSetValue} from '../../../src/utils.js';
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const BIDDER_CODE = 'ozone';
 
+// NOTE - spec getGetParametersAsObject will fail because it relies on there being a browser & a referer.
+// we will mock the method:
+
+spec.getGetParametersAsObject = function() {
+  return {
+    page: 'https://www.ardm.io/sometestPage/?qsParam1=123',
+    location: 'https://www.ardm.io/sometestPage/?qsParam1=123'
+  };
+}
+
 var validBidRequests = [
   {
     adUnitCode: 'div-gpt-ad-1460505748561-0',
@@ -2927,31 +2937,15 @@ describe('ozone Adapter', function () {
       expect(data.imp[0].ext.ozone.customData).to.be.an('array');
       expect(data.imp[0].ext.ozone.customData[0].targeting.oztestmode).to.equal('mytestvalue_123');
     });
-    it('should pass through GET params if present: ozf, ozpf, ozrp, ozip', function() {
+    it('should ignore these GET params if present (removed 202410): ozf, ozpf, ozrp, ozip', function() {
       var specMock = utils.deepClone(spec);
       // mock the getGetParametersAsObject function to simulate GET parameters :
       specMock.getGetParametersAsObject = function() {
-        return {ozf: '1', ozpf: '0', ozrp: '2', ozip: '123'};
+        return {ozf: '1', ozpf: '10', ozrp: '2', ozip: '123'};
       };
       const request = specMock.buildRequests(validBidRequests, validBidderRequest);
       const data = JSON.parse(request.data);
-      expect(data.ext.ozone.ozf).to.equal(1);
-      expect(data.ext.ozone.ozpf).to.equal(0);
-      expect(data.ext.ozone.ozrp).to.equal(2);
-      expect(data.ext.ozone.ozip).to.equal(123);
-    });
-    it('should pass through GET params if present: ozf, ozpf, ozrp, ozip with alternative values', function() {
-      var specMock = utils.deepClone(spec);
-      // mock the getGetParametersAsObject function to simulate GET parameters :
-      specMock.getGetParametersAsObject = function() {
-        return {ozf: 'false', ozpf: 'true', ozrp: 'xyz', ozip: 'hello'};
-      };
-      const request = specMock.buildRequests(validBidRequests, validBidderRequest);
-      const data = JSON.parse(request.data);
-      expect(data.ext.ozone.ozf).to.equal(0);
-      expect(data.ext.ozone.ozpf).to.equal(1);
-      expect(data.ext.ozone).to.not.haveOwnProperty('ozrp');
-      expect(data.ext.ozone).to.not.haveOwnProperty('ozip');
+      expect(data.ext.ozone).to.not.have.any.keys('zf', 'ozpf', 'ozrp', 'ozip');
     });
     it('should use oztestmode GET value if set, even if there is no customdata in config', function() {
       var specMock = utils.deepClone(spec);
