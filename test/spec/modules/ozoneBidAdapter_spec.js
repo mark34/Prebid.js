@@ -2911,19 +2911,21 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
       const data = JSON.parse(request.data);
       expect(data.ext.ozone).to.haveOwnProperty('test_rw');
-      config.setConfig({'ozone': {'kvpPrefix': null}});
+      // config.setConfig({'ozone': {'kvpPrefix': null}});
+      config.resetConfig();
       spec.propertyBag.whitelabel = null;
     });
 
     it('handles an alias ', function () {
       spec.propertyBag.whitelabel = null;
-      config.setConfig({'lmc': {'kvpPrefix': 'test'}});
+      config.setConfig({'venatus': {'kvpPrefix': 've'}});
       let br = JSON.parse(JSON.stringify(validBidRequests));
-      br[0]['bidder'] = 'lmc';
+      br[0]['bidder'] = 'venatus';
       const request = spec.buildRequests(br, validBidderRequest);
       const data = JSON.parse(request.data);
-      expect(data.ext.lmc).to.haveOwnProperty('test_rw');
-      config.setConfig({'lmc': {'kvpPrefix': null}}); // I cant remove the key so set the value to null
+      expect(data.ext.venatus).to.haveOwnProperty('ve_rw');
+      // config.setConfig({'venatus': {'kvpPrefix': null}}); // I cant remove the key so set the value to null
+      config.resetConfig();
       spec.propertyBag.whitelabel = null;
     });
     it('should use oztestmode GET value if set', function() {
@@ -3484,6 +3486,14 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_omp')).to.be.undefined;
     });
     it('should handle ext.bidder.ozone.floor correctly, setting flr & rid as necessary', function () {
+      const request = spec.buildRequests(validBidRequests, validBidderRequest);
+      let vres = JSON.parse(JSON.stringify(validResponse));
+      vres.body.seatbid[0].bid[0].ext.bidder.ozone = {floor: 1, ruleId: 'ZjbsYE1q'};
+      const result = spec.interpretResponse(vres, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_flr')).to.equal(1);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_appnexus_rid')).to.equal('ZjbsYE1q');
+    });
+    it('Alias venatus: should handle ext.bidder.venatus.floor correctly, setting flr & rid as necessary', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
       let vres = JSON.parse(JSON.stringify(validResponse));
       vres.body.seatbid[0].bid[0].ext.bidder.ozone = {floor: 1, ruleId: 'ZjbsYE1q'};
