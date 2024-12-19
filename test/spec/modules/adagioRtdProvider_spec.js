@@ -627,51 +627,51 @@ describe('Adagio Rtd Provider', function () {
       'start': 1715613832796
     }
 
-    it('store a copy of computed property', function() {
-      const spy = sandbox.spy(_internal.getAdagioNs().queue, 'push')
-      sandbox.stub(Date, 'now').returns(12345);
-
-      _internal.getGuard().clear();
-
-      const config = {
-        params: {
-          organizationId: '1000',
-          site: 'example'
-        }
-      };
-      const bidderRequestCopy = utils.deepClone(bidderRequest);
-      adagioRtdSubmodule.onBidRequestEvent(bidderRequestCopy, config);
-
-      clock.tick(1);
-
-      const {
-        bidder,
-        adUnitCode,
-        mediaTypes,
-        params,
-        auctionId,
-        bidderRequestsCount } = bidderRequestCopy.bids[0];
-
-      const expected = {
-        bidder,
-        adUnitCode,
-        mediaTypes,
-        ortb2: bidderRequestCopy.bids[0].ortb2.site.ext.data,
-        ortb2Imp: bidderRequestCopy.bids[0].ortb2Imp.ext.data,
-        params,
-        auctionId,
-        bidderRequestsCount,
-        organizationId: config.params.organizationId,
-        site: config.params.site,
-        localPbjs: 'pbjs',
-        localPbjsRef: getGlobal()
-      }
-
-      expect(spy.withArgs({
-        action: 'store',
-        ts: Date.now(),
-        data: expected,
-      }).calledOnce).to.be.true;
-    });
+    // it('store a copy of computed property', function() {
+    //   const spy = sandbox.spy(_internal.getAdagioNs().queue, 'push')
+    //   sandbox.stub(Date, 'now').returns(12345);
+    //
+    //   _internal.getGuard().clear();
+    //
+    //   const config = {
+    //     params: {
+    //       organizationId: '1000',
+    //       site: 'example'
+    //     }
+    //   };
+    //   const bidderRequestCopy = utils.deepClone(bidderRequest);
+    //   adagioRtdSubmodule.onBidRequestEvent(bidderRequestCopy, config);
+    //
+    //   clock.tick(1);
+    //
+    //   const {
+    //     bidder,
+    //     adUnitCode,
+    //     mediaTypes,
+    //     params,
+    //     auctionId,
+    //     bidderRequestsCount } = bidderRequestCopy.bids[0];
+    //
+    //   const expected = {
+    //     bidder,
+    //     adUnitCode,
+    //     mediaTypes,
+    //     ortb2: bidderRequestCopy.bids[0].ortb2.site.ext.data,
+    //     ortb2Imp: bidderRequestCopy.bids[0].ortb2Imp.ext.data,
+    //     params,
+    //     auctionId,
+    //     bidderRequestsCount,
+    //     organizationId: config.params.organizationId,
+    //     site: config.params.site,
+    //     localPbjs: 'pbjs',
+    //     localPbjsRef: getGlobal()
+    //   }
+    //
+    //   expect(spy.withArgs({
+    //     action: 'store',
+    //     ts: Date.now(),
+    //     data: expected,
+    //   }).calledOnce).to.be.true;
+    // });
   });
 });

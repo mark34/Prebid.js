@@ -3629,6 +3629,15 @@ describe('ozone Adapter', function () {
       expect(result).to.be.an('object');
       expect(result.fledgeAuctionConfigs[0]['impid']).to.equal('1');
     });
+    it('should add labels in the adserver request if they are present in the auction response', function () {
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      let validres = JSON.parse(JSON.stringify(validResponse2Bids));
+      validres.body.seatbid[0].bid[0].ext.prebid.labels = ['bid1label1', 'bid1label2', 'bid1label3'];
+      validres.body.seatbid[0].bid[1].ext.prebid.labels = ['bid2label'];
+      const result = spec.interpretResponse(validres, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'labels')).to.equal('bid1label1,bid1label2,bid1label3');
+      expect(utils.deepAccess(result[1].adserverTargeting, 'labels')).to.equal('bid2label');
+    });
   });
 
   describe('userSyncs', function () {

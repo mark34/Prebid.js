@@ -63,7 +63,7 @@ whitelabelPrefix + 'storedrequest'=[a valid stored request ID]
 // --- END REMOVE FOR RELEASE
 
 // *** PROD ***
-const ORIGIN = 'https://elb.the-ozone-project.com' // applies only to auction & cookie
+const ORIGIN = 'https://elb.the-ozone-project.com'; // applies only to auction & cookie
 const AUCTIONURI = '/openrtb2/auction';
 const OZONECOOKIESYNC = '/static/load-cookie.html';
 // NOTE this was going to be renamed to renderer.js 20220210 because of newspass not wanting the word ozone - check - is this correct?
@@ -104,6 +104,13 @@ export const spec = {
     'rendererUrl': OZONE_RENDERER_URL,
     'batchRequests': false /* you can change this to true OR numeric OR override it in the config: config.ozone.batchRequests = true/false/number */
   },
+
+  // added for testing - maybe that onAdRenderSucceeded might be useful for tracking.
+  // onBidWon: function(bid, options) { LogInfo('onBidWon', JSON.stringify(bid) ); },
+  // onBidBillable: function(bid, options) { LogInfo('onBidBillable', JSON.stringify(bid)); },
+  // onAdRenderSucceeded: function(bid, options) { LogInfo('onAdRenderSucceeded', JSON.stringify(bid)); },
+  // onTimeout: function(timeoutData, options) { LogInfo('onTimeout', JSON.stringify(timeoutData)); },
+  // onBidderError: function(args, options) { LogInfo('onBidderError', JSON.stringify(args)); },
 
   /**
    * make sure that the whitelabel/default values are available in the propertyBag
@@ -685,6 +692,8 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
    *
    * Updated April 2019 to return all bids, not just the one we decide is the 'winner'
    *
+   * https://docs.prebid.org/dev-docs/bidder-adaptor.html#bidder-adaptor-Interpreting-the-Response
+   *
    * @param serverResponse
    * @param request
    * @returns {*}
@@ -820,6 +829,10 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
         // add the cache targeting id because we can't set hb_cache_id - this is overridden by prebid core
         adserverTargeting[whitelabelPrefix + '_cache_id'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_id', 'no-id');
         adserverTargeting[whitelabelPrefix + '_uuid'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_uuid', 'no-id');
+        let labels = deepAccess(thisBid, 'ext.prebid.labels', null); // 20241105 - labels returned (array)
+        if (labels) {
+          adserverTargeting['labels'] = labels.join(',');
+        }
 
         if (enhancedAdserverTargeting) {
           adserverTargeting[whitelabelPrefix + '_imp_id'] = String(winningBid.impid);
@@ -833,6 +846,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
           logInfo('Filtering out adserver targeting keys not in the whitelist: ', ozWhitelistAdserverKeys);
           Object.keys(adserverTargeting).forEach(function(key) { if (ozWhitelistAdserverKeys.indexOf(key) === -1) { delete adserverTargeting[key]; } });
         }
+
         thisBid.adserverTargeting = adserverTargeting;
         arrAllBids.push(thisBid);
       }
