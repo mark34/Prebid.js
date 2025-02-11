@@ -86,7 +86,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.9.4-refactor';
+const OZONEVERSION = '2.9.5';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'venatus', gvlid: 524}],
@@ -256,7 +256,7 @@ export const spec = {
       return false;
     }
     if (bid.params.hasOwnProperty('customData')) {
-      if (!Array.isArray(bid.params.customData)) {
+      if (!isArray(bid.params.customData)) {
         logError(`${vf} : customData is not an Array`, adUnitCode);
         return false;
       }
@@ -426,6 +426,15 @@ export const spec = {
       // obj.ext[whitelabelBidder].transactionId = ozoneBidRequest.transactionId; // this is the transactionId PER adUnit, common across bidders for this unit. Removed in prebid 8
       if (ozoneBidRequest.params.hasOwnProperty('customData')) {
         obj.ext[whitelabelBidder].customData = ozoneBidRequest.params.customData;
+      }
+      // 20250114 - optional ozFloor param in adunits - for users who don't want to use the floors module. Send this up as imp[].ext.ozone.ozFloor
+      if (ozoneBidRequest.params.hasOwnProperty('ozFloor')) {
+        let ozFloorParsed = parseFloat(ozoneBidRequest.params.ozFloor);
+        if (!isNaN(ozFloorParsed)) {
+          obj.ext[whitelabelBidder].ozFloor = ozFloorParsed;
+        } else {
+          logError(`Ignoring invalid ozFloor value for adunit code: ${ozoneBidRequest.adUnitCode}`);
+        }
       }
       logInfo(`obj.ext.${whitelabelBidder} is `, obj.ext[whitelabelBidder]);
       if (isTestMode != null) {
@@ -665,6 +674,8 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       size: ‘*’ <- or [300,250] or [[300,250],[640,480]]
    * });
    *
+   *
+   *
    */
   getFloorObjectForAuction(bidRequestRef) {
     const mediaTypesSizes = {
@@ -674,14 +685,15 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     }
     logInfo('getFloorObjectForAuction mediaTypesSizes : ', mediaTypesSizes);
     let ret = {};
+    // 20250108 - take only the first size - this is how it works.
     if (mediaTypesSizes.banner) {
-      ret.banner = bidRequestRef.getFloor({mediaType: 'banner', currency: 'USD', size: mediaTypesSizes.banner});
+      ret.banner = bidRequestRef.getFloor({mediaType: 'banner', currency: 'USD', size: mediaTypesSizes.banner[0]});
     }
     if (mediaTypesSizes.video) {
-      ret.video = bidRequestRef.getFloor({mediaType: 'video', currency: 'USD', size: mediaTypesSizes.video});
+      ret.video = bidRequestRef.getFloor({mediaType: 'video', currency: 'USD', size: mediaTypesSizes.video[0]});
     }
     if (mediaTypesSizes.native) {
-      ret.native = bidRequestRef.getFloor({mediaType: 'native', currency: 'USD', size: mediaTypesSizes.native});
+      ret.native = bidRequestRef.getFloor({mediaType: 'native', currency: 'USD', size: mediaTypesSizes.native[0]});
     }
     logInfo('getFloorObjectForAuction returning : ', deepClone(ret));
     return ret;
@@ -878,7 +890,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     // ix type of implementation - this is more like what ozone want to do - don't modify the auctionConfigs
     // let fledgeAuctionConfigs = deepAccess(serverResponse, 'ext.protectedAudienceAuctionConfigs') || [];
     let fledgeAuctionConfigs = deepAccess(serverResponse, 'ext.igi') || []; // 20240606 standardising
-    if (Array.isArray(fledgeAuctionConfigs) && fledgeAuctionConfigs.length > 0) {
+    if (isArray(fledgeAuctionConfigs) && fledgeAuctionConfigs.length > 0) {
       // Validate and filter fledgeAuctionConfigs
       fledgeAuctionConfigs = fledgeAuctionConfigs.filter(config => {
         if (!this.isValidAuctionConfig(config)) {
@@ -981,7 +993,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       arrQueryString.push('usp_consent=' + (usPrivacy || ''));
       // NOTE GPP support in CMPs is not yet properly available for testing
       arrQueryString.push('gpp=' + gppString);
-      if (Array.isArray(applicableSections)) {
+      if (isArray(applicableSections)) {
         arrQueryString.push(`gpp_sid=${applicableSections.join()}`);
       }
 
@@ -1275,8 +1287,8 @@ export function injectAdIdsIntoAllBidResponses(seatbid) {
 }
 
 export function checkDeepArray(Arr) {
-  if (Array.isArray(Arr)) {
-    if (Array.isArray(Arr[0])) {
+  if (isArray(Arr)) {
+    if (isArray(Arr[0])) {
       return Arr[0];
     } else {
       return Arr;

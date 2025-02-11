@@ -2263,6 +2263,8 @@ var multiResponse1 = {
 --------------------end of 2 slots, 2 ----------------------------
  */
 
+// Floors - regression testing; we now only send the first [w,h] value to prebid getFloors function (20250109)
+
 describe('ozone Adapter', function () {
   describe('isBidRequestValid', function () {
     // A test ad unit that will consistently return test creatives
@@ -3117,25 +3119,51 @@ describe('ozone Adapter', function () {
       const payload = JSON.parse(request.data);
       expect(payload.regs).to.include.keys('coppa');
       expect(payload.regs.coppa).to.equal(1);
+      config.resetConfig();
     });
     it('should pick up the config value of coppa & only set it in the request if its true', function () {
       config.setConfig({'coppa': false});
       const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
       const payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'regs.coppa')).to.be.undefined;
+      config.resetConfig();
     });
     it('should handle oz_omp_floor correctly', function () {
       config.setConfig({'ozone': {'oz_omp_floor': 1.56}});
       const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
       const payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'ext.ozone.oz_omp_floor')).to.equal(1.56);
+      config.resetConfig();
     });
     it('should ignore invalid oz_omp_floor values', function () {
       config.setConfig({'ozone': {'oz_omp_floor': '1.56'}});
       const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
       const payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'ext.ozone.oz_omp_floor')).to.be.undefined;
+      config.resetConfig();
     });
+    it('should handle a valid ozFloor string value in the adunit correctly', function () {
+      let cloneBidRequests = JSON.parse(JSON.stringify(validBidRequests));
+      cloneBidRequests[0].params.ozFloor = '0.1234'; // string or float - doesnt matter
+      const request = spec.buildRequests(cloneBidRequests, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(utils.deepAccess(payload, 'imp.0.ext.ozone.ozFloor')).to.equal(0.1234);
+    });
+    it('should handle a valid ozFloor float value in the adunit correctly', function () {
+      let cloneBidRequests = JSON.parse(JSON.stringify(validBidRequests));
+      cloneBidRequests[0].params.ozFloor = 0.1234; // string or float - doesnt matter
+      const request = spec.buildRequests(cloneBidRequests, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(utils.deepAccess(payload, 'imp.0.ext.ozone.ozFloor')).to.equal(0.1234);
+    });
+    it('should ignore an invalid ozFloor string value in the adunit correctly', function () {
+      let cloneBidRequests = JSON.parse(JSON.stringify(validBidRequests));
+      cloneBidRequests[0].params.ozFloor = 'this is no good!'; // string or float - doesnt matter
+      const request = spec.buildRequests(cloneBidRequests, validBidderRequest);
+      const payload = JSON.parse(request.data);
+      expect(utils.deepAccess(payload, 'imp.0.ext.ozone.ozFloor', null)).to.be.null;
+    });
+
     it('should should contain a unique page view id in the auction request which persists across calls', function () {
       let request = spec.buildRequests(validBidRequests, validBidderRequest);
       let payload = JSON.parse(request.data);
@@ -3270,6 +3298,30 @@ describe('ozone Adapter', function () {
       const payload = JSON.parse(request.data);
       expect(utils.deepAccess(payload, 'imp.0.floor.banner.currency')).to.equal('USD');
       expect(utils.deepAccess(payload, 'imp.0.floor.banner.floor')).to.equal(0.8);
+    });
+    it(' (getFloorObjectForAuction) should handle advanced/custom floor config function correctly (note you cant fully test floor functionality because it relies on the floor module - only our code that interacts with it; we must extract the first w/h pair)', function () {
+      let testBidObject = {
+        mediaTypes: {
+          banner: {
+            sizes: [[300, 250], [300, 600]]
+          },
+          video: {
+            playerSize: [[640, 360]]
+          },
+          native: {
+            image: {
+              sizes: [[300, 250], [640, 480]]
+            }
+          }
+        },
+        getFloor: function(obj) {
+          return obj.size; // we just want to look at the size that was sent
+        }
+      };
+      let floorObject = spec.getFloorObjectForAuction(testBidObject);
+      expect(floorObject.banner).to.deep.equal([300, 250]);
+      expect(floorObject.video).to.deep.equal([640, 360]);
+      expect(floorObject.native).to.deep.equal([300, 250]);
     });
 
     it('handles schain object in each bidrequest (will be the same in each br)', function () {
