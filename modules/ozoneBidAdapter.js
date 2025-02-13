@@ -727,6 +727,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       return [];
     }
     let arrAllBids = [];
+    let labels;
     let enhancedAdserverTargeting = this.getWhitelabelConfigItem('ozone.enhancedAdserverTargeting');
     logInfo('enhancedAdserverTargeting', enhancedAdserverTargeting);
     if (typeof enhancedAdserverTargeting == 'undefined') {
@@ -821,6 +822,11 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
             if (bidderName.match(/^ozappnexus/)) {
               adserverTargeting[whitelabelPrefix + '_' + bidderName + '_sid'] = String(allBidsForThisBidid[bidderName].cid);
             }
+            // 20250211 - labels returned (array)
+            labels = deepAccess(allBidsForThisBidid[bidderName], 'ext.prebid.labels', null);
+            if (labels) {
+              adserverTargeting[whitelabelPrefix + '_' + bidderName + '_labels'] = labels.join(',');
+            }
           });
         } else {
           let perBidInfo = `${whitelabelBidder}.enhancedAdserverTargeting is set to false. No per-bid keys will be sent to adserver.`;
@@ -841,12 +847,13 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
         // add the cache targeting id because we can't set hb_cache_id - this is overridden by prebid core
         adserverTargeting[whitelabelPrefix + '_cache_id'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_id', 'no-id');
         adserverTargeting[whitelabelPrefix + '_uuid'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_uuid', 'no-id');
-        let labels = deepAccess(thisBid, 'ext.prebid.labels', null); // 20241105 - labels returned (array)
-        if (labels) {
-          adserverTargeting['labels'] = labels.join(',');
-        }
 
         if (enhancedAdserverTargeting) {
+          // 20250211 - labels returned (array)
+          labels = deepAccess(winningBid, 'ext.prebid.labels', null);
+          if (labels) {
+            adserverTargeting[whitelabelPrefix + '_labels'] = labels.join(',');
+          }
           adserverTargeting[whitelabelPrefix + '_imp_id'] = String(winningBid.impid);
           adserverTargeting[whitelabelPrefix + '_pb_v'] = OZONEVERSION;
           adserverTargeting[whitelabelPrefix + '_pb'] = winningBid.price;
@@ -858,7 +865,6 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
           logInfo('Filtering out adserver targeting keys not in the whitelist: ', ozWhitelistAdserverKeys);
           Object.keys(adserverTargeting).forEach(function(key) { if (ozWhitelistAdserverKeys.indexOf(key) === -1) { delete adserverTargeting[key]; } });
         }
-
         thisBid.adserverTargeting = adserverTargeting;
         arrAllBids.push(thisBid);
       }
