@@ -793,10 +793,9 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
         } else {
           // must be a banner
           this.setBidMediaTypeIfNotExist(thisBid, BANNER);
-          // 20250227 - trying this out for ozone banner ad cacheing
+          // 20250227 - trying this out for ozone banner ad cacheing - not necessarily going to be keeping it
           adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
           adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
-
         }
         if (enhancedAdserverTargeting) {
           // NOTE - string concatenation for multiple vars is (slightly) faster than templating : https://stackoverflow.com/questions/29055518/are-es6-template-literals-faster-than-string-concatenation
