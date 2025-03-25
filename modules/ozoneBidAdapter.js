@@ -86,7 +86,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '2.9.5';
+const OZONEVERSION = '3.0.0';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'venatus', gvlid: 524}],
@@ -766,6 +766,12 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
           if (videoContext === 'outstream') {
             logInfo('setting thisBid.mediaType = VIDEO & attach a renderer to OUTSTREAM video');
             thisBid.renderer = newRenderer(thisBid.bidId);
+
+            // 20250325 change - add these:
+            thisBid.vastUrl = `https://${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'missing_host')}${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'missing_path')}?id=${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_id', 'missing_id')}`;
+            adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
+            adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
+            thisBid.vastXml = thisBid.adm;
           } else {
             logInfo('not an outstream video, will set thisBid.mediaType = VIDEO and thisBid.vastUrl and not attach a renderer');
             // prebid core sends this as 'description_url' which is not useful for vast tag param placeholders
@@ -787,6 +793,10 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
         } else {
           // must be a banner
           this.setBidMediaTypeIfNotExist(thisBid, BANNER);
+          // 20250227 - trying this out for ozone banner ad cacheing
+          adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
+          adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
+
         }
         if (enhancedAdserverTargeting) {
           // NOTE - string concatenation for multiple vars is (slightly) faster than templating : https://stackoverflow.com/questions/29055518/are-es6-template-literals-faster-than-string-concatenation
@@ -1178,6 +1188,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
    * @private
    */
   _unpackVideoConfigIntoIABformat(ret, objConfig) {
+    // @todo 20250310 i propose to remove placement - all it does is causes no outstream bids to be returned. Everyone should be using plcmt
     let arrVideoKeysAllowed = ['mimes', 'minduration', 'maxduration', 'protocols', 'w', 'h', 'startdelay', 'placement', 'plcmt', 'linearity', 'skip', 'skipmin', 'skipafter', 'sequence', 'battr', 'maxextended', 'minbitrate', 'maxbitrate', 'boxingallowed', 'playbackmethod', 'playbackend', 'delivery', 'pos', 'companionad', 'api', 'companiontype'];
     for (const key in objConfig) {
       var found = false;
