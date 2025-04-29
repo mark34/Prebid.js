@@ -767,19 +767,22 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
             logInfo('setting thisBid.mediaType = VIDEO & attach a renderer to OUTSTREAM video');
             thisBid.renderer = newRenderer(thisBid.bidId);
 
-            // 20250325 change - add these:
-            thisBid.vastUrl = `https://${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'missing_host')}${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'missing_path')}?id=${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_id', 'missing_id')}`;
-            adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
-            adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
+            // 20250325 change - add these (and change id=hb_cache_id to uuid=hb_uuid):
+            thisBid.vastUrl = `https://${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'missing_host')}${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'missing_path')}?uuid=${deepAccess(thisBid, 'ext.prebid.targeting.hb_uuid', 'missing_uuid')}`;
+            // 20250326 try pulling in the whole targeting object (see below)
+            // adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
+            // adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
             thisBid.vastXml = thisBid.adm;
           } else {
-            logInfo('not an outstream video, will set thisBid.mediaType = VIDEO and thisBid.vastUrl and not attach a renderer');
+            logInfo('not an outstream video (presumably instream), will set thisBid.mediaType = VIDEO and thisBid.vastUrl and not attach a renderer');
             // prebid core sends this as 'description_url' which is not useful for vast tag param placeholders
-            thisBid.vastUrl = `https://${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'missing_host')}${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'missing_path')}?id=${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_id', 'missing_id')}`; // need to see if this works ok for ozone
+            // 20250325 change id=hb_cache_id to uuid=hb_uuid
+            thisBid.vastUrl = `https://${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'missing_host')}${deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'missing_path')}?uuid=${deepAccess(thisBid, 'ext.prebid.targeting.hb_uuid', 'missing_uuid')}`; // need to see if this works ok for ozone
             // thisBid.vastXml = thisBid.adm; // this needs the cache config in-page
             // add hb_cache_... keys/values to the server targeting
-            adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
-            adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
+            // 20250326 try pulling in the whole targeting object (see below)
+            // adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
+            // adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
 
             // 20220525 - this could be set by the auction endpoint, but however it's set, it gets prebid (auction.js) to add the targeting key hb_uuid which is used on the adserver to locate the cached ad
             if (!thisBid.hasOwnProperty('videoCacheKey')) {
@@ -794,9 +797,14 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
           // must be a banner
           this.setBidMediaTypeIfNotExist(thisBid, BANNER);
           // 20250227 - trying this out for ozone banner ad cacheing - not necessarily going to be keeping it
-          adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
-          adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
+          // 20250326 try pulling in the whole targeting object (see below)
+          // adserverTargeting['hb_cache_host'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_host', 'no-host');
+          // adserverTargeting['hb_cache_path'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_cache_path', 'no-path');
         }
+
+        // 20250326 - add all the cache keys, for future proofing
+        adserverTargeting = Object.assign(adserverTargeting, deepAccess(thisBid, 'ext.prebid.targeting', {}));
+
         if (enhancedAdserverTargeting) {
           // NOTE - string concatenation for multiple vars is (slightly) faster than templating : https://stackoverflow.com/questions/29055518/are-es6-template-literals-faster-than-string-concatenation
           let allBidsForThisBidid = ozoneGetAllBidsForBidId(thisBid.bidId, serverResponse.seatbid, defaultWidth, defaultHeight);
