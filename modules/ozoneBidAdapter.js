@@ -86,7 +86,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '3.0.0';
+const OZONEVERSION = '3.0.0-test-ozone_eid';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'venatus', gvlid: 524}],
@@ -183,6 +183,10 @@ export const spec = {
         this.propertyBag.whitelabel.cookieSyncUrl = ORIGIN_DEV + OZONECOOKIESYNC;
       }
     } catch (e) {}
+
+    if (bidderConfig.hasOwnProperty('eid')) {
+      this.propertyBag.whitelabel.eid = bidderConfig.eid;
+    }
     logInfo('whitelabel: ', this.propertyBag.whitelabel);
   },
   batchValueIsValid(batch) {
@@ -506,6 +510,7 @@ export const spec = {
       }
     }
 
+
     extObj[whitelabelBidder].pv = this.getPageId(); // attach the page ID that will be common to all auction calls for this page if refresh() is called
     let ozOmpFloorDollars = this.getWhitelabelConfigItem('ozone.oz_omp_floor'); // valid only if a dollar value (typeof == 'number')
     logInfo(`${whitelabelPrefix}_omp_floor dollar value = `, ozOmpFloorDollars);
@@ -527,7 +532,22 @@ export const spec = {
     // 20220628 - got rid of special treatment for adserver.org
     let userExtEids = deepAccess(validBidRequests, '0.userIdAsEids', []); // generate the UserIDs in the correct format for UserId module
 
-    // logInfo('getRefererInfo', getRefererInfo());
+
+
+
+
+      // 20250502 testing
+    let eid = this.getWhitelabelConfigItem('ozone.eid');
+    if(eid) {
+      logInfo('Found propertyBag eid', eid);
+      userExtEids.push(eid);
+    }
+
+
+
+
+
+      // logInfo('getRefererInfo', getRefererInfo());
     ozoneRequest.site = {
       'publisher': {'id': htmlParams.publisherId},
       'page': getRefererInfo().page,
