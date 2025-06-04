@@ -86,7 +86,7 @@ const ORIGIN_DEV = 'https://test.ozpr.net';
 // https://www.ardm.io/ozone/2.8.2/3-adslots-ozone-testpage-20220901-noheaders.html?pbjs_debug=true&ozstoredrequest=8000000328options
 // const OZONE_RENDERER_URL = 'https://www.ardm.io/ozone/2.2.0/testpages/test/ozone-renderer.js';
 // --- END REMOVE FOR RELEASE
-const OZONEVERSION = '3.0.0';
+const OZONEVERSION = '3.0.1';
 export const spec = {
   gvlid: 524,
   aliases: [{code: 'venatus', gvlid: 524}],
@@ -720,7 +720,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
   },
   /**
    * Interpret the response if the array contains BIDDER elements, in the format: [ [bidder1 bid 1, bidder1 bid 2], [bidder2 bid 1, bidder2 bid 2] ]
-   * NOte that in singleRequest mode this will be called once, else it will be called for each adSlot's response
+   * Note that in singleRequest mode this will be called once, else it will be called for each adSlot's response
    *
    * Updated April 2019 to return all bids, not just the one we decide is the 'winner'
    *
@@ -764,8 +764,11 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     let ozWhitelistAdserverKeys = this.getWhitelabelConfigItem('ozone.oz_whitelist_adserver_keys');
     let useOzWhitelistAdserverKeys = isArray(ozWhitelistAdserverKeys) && ozWhitelistAdserverKeys.length > 0;
 
-    for (let i = 0; i < serverResponse.seatbid.length; i++) {
-      let sb = serverResponse.seatbid[i];
+    // 20250604 - add a seatbid called 'ozone' which has all the winning bids for all oz....... bidders
+    let consolidatedSeatbids = this.getWhitelabelConfigItem('ozone.consolidateOzoneBids') !== false ? this.consolidateOzoneBids(serverResponse.seatbid) : serverResponse.seatbid;
+
+    for (let i = 0; i < consolidatedSeatbids.length; i++) {
+      let sb = consolidatedSeatbids[i];
       for (let j = 0; j < sb.bid.length; j++) {
         let thisRequestBid = this.getBidRequestForBidId(sb.bid[j].impid, request.bidderRequest.bids);
         logInfo(`seatbid:${i}, bid:${j} Going to set default w h for seatbid/bidRequest`, sb.bid[j], thisRequestBid);
@@ -827,7 +830,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
 
         if (enhancedAdserverTargeting) {
           // NOTE - string concatenation for multiple vars is (slightly) faster than templating : https://stackoverflow.com/questions/29055518/are-es6-template-literals-faster-than-string-concatenation
-          let allBidsForThisBidid = ozoneGetAllBidsForBidId(thisBid.bidId, serverResponse.seatbid, defaultWidth, defaultHeight);
+          let allBidsForThisBidid = ozoneGetAllBidsForBidId(thisBid.bidId, consolidatedSeatbids, defaultWidth, defaultHeight);
           // add all the winning & non-winning bids for this bidId:
           logInfo('Going to iterate allBidsForThisBidId', deepClone(allBidsForThisBidid));
           Object.keys(allBidsForThisBidid).forEach((bidderName, index, ar2) => {
@@ -874,7 +877,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
           }
         }
         // also add in the winning bid, to be sent to dfp
-        let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(thisBid.bidId, serverResponse.seatbid);
+        let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(thisBid.bidId, consolidatedSeatbids);
         // ensure width etc is in place
         winningBid = ozoneAddStandardProperties(winningBid, defaultWidth, defaultHeight);
 
@@ -908,27 +911,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     }
 
     let ret = arrAllBids;
-    // before returning - decide - was this a fledge-type auction (ae=1)?
-
-    // openx type of implementation
-    // let fledgeAuctionConfigs = utils.deepAccess(serverResponse, 'ext.fledge_auction_configs'); // we will need to adjust this to where ozone puts the object
-    // if (fledgeAuctionConfigs) {
-    //   fledgeAuctionConfigs = Object.entries(fledgeAuctionConfigs).map(([bidId, cfg]) => {
-    //     return {
-    //       bidId,
-    //       config: mergeDeep(Object.assign({}, cfg), {
-    //         auctionSignals: {
-    //           ortb2Imp: this.getBidRequestForBidId(bidId, request.bidderRequest.bids) /* this is the bid object; {banner/video, ext, id, placement, secure, tagid} */
-    //           // ortb2Imp: context.impContext[bidId]?.imp, /* from openx: this is literally the imp object for this bid */
-    //         },
-    //       }),
-    //     }
-    //   });
-    //   ret = {
-    //     bids: arrAllBids,
-    //     fledgeAuctionConfigs,
-    //   }
-    // }
+    // before returning - decide - was this a fledge-type auction?
 
     // ix type of implementation - this is more like what ozone want to do - don't modify the auctionConfigs
     // let fledgeAuctionConfigs = deepAccess(serverResponse, 'ext.protectedAudienceAuctionConfigs') || [];
@@ -953,6 +936,40 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     logInfo(`interpretResponse going to return at time ${endTime} (took ${endTime - startTime}ms) Time from buildRequests Start -> interpretRequests End = ${endTime - this.propertyBag.buildRequestsStart}ms`);
     logInfo('will return: ', deepClone(ret)); // this is ok to log because the renderer has not been attached yet
     return ret;
+  },
+  /**
+   * Convert all oz.... seatbids into one ozone seatbid
+   * @param seatbids
+   * @return {*[]}
+   */
+  consolidateOzoneBids(seatbids) {
+    // Create a map to store highest priced bid for each impid (only from oz-seats)
+    const highestBidsByImpid = new Map();
+
+    // Filter seatbids into oz and non-oz seats
+    const ozSeatbids = seatbids.filter(seatbid => seatbid.seat.startsWith('oz'));
+    const nonOzSeatbids = seatbids.filter(seatbid => !seatbid.seat.startsWith('oz'));
+
+    // Process all oz-seat bids to find highest prices
+    ozSeatbids.forEach(seatbid => {
+      seatbid.bid.forEach(bid => {
+        const currentHighest = highestBidsByImpid.get(bid.impid);
+
+        // If no bid exists for this impid or current bid price is higher
+        if (!currentHighest || bid.price > currentHighest.price) {
+          highestBidsByImpid.set(bid.impid, bid);
+        }
+      });
+    });
+
+    // Create the new ozone seatbid object
+    const ozoneSeatbid = {
+      seat: "ozone",
+      bid: Array.from(highestBidsByImpid.values())
+    };
+
+    // Return non-oz seatbids plus the new ozone seatbid
+    return [...nonOzSeatbids, ozoneSeatbid];
   },
   /**
    * Checks if auction config is valid
@@ -992,7 +1009,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
   },
   /**
    * If a bidder bids for > 1 size for an adslot, allow only the highest bid
-   * @param seatbid object (serverResponse.seatbid)
+   * @param seatbid object (serverResponse.seatbid[{}])
    */
   removeSingleBidderMultipleBids(seatbid) {
     var ret = [];
@@ -1386,8 +1403,8 @@ export function ozoneGetWinnerForRequestBid(requestBidId, serverResponseSeatBid)
 /**
  * Get a list of all the bids, for this bidId. The keys in the response object will be {seatname} OR {seatname}{w}x{h} if seatname already exists
  * @param matchBidId
- * @param serverResponseSeatBid
- * @returns {} = {ozone|320x600:{obj}, ozone|320x250:{obj}, appnexus|300x250:{obj}, ... }
+ * @param serverResponseSeatBid Array = the full seatbid array
+ * @returns Object = {ozone|320x600:{obj}, ozone|320x250:{obj}, appnexus|300x250:{obj}, ... }
  */
 export function ozoneGetAllBidsForBidId(matchBidId, serverResponseSeatBid, defaultWidth, defaultHeight) {
   let objBids = {};
