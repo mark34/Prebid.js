@@ -145,7 +145,7 @@ describe('nativoBidAdapterTests', function () {
           location: 'https://www.test.com?queryTest=true',
         },
       })
-      console.log(request.url) // eslint-disable-line no-console
+      console.log(request.url)  
       expect(request.url).to.include(encodeURIComponent('?queryTest=true'))
     })
 

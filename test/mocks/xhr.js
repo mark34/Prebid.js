@@ -236,7 +236,7 @@ beforeEach(function () {
 const bid = getUniqueIdentifierStr().substring(4);
 let fid = 0;
 
-/* eslint-disable */
+ 
 afterEach(function () {
   if (this?.currentTest?.state === 'failed') {
     const prepend = (() => {
@@ -275,4 +275,4 @@ afterEach(function () {
     });
   }
 });
-/* eslint-enable */
+ 

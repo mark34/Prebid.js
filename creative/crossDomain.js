@@ -57,7 +57,7 @@ export function renderer(win) {
           message: e?.message
         }
       });
-      // eslint-disable-next-line no-console
+
       e?.stack && console.error(e);
     }
 

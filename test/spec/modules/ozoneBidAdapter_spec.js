@@ -2259,6 +2259,421 @@ var multiResponse1 = {
   'headers': {}
 };
 
+
+var seatbidsForConsolidate = [{
+  "bid": [
+    {
+      "id": "beeswax/ozone",
+      "impid": "4df8b1b25d2fab",
+      "price": 6.92604,
+      "adm": "...",
+      "adid": "2:5437:23835:333",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-333",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 300,
+      "h": 250,
+      "ext": {
+        "prebid": {
+          "type": "banner"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "banner"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "553471502370d88",
+      "price": 6.92604,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-333",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 300,
+      "h": 250,
+      "ext": {
+        "prebid": {
+          "type": "banner"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "banner"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "75b01ef27adb488",
+      "price": 6.92604,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-333",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 300,
+      "h": 250,
+      "ext": {
+        "prebid": {
+          "type": "banner"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "banner"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "86186b5422efc28",
+      "price": 6.92604,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-333",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 300,
+      "h": 250,
+      "ext": {
+        "prebid": {
+          "type": "banner"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "banner"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "103cec669ac3a298",
+      "price": 6.92604,
+      "adm": "...",
+      "adid": "2:5437:23835:333",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-333",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 300,
+      "h": 250,
+      "ext": {
+        "prebid": {
+          "type": "banner"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "banner"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "11667046952e1848",
+      "price": 6.92604,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-333",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 300,
+      "h": 250,
+      "ext": {
+        "prebid": {
+          "type": "banner"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "banner"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "240b5a136326f38",
+      "price": 6.92604,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-333",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 300,
+      "h": 250,
+      "ext": {
+        "prebid": {
+          "type": "banner"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "banner"
+          }
+        }
+      }
+    }
+  ],
+  "seat": "ozbeeswax"
+}, {
+  "bid": [
+    {
+      "id": "beeswax/ozone",
+      "impid": "4df8b1b25d2fab",
+      "price": 27.70524,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-13885",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 640,
+      "h": 480,
+      "ext": {
+        "prebid": {
+          "targeting": {
+            "hb_size": "640x480",
+            "hb_creative_loadtype": "html",
+            "hb_pb": "20.00",
+            "hb_bidder": "ozbeeswaxv",
+            "hb_cache_id": "bb2535c6-ba42-47e7-ba4e-de71460646aa",
+            "hb_cache_host": "ampc.ozpr.cloud",
+            "hb_cache_path": "/cache",
+            "hb_uuid": "3b67a9a0-e8ce-4209-bab8-99cc1e962633"
+          },
+          "type": "video"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "video"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "75b01ef27adb488",
+      "price": 27.70524,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-13885",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 640,
+      "h": 480,
+      "ext": {
+        "prebid": {
+          "targeting": {
+            "hb_pb": "20.00",
+            "hb_bidder": "ozbeeswaxv",
+            "hb_size": "640x480",
+            "hb_cache_path": "/cache",
+            "hb_uuid": "666ec6d0-10ea-471d-aacc-fe2753cb0e10",
+            "hb_creative_loadtype": "html",
+            "hb_cache_id": "cbde8408-9ec1-4a24-85c9-0de76bcbc42a",
+            "hb_cache_host": "ampc.ozpr.cloud"
+          },
+          "type": "video"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "video"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "103cec669ac3a298",
+      "price": 27.70524,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-13885",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 640,
+      "h": 480,
+      "ext": {
+        "prebid": {
+          "targeting": {
+            "hb_size": "640x480",
+            "hb_cache_id": "50871f58-48d7-4e90-a393-a54a99245e47",
+            "hb_cache_host": "ampc.ozpr.cloud",
+            "hb_cache_path": "/cache",
+            "hb_pb": "20.00",
+            "hb_bidder": "ozbeeswaxv",
+            "hb_uuid": "fb05afde-3dc3-47d1-9cee-ecb11d0b4b45",
+            "hb_creative_loadtype": "html"
+          },
+          "type": "video"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "video"
+          }
+        }
+      }
+    }
+  ],
+  "seat": "ozbeeswaxv"
+}, {
+  "bid": [
+    {
+      "id": "beeswax/ozone",
+      "impid": "4df8b1b25d2fab",
+      "price": 30.70524,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-13885",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 640,
+      "h": 480,
+      "ext": {
+        "prebid": {
+          "targeting": {
+            "hb_size": "640x480",
+            "hb_creative_loadtype": "html",
+            "hb_pb": "20.00",
+            "hb_bidder": "ozbeeswaxv",
+            "hb_cache_id": "bb2535c6-ba42-47e7-ba4e-de71460646aa",
+            "hb_cache_host": "ampc.ozpr.cloud",
+            "hb_cache_path": "/cache",
+            "hb_uuid": "3b67a9a0-e8ce-4209-bab8-99cc1e962633"
+          },
+          "type": "video"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "video"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "75b01ef27adb488",
+      "price": 5.70524,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-13885",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 640,
+      "h": 480,
+      "ext": {
+        "prebid": {
+          "targeting": {
+            "hb_pb": "20.00",
+            "hb_bidder": "ozbeeswaxv",
+            "hb_size": "640x480",
+            "hb_cache_path": "/cache",
+            "hb_uuid": "666ec6d0-10ea-471d-aacc-fe2753cb0e10",
+            "hb_creative_loadtype": "html",
+            "hb_cache_id": "cbde8408-9ec1-4a24-85c9-0de76bcbc42a",
+            "hb_cache_host": "ampc.ozpr.cloud"
+          },
+          "type": "video"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "video"
+          }
+        }
+      }
+    },
+    {
+      "id": "beeswax/ozone",
+      "impid": "103cec669ac3a298",
+      "price": 60.70524,
+      "adm": "...",
+      "adomain": [
+        "sarr.properties"
+      ],
+      "cid": "5437",
+      "crid": "ozone-13885",
+      "cat": [
+        "IAB21"
+      ],
+      "w": 640,
+      "h": 480,
+      "ext": {
+        "prebid": {
+          "targeting": {
+            "hb_size": "640x480",
+            "hb_cache_id": "50871f58-48d7-4e90-a393-a54a99245e47",
+            "hb_cache_host": "ampc.ozpr.cloud",
+            "hb_cache_path": "/cache",
+            "hb_pb": "20.00",
+            "hb_bidder": "ozbeeswaxv",
+            "hb_uuid": "fb05afde-3dc3-47d1-9cee-ecb11d0b4b45",
+            "hb_creative_loadtype": "html"
+          },
+          "type": "video"
+        },
+        "bidder": {
+          "prebid": {
+            "type": "video"
+          }
+        }
+      }
+    }
+  ],
+  "seat": "someotherbidder"
+}];
+
 /*
 --------------------end of 2 slots, 2 ----------------------------
  */
@@ -3614,10 +4029,12 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[1].adserverTargeting, 'oz_appnexus_rid', '')).to.equal('');
     });
     it('should add oz_ozappnexus_sid (cid value) for all appnexus bids', function () {
+      config.setConfig({ozone: {consolidateOzoneBids: false}});
       const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
       let validres = JSON.parse(JSON.stringify(validResponse2BidsSameAdunit));
       const result = spec.interpretResponse(validres, request);
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_ozappnexus_sid')).to.equal(result[0].cid);
+      config.resetConfig();
     });
     it('should add oz_auc_id (response id value)', function () {
       const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
@@ -3626,14 +4043,17 @@ describe('ozone Adapter', function () {
       expect(utils.deepAccess(result[0].adserverTargeting, 'oz_auc_id')).to.equal(validBidResponse1adWith2Bidders.body.id);
     });
     it('should add unique adId values to each bid', function() {
+      config.setConfig({ozone: {consolidateOzoneBids: false}});
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
       let validres = JSON.parse(JSON.stringify(validResponse2BidsSameAdunit));
       const result = spec.interpretResponse(validres, request);
       expect(result.length).to.equal(1);
       expect(result[0]['price']).to.equal(0.9);
       expect(result[0]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('2899ec066a91ff8-0-oz-1');
+      config.resetConfig();
     });
     it('should correctly process an auction with 2 adunits & multiple bidders one of which bids for both adslots', function() {
+      config.setConfig({ozone: {consolidateOzoneBids: false}});
       let validres = JSON.parse(JSON.stringify(multiResponse1));
       let request = spec.buildRequests(multiRequest1, multiBidderRequest1);
       let result = spec.interpretResponse(validres, request);
@@ -3652,6 +4072,7 @@ describe('ozone Adapter', function () {
       expect(result[1]['impid']).to.equal('3025f169863b7f8');
       expect(result[1]['id']).to.equal('18552976939844681');
       expect(result[1]['adserverTargeting']['oz_ozappnexus_adId']).to.equal('3025f169863b7f8-0-oz-1');
+      config.resetConfig();
     });
     it('should add mediaType: banner for a banner ad', function () {
       const request = spec.buildRequests(validBidRequests, validBidderRequest);
@@ -4040,430 +4461,30 @@ describe('ozone Adapter', function () {
       config.resetConfig()
     })
 
-    it('should consolidate ozone bids', function () {
-      let seatBids = [
-        {
-          "bid": [
-            {
-              "id": "beeswax/ozone",
-              "impid": "4df8b1b25d2fab",
-              "price": 6.92604,
-              "adm": "...",
-              "adid": "2:5437:23835:333",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-333",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 300,
-              "h": 250,
-              "ext": {
-                "prebid": {
-                  "type": "banner"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "banner"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "553471502370d88",
-              "price": 6.92604,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-333",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 300,
-              "h": 250,
-              "ext": {
-                "prebid": {
-                  "type": "banner"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "banner"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "75b01ef27adb488",
-              "price": 6.92604,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-333",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 300,
-              "h": 250,
-              "ext": {
-                "prebid": {
-                  "type": "banner"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "banner"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "86186b5422efc28",
-              "price": 6.92604,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-333",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 300,
-              "h": 250,
-              "ext": {
-                "prebid": {
-                  "type": "banner"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "banner"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "103cec669ac3a298",
-              "price": 6.92604,
-              "adm": "...",
-              "adid": "2:5437:23835:333",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-333",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 300,
-              "h": 250,
-              "ext": {
-                "prebid": {
-                  "type": "banner"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "banner"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "11667046952e1848",
-              "price": 6.92604,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-333",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 300,
-              "h": 250,
-              "ext": {
-                "prebid": {
-                  "type": "banner"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "banner"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "240b5a136326f38",
-              "price": 6.92604,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-333",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 300,
-              "h": 250,
-              "ext": {
-                "prebid": {
-                  "type": "banner"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "banner"
-                  }
-                }
-              }
-            }
-          ],
-          "seat": "ozbeeswax"
-        },
-        {
-          "bid": [
-            {
-              "id": "beeswax/ozone",
-              "impid": "4df8b1b25d2fab",
-              "price": 27.70524,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-13885",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 640,
-              "h": 480,
-              "ext": {
-                "prebid": {
-                  "targeting": {
-                    "hb_size": "640x480",
-                    "hb_creative_loadtype": "html",
-                    "hb_pb": "20.00",
-                    "hb_bidder": "ozbeeswaxv",
-                    "hb_cache_id": "bb2535c6-ba42-47e7-ba4e-de71460646aa",
-                    "hb_cache_host": "ampc.ozpr.cloud",
-                    "hb_cache_path": "/cache",
-                    "hb_uuid": "3b67a9a0-e8ce-4209-bab8-99cc1e962633"
-                  },
-                  "type": "video"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "video"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "75b01ef27adb488",
-              "price": 27.70524,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-13885",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 640,
-              "h": 480,
-              "ext": {
-                "prebid": {
-                  "targeting": {
-                    "hb_pb": "20.00",
-                    "hb_bidder": "ozbeeswaxv",
-                    "hb_size": "640x480",
-                    "hb_cache_path": "/cache",
-                    "hb_uuid": "666ec6d0-10ea-471d-aacc-fe2753cb0e10",
-                    "hb_creative_loadtype": "html",
-                    "hb_cache_id": "cbde8408-9ec1-4a24-85c9-0de76bcbc42a",
-                    "hb_cache_host": "ampc.ozpr.cloud"
-                  },
-                  "type": "video"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "video"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "103cec669ac3a298",
-              "price": 27.70524,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-13885",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 640,
-              "h": 480,
-              "ext": {
-                "prebid": {
-                  "targeting": {
-                    "hb_size": "640x480",
-                    "hb_cache_id": "50871f58-48d7-4e90-a393-a54a99245e47",
-                    "hb_cache_host": "ampc.ozpr.cloud",
-                    "hb_cache_path": "/cache",
-                    "hb_pb": "20.00",
-                    "hb_bidder": "ozbeeswaxv",
-                    "hb_uuid": "fb05afde-3dc3-47d1-9cee-ecb11d0b4b45",
-                    "hb_creative_loadtype": "html"
-                  },
-                  "type": "video"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "video"
-                  }
-                }
-              }
-            }
-          ],
-          "seat": "ozbeeswaxv"
-        },
-        {
-          "bid": [
-            {
-              "id": "beeswax/ozone",
-              "impid": "4df8b1b25d2fab",
-              "price": 30.70524,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-13885",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 640,
-              "h": 480,
-              "ext": {
-                "prebid": {
-                  "targeting": {
-                    "hb_size": "640x480",
-                    "hb_creative_loadtype": "html",
-                    "hb_pb": "20.00",
-                    "hb_bidder": "ozbeeswaxv",
-                    "hb_cache_id": "bb2535c6-ba42-47e7-ba4e-de71460646aa",
-                    "hb_cache_host": "ampc.ozpr.cloud",
-                    "hb_cache_path": "/cache",
-                    "hb_uuid": "3b67a9a0-e8ce-4209-bab8-99cc1e962633"
-                  },
-                  "type": "video"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "video"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "75b01ef27adb488",
-              "price": 5.70524,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-13885",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 640,
-              "h": 480,
-              "ext": {
-                "prebid": {
-                  "targeting": {
-                    "hb_pb": "20.00",
-                    "hb_bidder": "ozbeeswaxv",
-                    "hb_size": "640x480",
-                    "hb_cache_path": "/cache",
-                    "hb_uuid": "666ec6d0-10ea-471d-aacc-fe2753cb0e10",
-                    "hb_creative_loadtype": "html",
-                    "hb_cache_id": "cbde8408-9ec1-4a24-85c9-0de76bcbc42a",
-                    "hb_cache_host": "ampc.ozpr.cloud"
-                  },
-                  "type": "video"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "video"
-                  }
-                }
-              }
-            },
-            {
-              "id": "beeswax/ozone",
-              "impid": "103cec669ac3a298",
-              "price": 60.70524,
-              "adm": "...",
-              "adomain": [
-                "sarr.properties"
-              ],
-              "cid": "5437",
-              "crid": "ozone-13885",
-              "cat": [
-                "IAB21"
-              ],
-              "w": 640,
-              "h": 480,
-              "ext": {
-                "prebid": {
-                  "targeting": {
-                    "hb_size": "640x480",
-                    "hb_cache_id": "50871f58-48d7-4e90-a393-a54a99245e47",
-                    "hb_cache_host": "ampc.ozpr.cloud",
-                    "hb_cache_path": "/cache",
-                    "hb_pb": "20.00",
-                    "hb_bidder": "ozbeeswaxv",
-                    "hb_uuid": "fb05afde-3dc3-47d1-9cee-ecb11d0b4b45",
-                    "hb_creative_loadtype": "html"
-                  },
-                  "type": "video"
-                },
-                "bidder": {
-                  "prebid": {
-                    "type": "video"
-                  }
-                }
-              }
-            }
-          ],
-          "seat": "someotherbidder"
-        }
-      ];
-      let consolidatedBids = spec.consolidateOzoneBids(seatBids);
+    it('function should unconditionally consolidate ozone bids correctly', function () {
+      let consolidatedBids = spec.consolidateOzoneBids(seatbidsForConsolidate);
       expect(consolidatedBids.length).to.equal(2);
       expect(consolidatedBids[0].seat).to.equal('someotherbidder');
       expect(consolidatedBids[0].bid.length).to.equal(3);
       expect(consolidatedBids[1].seat).to.equal('ozone');
       expect(consolidatedBids[1].bid.length).to.equal(7);
+      expect(consolidatedBids[1].bid[0].impid).to.equal('4df8b1b25d2fab');
+      expect(consolidatedBids[1].bid[0].price).to.equal(27.70524); // shold be the highest price for oz.... bidders, not the other one.
+    });
+    it('should consolidate ozone bids if there is no config ozone.consolidateOzoneBids', function () {
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      let validres = JSON.parse(JSON.stringify(validResponse2BidsSameAdunit));
+      const result = spec.interpretResponse(validres, request);
+      // NOTE oz_ozone_cid will not be appended because we only do this for ozappnexus
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_ozone_crid')).to.equal(result[0].crid);
+    });
+    it('should not consolidate ozone bids if config is set to false', function () {
+      config.setConfig({ozone: {consolidateOzoneBids: false}});
+      const request = spec.buildRequests(validBidRequestsMulti, validBidderRequest);
+      let validres = JSON.parse(JSON.stringify(validResponse2BidsSameAdunit));
+      const result = spec.interpretResponse(validres, request);
+      expect(utils.deepAccess(result[0].adserverTargeting, 'oz_ozappnexus_sid')).to.equal(result[0].cid);
+      config.resetConfig();
     });
   })
 });

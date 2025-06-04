@@ -269,21 +269,18 @@ export function canAccessWindowTop() {
  */
 export function logMessage() {
   if (debugTurnedOn() && consoleLogExists) {
-    // eslint-disable-next-line no-console
     console.log.apply(console, decorateLog(arguments, 'MESSAGE:'));
   }
 }
 
 export function logInfo() {
   if (debugTurnedOn() && consoleInfoExists) {
-    // eslint-disable-next-line no-console
     console.info.apply(console, decorateLog(arguments, 'INFO:'));
   }
 }
 
 export function logWarn() {
   if (debugTurnedOn() && consoleWarnExists) {
-    // eslint-disable-next-line no-console
     console.warn.apply(console, decorateLog(arguments, 'WARNING:'));
   }
   emitEvent(EVENTS.AUCTION_DEBUG, { type: 'WARNING', arguments: arguments });
@@ -291,7 +288,6 @@ export function logWarn() {
 
 export function logError() {
   if (debugTurnedOn() && consoleErrorExists) {
-    // eslint-disable-next-line no-console
     console.error.apply(console, decorateLog(arguments, 'ERROR:'));
   }
   emitEvent(EVENTS.AUCTION_DEBUG, { type: 'ERROR', arguments: arguments });

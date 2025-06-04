@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+
 import { ajax } from '../../../src/ajax.js';
 
 /**

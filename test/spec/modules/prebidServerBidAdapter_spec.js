@@ -2830,7 +2830,7 @@ describe('S2S Adapter', function () {
         ortb2Fragments
       }, bidRequests, cfg), bidRequests, addBidResponse, done, ajax);
       const parsedRequestBody = JSON.parse(server.requests[0].requestBody);
-      // eslint-disable-next-line no-console
+       
       console.log(parsedRequestBody);
       expect(parsedRequestBody.ext.prebid.bidderconfig).to.deep.equal(expected);
       expect(parsedRequestBody.site).to.deep.equal(commonContextExpected);

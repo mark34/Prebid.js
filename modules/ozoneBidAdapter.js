@@ -164,6 +164,13 @@ export const spec = {
       // set params value eg. {outstream: 3, instream: 1} - don't necessarily need both
       this.propertyBag.whitelabel.videoParams = bidderConfig.videoParams;
     }
+    if (bidderConfig.hasOwnProperty('consolidateOzoneBids')) {
+      // do we have to deactivate consolidating oz.... bidders?
+      if (bidderConfig.consolidateOzoneBids === false) {
+        this.propertyBag.whitelabel.consolidateOzoneBids = bidderConfig.consolidateOzoneBids;
+      }
+    }
+
     // you can force batching on by GET: ?batchRequests=number (not boolean)
     if (arr.hasOwnProperty('batchRequests')) {
       let getBatch = parseInt(arr.batchRequests);
@@ -766,6 +773,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
 
     // 20250604 - add a seatbid called 'ozone' which has all the winning bids for all oz....... bidders
     let consolidatedSeatbids = this.getWhitelabelConfigItem('ozone.consolidateOzoneBids') !== false ? this.consolidateOzoneBids(serverResponse.seatbid) : serverResponse.seatbid;
+    logInfo(`working with ${this.getWhitelabelConfigItem('ozone.consolidateOzoneBids') !== false ? 'consolidated' : 'un-consolidated'} seatbids:`, JSON.parse(JSON.stringify(consolidatedSeatbids)));
 
     for (let i = 0; i < consolidatedSeatbids.length; i++) {
       let sb = consolidatedSeatbids[i];
