@@ -288,12 +288,16 @@ function wrapWithHeaderAndFooter(dev, modules) {
 
 function bundle(dev, moduleArr) {
   var modules = moduleArr || helpers.getArgModules();
+  console.log(`modules = ${modules}`);
   var allModules = helpers.getModuleNames(modules);
   const sm = dev || argv.sourceMaps;
 
+  console.log(`modules is now = ${modules}, typeof modules = ${typeof modules}, length = ${modules.lenth}`);
   if (modules.length === 0) {
+    console.log(`explicitModules = ${explicitModules}, module = ${module}`);
     modules = allModules.filter(module => explicitModules.indexOf(module) === -1);
   } else {
+    console.log('modules length != 0 ');
     var diff = _.difference(modules, allModules);
     if (diff.length !== 0) {
       throw new gutil.PluginError({
