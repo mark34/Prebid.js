@@ -590,15 +590,9 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     let addOzOmpFloorDollars = typeof ozOmpFloorDollars === 'number';
     let ozWhitelistAdserverKeys = config.getConfig('ozone.oz_whitelist_adserver_keys');
     let useOzWhitelistAdserverKeys = isArray(ozWhitelistAdserverKeys) && ozWhitelistAdserverKeys.length > 0;
-    // 20250604 - add a seatbid called 'ozone' which has all the winning bids for all oz....... bidders
     //
-    let consolidatedSeatbids = config.getConfig('ozone.consolidateOzoneBids') !== false ? this.consolidateOzoneBids(serverResponse.seatbid) : serverResponse.seatbid;
-    logInfo(`working with ${config.getConfig('ozone.consolidateOzoneBids') !== false ? 'consolidated' : 'un-consolidated'} seatbids:`, JSON.parse(JSON.stringify(consolidatedSeatbids)));
-    for (let i = 0; i < consolidatedSeatbids.length; i++) {
-      let sb = consolidatedSeatbids[i];
-    //
-    // for (let i = 0; i < serverResponse.seatbid.length; i++) {
-    //   let sb = serverResponse.seatbid[i];
+    for (let i = 0; i < serverResponse.seatbid.length; i++) {
+      let sb = serverResponse.seatbid[i];
       for (let j = 0; j < sb.bid.length; j++) {
         let thisRequestBid = this.getBidRequestForBidId(sb.bid[j].impid, request.bidderRequest.bids);
         logInfo(`seatbid:${i}, bid:${j} Going to set default w h for seatbid/bidRequest`, sb.bid[j], thisRequestBid);
@@ -647,7 +641,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
         if (enhancedAdserverTargeting) {
           // add all the winning & non-winning bids for this bidId:
           // NOTE - string concatenation for multiple vars is (slightly) faster than templating : https://stackoverflow.com/questions/29055518/are-es6-template-literals-faster-than-string-concatenation
-          let allBidsForThisBidid = ozoneGetAllBidsForBidId(thisBid.bidId, consolidatedSeatbids, defaultWidth, defaultHeight);
+          let allBidsForThisBidid = ozoneGetAllBidsForBidId(thisBid.bidId, serverResponse.seatbid, defaultWidth, defaultHeight);
           logInfo('Going to iterate allBidsForThisBidId', deepClone(allBidsForThisBidid));
           Object.keys(allBidsForThisBidid).forEach((seat, index, ar2) => {
             logInfo(`adding adserverTargeting for ${seat} for bidId ${thisBid.bidId}`);
@@ -691,7 +685,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
           }
         }
         // also add in the winning bid, to be sent to dfp
-        let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(thisBid.bidId, consolidatedSeatbids);
+        let {seat: winningSeat, bid: winningBid} = ozoneGetWinnerForRequestBid(thisBid.bidId, serverResponse.seatbid);
         // ensure width etc is in place
         winningBid = ozoneAddStandardProperties(winningBid, defaultWidth, defaultHeight);
         adserverTargeting[prefix + '_auc_id'] = String(aucId); // was request.bidderRequest.auctionId
@@ -743,40 +737,6 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     logInfo(`interpretResponse going to return at time ${endTime} (took ${endTime - startTime}ms) Time from buildRequests Start -> interpretRequests End = ${endTime - this.propertyBag.buildRequestsStart}ms`);
     logInfo('will return: ', deepClone(ret)); // this is ok to log because the renderer has not been attached yet
     return ret;
-  },
-  /**
-   * Convert all oz.... seatbids into one ozone seatbid
-   * @param seatbids
-   * @return {*[]}
-   */
-  consolidateOzoneBids(seatbids) {
-    // Create a map to store highest priced bid for each impid (only from oz-seats)
-    const highestBidsByImpid = new Map();
-
-    // Filter seatbids into oz and non-oz seats
-    const ozSeatbids = seatbids.filter(seatbid => seatbid.seat.startsWith('oz'));
-    const nonOzSeatbids = seatbids.filter(seatbid => !seatbid.seat.startsWith('oz'));
-
-    // Process all oz-seat bids to find highest prices
-    ozSeatbids.forEach(seatbid => {
-      seatbid.bid.forEach(bid => {
-        const currentHighest = highestBidsByImpid.get(bid.impid);
-
-        // If no bid exists for this impid or current bid price is higher
-        if (!currentHighest || bid.price > currentHighest.price) {
-          highestBidsByImpid.set(bid.impid, bid);
-        }
-      });
-    });
-
-    // Create the new ozone seatbid object
-    const ozoneSeatbid = {
-      seat: "ozone",
-      bid: Array.from(highestBidsByImpid.values())
-    };
-
-    // Return non-oz seatbids plus the new ozone seatbid
-    return [...nonOzSeatbids, ozoneSeatbid];
   },
   setBidMediaTypeIfNotExist(thisBid, mediaType) {
     if (!thisBid.hasOwnProperty('mediaType')) {
