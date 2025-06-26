@@ -337,10 +337,10 @@ export const spec = {
       }
       let transactionId = deepAccess(ozoneBidRequest, 'ortb2Imp.ext.tid');
       if (transactionId) {
-        obj.ext[bidderKey].tid = transactionId; // this is the transactionId PER adUnit, common across bidders for this unit. Changed to tid 20250617
+        obj.ext.tid = transactionId; // this is the transactionId PER adUnit, common across bidders for this unit. Changed to tid 20250617. moved up out of .ozone. 20250624
       }
       if (auctionId) {
-        obj.ext[bidderKey].auctionId = auctionId; // we were sent a valid auctionId to use - this will also be used as the root id value for the request
+        obj.ext.auctionId = auctionId; // we were sent a valid auctionId to use - this will also be used as the root id value for the request. moved up out of .ozone. 20250624
       }
       // 20240227 - adding support for fledge
       if (fledgeEnabled) { // fledge is enabled at some config level - pbjs.setBidderConfig or pbjs.setConfig

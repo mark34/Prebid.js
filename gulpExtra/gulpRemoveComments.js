@@ -3,6 +3,12 @@ const strip = require('gulp-strip-comments')
 const rename = require('gulp-rename')
 const replace = require('gulp-replace')
 
+/*
+To run this :
+
+gulp removeComments
+ */
+
 gulp.task('removeComments', function () {
   return gulp.src(['./modules/ozoneBidAdapter.js', './test/spec/modules/ozoneBidAdapter_spec.js'])
     .pipe(strip())

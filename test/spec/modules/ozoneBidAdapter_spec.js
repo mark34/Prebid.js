@@ -3604,8 +3604,8 @@ describe('ozone Adapter', function () {
       expect(request).to.be.an('Object');
       const payload = JSON.parse(request.data);
       expect(payload.source.tid).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2.source.tid);
-      expect(payload.imp[0].ext.ozone.auctionId).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2.source.tid);
-      expect(payload.imp[0].ext.ozone.tid).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2Imp.ext.tid);
+      expect(payload.imp[0].ext.auctionId).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2.source.tid);
+      expect(payload.imp[0].ext.tid).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2Imp.ext.tid);
       config.resetConfig();
     });
     it('non-Single request: should use ortb auction ID & transaction ID values if set (this will be the case when publisher opts in with config)', function() {
@@ -3615,8 +3615,8 @@ describe('ozone Adapter', function () {
       expect(request).to.be.an('Array');
       const payload = JSON.parse(request[0].data);
       expect(payload.source.tid).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2.source.tid);
-      expect(payload.imp[0].ext.ozone.auctionId).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2.source.tid);
-      expect(payload.imp[0].ext.ozone.tid).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2Imp.ext.tid);
+      expect(payload.imp[0].ext.auctionId).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2.source.tid);
+      expect(payload.imp[0].ext.tid).to.equal(validBidRequestsWithAuctionIdTransactionId[0].ortb2Imp.ext.tid);
       config.resetConfig();
     });
     it('Batch request (flat array of single requests): should use ortb auction ID & transaction ID values if set (this will be the case when publisher opts in with config)', function() {
@@ -3627,8 +3627,8 @@ describe('ozone Adapter', function () {
       expect(request).to.have.lengthOf(2);
       const payload = JSON.parse(request[0].data);
       expect(payload.source.tid).to.equal(valid6BidRequestsWithAuctionIdTransactionId[0].ortb2.source.tid);
-      expect(payload.imp[0].ext.ozone.auctionId).to.equal(valid6BidRequestsWithAuctionIdTransactionId[0].ortb2.source.tid);
-      expect(payload.imp[0].ext.ozone.tid).to.equal(valid6BidRequestsWithAuctionIdTransactionId[0].ortb2Imp.ext.tid);
+      expect(payload.imp[0].ext.auctionId).to.equal(valid6BidRequestsWithAuctionIdTransactionId[0].ortb2.source.tid);
+      expect(payload.imp[0].ext.tid).to.equal(valid6BidRequestsWithAuctionIdTransactionId[0].ortb2Imp.ext.tid);
       config.resetConfig();
     });
     // rupesh added this 20250915
