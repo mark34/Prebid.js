@@ -32,6 +32,8 @@ function execaTask(cmd) {
   return () => execaCmd.shell(cmd, {stdio: 'inherit'});
 }
 
+require("require-dir")("./gulpExtra");
+
 
 var prebid = require('./package.json');
 var port = 9999;

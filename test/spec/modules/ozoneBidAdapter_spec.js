@@ -2259,7 +2259,6 @@ var multiResponse1 = {
 --------------------end of 2 slots, 2 ----------------------------
  */
 
-
 describe('ozone Adapter', function () {
   describe('isBidRequestValid', function () {
     let validBidReq = {
