@@ -2682,8 +2682,8 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
       const payload = JSON.parse(request.data);
       // changed 20250617 with toOrtb25(ozoneRequest);
-      expect(payload.regs.ext.gpp).to.equal(gppString);
-      expect(payload.regs.ext.gpp_sid).to.have.same.members(gppSections);
+      expect(payload.regs.gpp).to.equal(gppString);
+      expect(payload.regs.gpp_sid).to.have.same.members(gppSections);
     });
     it('should not set gpp and gpp_sid keys when not available', function() {
       const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);

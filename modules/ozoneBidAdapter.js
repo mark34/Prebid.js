@@ -15,7 +15,6 @@ import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
 import {getRefererInfo} from '../src/refererDetection.js';
-import {toOrtb25} from '../libraries/ortb2.5Translator/translator.js';
 const BIDDER_CODE = 'ozone';
 // --- START REMOVE FOR RELEASE
 
@@ -49,7 +48,7 @@ const AUCTIONURI = '/openrtb2/auction';
 const OZONECOOKIESYNC = '/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 const KEY_PREFIX = 'oz';
-const OZONEVERSION = '4.0.0';
+const OZONEVERSION = '4.0.1';
 export const spec = {
   // can be added for testing - maybe that onAdRenderSucceeded might be useful for tracking.
   // onBidWon: function(bid, options) { LogInfo('onBidWon', JSON.stringify(bid) ); },
@@ -452,7 +451,6 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
         }
         ozoneRequest.imp = tosendtags.slice(i, i + batchRequestsVal);
         ozoneRequest.ext = extObj;
-        toOrtb25(ozoneRequest); // 20250617 pat/refactor added
         if (ozoneRequest.imp.length > 0) {
           arrRet.push({
             method: 'POST',
@@ -472,7 +470,6 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       ozoneRequest.id = generateUUID(); // Unique ID of the bid request, provided by the exchange. (REQUIRED)
       ozoneRequest.imp = tosendtags;
       ozoneRequest.ext = extObj;
-      toOrtb25(ozoneRequest); // 20250617 pat/refactor added
       deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
       // https://www.iab.com/wp-content/uploads/2016/03/OpenRTB-API-Specification-Version-2-5-FINAL.pdf
       if (auctionId) {
@@ -500,7 +497,6 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       if (auctionId) {
         deepSetValue(ozoneRequestSingle, 'source.tid', auctionId);
       }
-      toOrtb25(ozoneRequestSingle); // 20250617 pat/refactor added
       return {
         method: 'POST',
         url: this.getAuctionUrl(),
