@@ -1,6 +1,13 @@
-import {expect} from 'chai';
-import {spec, BIDDER_CODE, ADPLUS_ENDPOINT, } from 'modules/adplusBidAdapter.js';
-import {newBidder} from 'src/adapters/bidderFactory.js';
+import { expect } from 'chai';
+import { spec, BIDDER_CODE, ADPLUS_ENDPOINT, } from 'modules/adplusBidAdapter.js';
+import { newBidder } from 'src/adapters/bidderFactory.js';
+import { config } from 'src/config.js';
+import { getGlobal } from 'src/prebidGlobal.js';
+import { adplusIdSystemSubmodule } from '../../../modules/adplusIdSystem.js';
+import { init, setSubmoduleRegistry } from 'modules/userId/index.js';
+import { server } from 'test/mocks/xhr.js';
+
+const TEST_UID = "test-uid-value";
 
 describe('AplusBidAdapter', function () {
   const adapter = newBidder(spec);
@@ -13,7 +20,7 @@ describe('AplusBidAdapter', function () {
 
   describe('isBidRequestValid', function () {
     it('should return true when required params found', function () {
-      let validRequest = {
+      const validRequest = {
         mediaTypes: {
           banner: {
             sizes: [[300, 250]]
@@ -28,7 +35,7 @@ describe('AplusBidAdapter', function () {
     });
 
     it('should return false when required params are not passed', function () {
-      let validRequest = {
+      const validRequest = {
         mediaTypes: {
           banner: {
             sizes: [[300, 250]]
@@ -42,7 +49,7 @@ describe('AplusBidAdapter', function () {
     });
 
     it('should return false when required param types are wrong', function () {
-      let validRequest = {
+      const validRequest = {
         mediaTypes: {
           banner: {
             sizes: [[300, 250]]
@@ -57,7 +64,7 @@ describe('AplusBidAdapter', function () {
     });
 
     it('should return false when size is not exists', function () {
-      let validRequest = {
+      const validRequest = {
         params: {
           inventoryId: 30,
           adUnitId: '1',
@@ -67,7 +74,7 @@ describe('AplusBidAdapter', function () {
     });
 
     it('should return false when size is wrong', function () {
-      let validRequest = {
+      const validRequest = {
         mediaTypes: {
           banner: {
             sizes: [[300]]
@@ -83,7 +90,7 @@ describe('AplusBidAdapter', function () {
   });
 
   describe('buildRequests', function () {
-    let validRequest = [
+    const validRequest = [
       {
         bidder: BIDDER_CODE,
         mediaTypes: {
@@ -95,11 +102,23 @@ describe('AplusBidAdapter', function () {
           inventoryId: '-1',
           adUnitId: '-3',
         },
-        bidId: '2bdcb0b203c17d'
+        bidId: '2bdcb0b203c17d',
+        userId: {
+          adplusId: TEST_UID
+        },
+        userIdAsEids: [{
+          source: "ad-plus.com.tr",
+          uids: [
+            {
+              atype: 1,
+              id: TEST_UID
+            }
+          ]
+        }]
       },
     ];
 
-    let bidderRequest = {
+    const bidderRequest = {
       refererInfo: {
         referer: 'https://test.domain'
       }
@@ -107,7 +126,7 @@ describe('AplusBidAdapter', function () {
 
     it('bidRequest HTTP method', function () {
       const request = spec.buildRequests(validRequest, bidderRequest);
-      expect(request[0].method).to.equal('GET');
+      expect(request[0].method).to.equal('POST');
     });
 
     it('bidRequest url', function () {
@@ -119,11 +138,21 @@ describe('AplusBidAdapter', function () {
       const request = spec.buildRequests(validRequest, bidderRequest);
 
       expect(request[0].data.bidId).to.equal('2bdcb0b203c17d');
-      expect(request[0].data.inventoryId).to.equal('-1');
-      expect(request[0].data.adUnitId).to.equal('-3');
+      expect(request[0].data.inventoryId).to.equal(-1);
+      expect(request[0].data.adUnitId).to.equal(-3);
       expect(request[0].data.adUnitWidth).to.equal(300);
       expect(request[0].data.adUnitHeight).to.equal(250);
       expect(request[0].data.sdkVersion).to.equal('1');
+      expect(request[0].data.adplusUid).to.equal(TEST_UID);
+      expect(request[0].data.eids).to.deep.equal([{
+        source: "ad-plus.com.tr",
+        uids: [
+          {
+            atype: 1,
+            id: TEST_UID
+          }
+        ]
+      }]);
       expect(typeof request[0].data.session).to.equal('string');
       expect(request[0].data.session).length(36);
       expect(request[0].data.interstitial).to.equal(0);
@@ -155,7 +184,7 @@ describe('AplusBidAdapter', function () {
       bidId: '2bdcb0b203c17d',
     };
     const bidRequest = {
-      'method': 'GET',
+      'method': 'POST',
       'url': ADPLUS_ENDPOINT,
       'data': requestData,
     };
@@ -208,6 +237,55 @@ describe('AplusBidAdapter', function () {
       expect(result[0].ttl).to.equal(300);
       expect(result[0].meta.advertiserDomains).to.deep.equal(['advertiser.com']);
       expect(result[0].meta.secondaryCatIds).to.deep.equal(['IAB-111']);
+    });
+  });
+
+  describe('pbjs "get id" methods', () => {
+    beforeEach(() => {
+      init(config);
+      setSubmoduleRegistry([adplusIdSystemSubmodule]);
+    });
+
+    describe('pbjs.getUserIds()', () => {
+      it('should return the IDs in the correct schema from our id server', async () => {
+        config.setConfig({
+          userSync: {
+            userIds: [{
+              name: 'adplusId',
+            }]
+          }
+        });
+
+        const userIdPromise = getGlobal().getUserIdsAsync();
+
+        // Wait briefly to let the fetch request get registered
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const request = server.requests[0];
+        expect(request).to.exist;
+
+        request.respond(
+          200,
+          { 'Content-Type': 'application/json' },
+          JSON.stringify({ uid: TEST_UID })
+        );
+
+        await userIdPromise;
+
+        expect(getGlobal().getUserIds()).to.deep.equal({
+          adplusId: TEST_UID
+        });
+        const eids = getGlobal().getUserIdsAsEids();
+        expect(eids[0]).to.deep.equal({
+          source: "ad-plus.com.tr",
+          uids: [
+            {
+              atype: 1,
+              id: TEST_UID
+            }
+          ]
+        });
+      });
     });
   });
 });
