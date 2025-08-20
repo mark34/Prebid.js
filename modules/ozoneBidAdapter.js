@@ -15,6 +15,7 @@ import {config} from '../src/config.js';
 import {getPriceBucketString} from '../src/cpmBucketManager.js';
 import { Renderer } from '../src/Renderer.js';
 import {getRefererInfo} from '../src/refererDetection.js';
+import {toOrtb25} from "../libraries/ortb2.5Translator/translator.js";
 const BIDDER_CODE = 'ozone';
 // --- START REMOVE FOR RELEASE
 
@@ -411,8 +412,8 @@ export const spec = {
     // coded from https://docs.prebid.org/dev-docs/modules/consentManagementGpp.html
     if (bidderRequest?.ortb2?.regs?.gpp) {
       // 20240604 - Pat - regs.ext.gpp -> regs.gpp
-      deepSetValue(ozoneRequest, 'regs.gpp', bidderRequest.ortb2.regs.gpp);
-      deepSetValue(ozoneRequest, 'regs.gpp_sid', bidderRequest.ortb2.regs.gpp_sid);
+      deepSetValue(ozoneRequest, 'regs.ext.gpp', bidderRequest.ortb2.regs.gpp);
+      deepSetValue(ozoneRequest, 'regs.ext.gpp_sid', bidderRequest.ortb2.regs.gpp_sid);
     }
     if (schain) { // we set this while iterating over the bids
       logInfo('schain found');
@@ -451,6 +452,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
         }
         ozoneRequest.imp = tosendtags.slice(i, i + batchRequestsVal);
         ozoneRequest.ext = extObj;
+        toOrtb25(ozoneRequest);
         if (ozoneRequest.imp.length > 0) {
           arrRet.push({
             method: 'POST',
@@ -470,6 +472,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       ozoneRequest.id = generateUUID(); // Unique ID of the bid request, provided by the exchange. (REQUIRED)
       ozoneRequest.imp = tosendtags;
       ozoneRequest.ext = extObj;
+      toOrtb25(ozoneRequest);
       deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
       // https://www.iab.com/wp-content/uploads/2016/03/OpenRTB-API-Specification-Version-2-5-FINAL.pdf
       if (auctionId) {
@@ -497,6 +500,7 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       if (auctionId) {
         deepSetValue(ozoneRequestSingle, 'source.tid', auctionId);
       }
+      toOrtb25(ozoneRequest);
       return {
         method: 'POST',
         url: this.getAuctionUrl(),
@@ -840,10 +844,9 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     // much simpler code, iterate over eids BUT note that eids have different keys
     // see the table on https://docs.prebid.org/dev-docs/modules/userId.html
     let ret = {};
-    if (!bidRequest.hasOwnProperty('userIdAsEids')) {
-      logInfo('findAllUserIdsFromEids - no bidRequest.userIdAsEids object was found on the bid!');
-      this.tryGetPubCidFromOldLocation(ret, bidRequest); // legacy
-      return ret;
+    // 20250819 change - venatus noticed problems when userIdAsEids was present but not an array. Prebid fixed this Aug 2025 but this was implemented here just in case an older version of pb core is being used.
+    if (!Array.isArray(bidRequest.userIdAsEids)) {
+      bidRequest.userIdAsEids = [];
     }
     // note - removed the keymap. We are no longer mapping the eid ID back to being userId
     /**

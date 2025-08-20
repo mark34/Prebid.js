@@ -2682,8 +2682,8 @@ describe('ozone Adapter', function () {
       const request = spec.buildRequests(validBidRequestsNoSizes, bidderRequest);
       const payload = JSON.parse(request.data);
       // changed 20250617 with toOrtb25(ozoneRequest);
-      expect(payload.regs.gpp).to.equal(gppString);
-      expect(payload.regs.gpp_sid).to.have.same.members(gppSections);
+      expect(payload.regs.ext.gpp).to.equal(gppString);
+      expect(payload.regs.ext.gpp_sid).to.have.same.members(gppSections);
     });
     it('should not set gpp and gpp_sid keys when not available', function() {
       const request = spec.buildRequests(validBidRequestsNoSizes, validBidderRequest);
@@ -3726,6 +3726,54 @@ describe('ozone Adapter', function () {
       let ret = spec.getLoggableBidObject(obj);
       expect(ret).to.not.have.own.property('renderer');
       expect(ret.h).to.equal(100);
+    });
+  });
+  describe('getUserIdFromEids', function() {
+    it('should iterate over userIdAsEids when it is an object', function () {
+      let bid = { userIdAsEids:
+            [
+          {
+            source: 'pubcid.org',
+            uids: [{
+              id: 'some-random-id-value',
+              atype: 1
+            }]
+          },
+
+          {
+            source: 'adserver.org',
+            uids: [{
+              id: 'some-random-id-value',
+              atype: 1,
+              ext: {
+                rtiPartner: 'TDID'
+              }
+            }]
+          }
+        ]
+      };
+      let response = spec.findAllUserIdsFromEids(bid);
+      expect(Object.keys(response).length).to.equal(2);
+    });
+    it('should have no problem with userIdAsEids when it is present but null', function () {
+      let bid = { userIdAsEids: null };
+      let response = spec.findAllUserIdsFromEids(bid);
+      expect(Object.keys(response).length).to.equal(0);
+    });
+    it('should have no problem with userIdAsEids when it is present but undefined', function () {
+      let bid = { userIdAsEids: undefined };
+      let response = spec.findAllUserIdsFromEids(bid);
+      expect(Object.keys(response).length).to.equal(0);
+    });
+    it('should have no problem with userIdAsEids when it is absent', function () {
+      let bid = {};
+      let response = spec.findAllUserIdsFromEids(bid);
+      expect(Object.keys(response).length).to.equal(0);
+    });
+    it('find pubcid in the old location when there are eids and when there arent', function () {
+      let bid = {crumbs: {pubcid: 'some-random-id-value' }};
+      let response = spec.findAllUserIdsFromEids(bid);
+      expect(Object.keys(response).length).to.equal(1);
     });
   });
 });
