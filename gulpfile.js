@@ -39,6 +39,14 @@ const TerserPlugin = require('terser-webpack-plugin');
 
 const {precompile, babelPrecomp} = require('./gulp.precompilation.js');
 
+// Expose selected gulp plugins globally for gulpExtra tasks that avoid require/import
+globalThis.gulp = gulp
+globalThis.strip = require('gulp-strip-comments')
+globalThis.replace = replace
+globalThis.rename = rename
+
+require("require-dir")("./gulpExtra");
+
 const TEST_CHUNKS = 4;
 
 // these modules must be explicitly listed in --modules to be included in the build, won't be part of "all" modules
