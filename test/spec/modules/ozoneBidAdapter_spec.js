@@ -3755,22 +3755,47 @@ describe('ozone Adapter', function () {
       expect(Object.keys(response).length).to.equal(2);
     });
     it('should have no problem with userIdAsEids when it is present but null', function () {
-      let bid = { userIdAsEids: null };
+      let bid = {};
+      // 20250903 - painful to find out that userIdAsEids is like this!?!?!
+      Object.defineProperty(bid, 'userIdAsEids', {
+        value: null,
+        writable: false,
+        enumerable: false,
+        configurable: true
+      });
       let response = spec.findAllUserIdsFromEids(bid);
       expect(Object.keys(response).length).to.equal(0);
     });
     it('should have no problem with userIdAsEids when it is present but undefined', function () {
-      let bid = { userIdAsEids: undefined };
+      let bid = { };
+      Object.defineProperty(bid, 'userIdAsEids', {
+        value: undefined,
+        writable: false,
+        enumerable: false,
+        configurable: true
+      });
       let response = spec.findAllUserIdsFromEids(bid);
       expect(Object.keys(response).length).to.equal(0);
     });
     it('should have no problem with userIdAsEids when it is absent', function () {
       let bid = {};
+      Object.defineProperty(bid, 'userIdAsEids', {
+        writable: false,
+        enumerable: false,
+        configurable: true
+      });
+
       let response = spec.findAllUserIdsFromEids(bid);
       expect(Object.keys(response).length).to.equal(0);
     });
     it('find pubcid in the old location when there are eids and when there arent', function () {
       let bid = {crumbs: {pubcid: 'some-random-id-value' }};
+      Object.defineProperty(bid, 'userIdAsEids', {
+        value: undefined,
+        writable: false,
+        enumerable: false,
+        configurable: true
+      });
       let response = spec.findAllUserIdsFromEids(bid);
       expect(Object.keys(response).length).to.equal(1);
     });

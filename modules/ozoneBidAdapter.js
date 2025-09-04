@@ -49,7 +49,7 @@ const AUCTIONURI = '/openrtb2/auction';
 const OZONECOOKIESYNC = '/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 const KEY_PREFIX = 'oz';
-const OZONEVERSION = '4.0.1';
+const OZONEVERSION = '4.0.2';
 export const spec = {
   // can be added for testing - maybe that onAdRenderSucceeded might be useful for tracking.
   // onBidWon: function(bid, options) { LogInfo('onBidWon', JSON.stringify(bid) ); },
@@ -843,13 +843,36 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
    *  @returns map
    */
   findAllUserIdsFromEids(bidRequest) {
-    // much simpler code, iterate over eids BUT note that eids have different keys
+    // ALERT - you cannot set userIdAsEids on bidRequest!
+    // Object.getOwnPropertyDescriptor(o, 'userIdAsEids') shows
+    // {
+    //     "enumerable": false,
+    //     "configurable": true,
+    //     "get": f,
+    //     "set": undefined
+    // }
+    // this.debugBidRequest(bidRequest);
+    //
+    // Much simpler code than before, iterate over eids BUT note that eids have different keys
     // see the table on https://docs.prebid.org/dev-docs/modules/userId.html
+    // logInfo('findAllUserIdsFromEids working with bidRequest', bidRequest);
+    // this.debugBidRequest(bidRequest);
+
     const ret = {};
     // 20250819 change - venatus noticed problems when userIdAsEids was present but not an array. Prebid fixed this Aug 2025 but this was implemented here just in case an older version of pb core is being used.
-    if (!Array.isArray(bidRequest.userIdAsEids)) {
-      bidRequest.userIdAsEids = [];
-    }
+    let userIdAsEids = bidRequest.userIdAsEids || [];
+
+    // good solution but this is not testable!!
+    // https://docs.prebid.org/dev-docs/publisher-api-reference/getUserIdsAsEids.html - this will return an array. Except it doesn't always.
+    // if (typeof getGlobal().getUserIdsAsEids === 'function') {
+    //   userIdAsEids = getGlobal().getUserIdsAsEids();
+    //   logInfo('findAllUserIdsFromEids got userIdAsEids from global getUserIdsAsEids', userIdAsEids);
+    // }
+
+    // if (!Array.isArray(userIdAsEids)) {
+    //   logInfo('findAllUserIdsFromEids setting userIdAsEids to an empty array');
+    //   userIdAsEids = [];
+    // }
     // note - removed the keymap. We are no longer mapping the eid ID back to being userId
     /**
      * userIdAsEids =
@@ -863,11 +886,30 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
      *     ]
      * }, ... ]
      */
-    for (const obj of bidRequest.userIdAsEids) {
+    for (const obj of userIdAsEids) {
       ret[obj.source] = deepAccess(obj, 'uids.0.id');
     }
     this.tryGetPubCidFromOldLocation(ret, bidRequest); // legacy
     return ret;
+  },
+  debugBidRequest(o) {
+    const hasOwn = Object.hasOwn(o, 'userIdAsEids');
+    const inChain = 'userIdAsEids' in o;
+    const ownDesc = Object.getOwnPropertyDescriptor(o, 'userIdAsEids');
+    const proto = Object.getPrototypeOf(o);
+    const protoDesc = proto && Object.getOwnPropertyDescriptor(proto, 'userIdAsEids');
+    const hasToJSON = typeof o?.toJSON === 'function';
+    logInfo({info: "***** DEBUG object *****",
+      extensible: Object.isExtensible(o),
+      hasOwn,
+      inChain,
+      ownDesc,      // if exists but enumerable:false, stringify will hide it
+      protoDesc,    // if accessor with {get: f, set: undefined}, assignment won’t create an own prop
+      hasToJSON,
+      keys: Object.keys(o),
+      reflectSetOk: Reflect.set(o, '___probe', 1, o),
+      hasProbe: Object.hasOwn(o, '___probe')
+    });
   },
   tryGetPubCidFromOldLocation(ret, bidRequest) {
     if (!ret.hasOwnProperty('pubcid')) {
