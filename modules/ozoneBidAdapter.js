@@ -177,6 +177,13 @@ export const spec = {
     return placementId.toString().match(/^[0-9]{10}$/);
   },
   buildRequests(validBidRequests, bidderRequest) {
+    // testing
+    // NO - since v7 this is not the way to do it, it is now disallowed.
+    // https://github.com/prebid/Prebid.js/issues/7651
+    // "make a fully merged ortb2 object available in the bidRequest (which would include global configuration; auction configuration, and the adUnit's ortb2Imp); then gradually ask adapters to use only that as the access point to FPD, and re-think how the fpd module should do enrichment / validation (it should probably run on each request, and not ask the publisher to manually refresh FPD data). Have a plan to eventually phase out bidRequest.ortb2Imp."
+    // SO - this is already in bidRequest.ortb2.
+    logInfo('**TESTING CONFIG', config.getConfig());
+    // logInfo('**TESTING CONFIG ortb2', config.getConfig('ortb2'));
     this.propertyBag.buildRequestsStart = new Date().getTime();
     const bidderKey = BIDDER_CODE;
     const prefix = KEY_PREFIX;
@@ -198,19 +205,27 @@ export const spec = {
     let singleRequest = config.getConfig('ozone.singleRequest');
     singleRequest = singleRequest !== false; // undefined & true will be true
     // we only want to set specific properties on this, not validBidRequests[0].param
-    const ozoneRequest = {};
-    // First party data module : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
+    const ozoneRequest = {site: {}, regs: {}, user: {}};
+    // First party data (prebid core) : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
     // NOTE - see https://docs.prebid.org/features/firstPartyData.html
-    const fpd = deepAccess(bidderRequest, 'ortb2', null);
+    const fpd = deepAccess(bidderRequest, 'ortb2', null); // this contains the entire ortb2 object, including if it has been set using setBidderConfig
     logInfo('got ortb2 fpd: ', fpd);
-    if (fpd && deepAccess(fpd, 'user')) {
-      logInfo('added FPD user object');
-      ozoneRequest.user = fpd.user;
-    }
+
+    // 20250918 - now we are adding the entire ortb2 object rather than adding things piecemeal
+    logInfo('going to assign the FPD ortb2 object to ozoneRequest, wholesale');
+    mergeDeep(ozoneRequest, fpd);
+    toOrtb25(ozoneRequest);
+
+    //  this is no longer necessary
+    // if (fpd && deepAccess(fpd, 'user')) {
+    //   logInfo('added FPD user object');
+    //   ozoneRequest.user = fpd.user;
+    // }
     const getParams = this.getGetParametersAsObject();
     const wlOztestmodeKey = 'oztestmode';
     const isTestMode = getParams[wlOztestmodeKey] || null; // this can be any string, it's used for testing ads
-    ozoneRequest.device = bidderRequest?.ortb2?.device || {}; // 20240925 rupesh changed this
+    // 20250918 this is no longer necessary
+    // ozoneRequest.device = bidderRequest?.ortb2?.device || {}; // 20240925 rupesh changed this
     const placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
     // build the array of params to attach to `imp`
     let schain = null;
@@ -220,6 +235,9 @@ export const spec = {
     }
     const tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
+      // 20250918 - now we will pull in the ortb2 stuff, to allow adunit configs to be set
+      logInfo('merging into bid[] from ozoneBidRequest.ortb2Imp (this includes adunits ortb2imp and gpid & tid from gptPreAuction if included', ozoneBidRequest.ortb2Imp);
+      mergeDeep(obj, ozoneBidRequest.ortb2Imp);
       const placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest);
       obj.id = ozoneBidRequest.bidId;
       obj.tagid = placementId;
@@ -291,8 +309,8 @@ export const spec = {
       }
       obj.placementId = placementId;
       // build the imp['ext'] object - NOTE - Dont obliterate anything that's already in obj.ext
-      deepSetValue(obj, 'ext.prebid', {'storedrequest': {'id': placementId}});
-      obj.ext[bidderKey] = {};
+      mergeDeep(obj, {ext: {prebid: {'storedrequest': {'id': placementId}}}});
+      obj.ext[bidderKey] = obj.ext[bidderKey] || {};
       obj.ext[bidderKey].adUnitCode = ozoneBidRequest.adUnitCode; // eg. 'mpu'
       if (ozoneBidRequest.params.hasOwnProperty('customData')) {
         obj.ext[bidderKey].customData = ozoneBidRequest.params.customData;
@@ -333,16 +351,18 @@ export const spec = {
       if (!schain && deepAccess(ozoneBidRequest, 'ortb2.source.ext.schain')) {
         schain = ozoneBidRequest.ortb2.source.ext.schain;
       }
+
+      // 20250919 - these are not necessary now that we map the adunit ortb2 configs directly into the imp[] objects. Everything will fall into the correct places, including the ortb2Imp objects set in adunits
       // gpid 20230620. If prebid has been compiled with gptPreAuction module then set the gpid in the required location
       // https://docs.xandr.com/bundle/industry-reference/page/publisher-best-practices-for-the-trade-desk.html
-      const gpid = deepAccess(ozoneBidRequest, 'ortb2Imp.ext.gpid');
-      if (gpid) {
-        deepSetValue(obj, 'ext.gpid', gpid);
-      }
-      const transactionId = deepAccess(ozoneBidRequest, 'ortb2Imp.ext.tid');
-      if (transactionId) {
-        obj.ext.tid = transactionId; // this is the transactionId PER adUnit, common across bidders for this unit. Changed to tid 20250617. moved up out of .ozone. 20250624
-      }
+      // const gpid = deepAccess(ozoneBidRequest, 'ortb2Imp.ext.gpid');
+      // if (gpid) {
+      //   deepSetValue(obj, 'ext.gpid', gpid);
+      // }
+      // const transactionId = deepAccess(ozoneBidRequest, 'ortb2Imp.ext.tid');
+      // if (transactionId) {
+      //   obj.ext.tid = transactionId; // this is the transactionId PER adUnit, common across bidders for this unit. Changed to tid 20250617. moved up out of .ozone. 20250624
+      // }
       if (auctionId) {
         obj.ext.auctionId = auctionId; // we were sent a valid auctionId to use - this will also be used as the root id value for the request. moved up out of .ozone. 20250624
       }
@@ -386,18 +406,19 @@ export const spec = {
     // extObj.ortb2 = config.getConfig('ortb2'); // original test location
     // 20220628 - got rid of special treatment for adserver.org
     const userExtEids = deepAccess(validBidRequests, '0.userIdAsEids', []); // generate the UserIDs in the correct format for UserId module
-    ozoneRequest.site = {
+    mergeDeep(ozoneRequest.site, {
       'publisher': {'id': htmlParams.publisherId},
       'page': getRefererInfo().page,
       'id': htmlParams.siteId
-    };
-    ozoneRequest.test = config.getConfig('debug') ? 1 : 0;
+    });
+    delete (ozoneRequest.site?.content); // this kills ozone's server but it's part of the ortb 2.5 spec so should be fine...
+    ozoneRequest.test = config.getConfig('debug') ? 1 : 0; // this has to be literally set, not assigned
     if (bidderRequest && bidderRequest.gdprConsent) {
       logInfo('ADDING GDPR');
       const apiVersion = deepAccess(bidderRequest, 'gdprConsent.apiVersion', 1);
-      ozoneRequest.regs = {ext: {gdpr: bidderRequest.gdprConsent.gdprApplies ? 1 : 0, apiVersion: apiVersion}};
-      if (deepAccess(ozoneRequest, 'regs.ext.gdpr')) {
-        deepSetValue(ozoneRequest, 'user.ext.consent', bidderRequest.gdprConsent.consentString);
+      mergeDeep(ozoneRequest.regs, {ext: {gdpr: bidderRequest.gdprConsent.gdprApplies ? 1 : 0, apiVersion: apiVersion}});
+      if (bidderRequest.gdprConsent.gdprApplies) {
+        deepSetValue(ozoneRequest, 'user.ext.consent', bidderRequest.gdprConsent.consentString); // this is ok to literally set
       } else {
         logWarn('**** Strange CMP info: bidderRequest.gdprConsent exists BUT bidderRequest.gdprConsent.gdprApplies is false. See bidderRequest logged above. ****');
       }
@@ -409,16 +430,17 @@ export const spec = {
       logInfo('ADDING USP consent info');
       // 20220322 adding usp in the correct location https://docs.prebid.org/prebid-server/developers/add-new-bidder-go.html
       // 20220322 IAB correct location, changed from user.ext.uspConsent
-      deepSetValue(ozoneRequest, 'regs.ext.us_privacy', bidderRequest.uspConsent);
+      deepSetValue(ozoneRequest, 'regs.ext.us_privacy', bidderRequest.uspConsent); // this is ok to literally set
     } else {
       logInfo('WILL NOT ADD USP consent info; no bidderRequest.uspConsent.');
     }
     // coded from https://docs.prebid.org/dev-docs/modules/consentManagementGpp.html
-    if (bidderRequest?.ortb2?.regs?.gpp) {
-      // 20240604 - Pat - regs.ext.gpp -> regs.gpp
-      deepSetValue(ozoneRequest, 'regs.ext.gpp', bidderRequest.ortb2.regs.gpp);
-      deepSetValue(ozoneRequest, 'regs.ext.gpp_sid', bidderRequest.ortb2.regs.gpp_sid);
-    }
+    // 20240918 - not needed, toOrtb25() will do this
+    // if (bidderRequest?.ortb2?.regs?.gpp) {
+    //   20240604 - Pat - regs.ext.gpp -> regs.gpp
+      // deepSetValue(ozoneRequest, 'regs.ext.gpp', bidderRequest.ortb2.regs.gpp);
+      // deepSetValue(ozoneRequest, 'regs.ext.gpp_sid', bidderRequest.ortb2.regs.gpp_sid);
+    // }
     if (schain) { // we set this while iterating over the bids
       logInfo('schain found');
       deepSetValue(ozoneRequest, 'source.ext.schain', schain);
@@ -447,13 +469,15 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       for (let i = 0; i < tosendtags.length; i += batchRequestsVal) {
         // 20240715 either use the valid auctionId value or our own generated one
         ozoneRequest.id = generateUUID(); // Unique ID of the bid request, provided by the exchange. (REQUIRED)
-        deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
+        // deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
+        // 20250918
+        mergeDeep(ozoneRequest, {user: {ext: {eids: userExtEids}}});
         // https://www.iab.com/wp-content/uploads/2016/03/OpenRTB-API-Specification-Version-2-5-FINAL.pdf
         if (auctionId) {
           deepSetValue(ozoneRequest, 'source.tid', auctionId);
         }
-        ozoneRequest.imp = tosendtags.slice(i, i + batchRequestsVal);
-        ozoneRequest.ext = extObj;
+        ozoneRequest.imp = tosendtags.slice(i, i + batchRequestsVal); // we want to set this array, not merge
+        mergeDeep(ozoneRequest, {ext: extObj});
         toOrtb25(ozoneRequest);
         if (ozoneRequest.imp.length > 0) {
           arrRet.push({
@@ -464,7 +488,8 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
           });
         }
       }
-      logInfo('batch request going to return : ', arrRet);
+      this.propertyBag.buildRequestsEnd = new Date().getTime();
+      logInfo(`buildRequests batch request going to return at time ${this.propertyBag.buildRequestsEnd} (took ${this.propertyBag.buildRequestsEnd - this.propertyBag.buildRequestsStart}ms):`, arrRet);
       return arrRet;
     }
     // Not batched - return the single request object OR the array:
@@ -473,9 +498,11 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       // 20240715 either use the valid auctionId value or our own generated one
       ozoneRequest.id = generateUUID(); // Unique ID of the bid request, provided by the exchange. (REQUIRED)
       ozoneRequest.imp = tosendtags;
-      ozoneRequest.ext = extObj;
+      mergeDeep(ozoneRequest, {ext: extObj});
       toOrtb25(ozoneRequest);
-      deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
+      // 20250918
+      mergeDeep(ozoneRequest, {user: {ext: {eids: userExtEids}}});
+      // deepSetValue(ozoneRequest, 'user.ext.eids', userExtEids);
       // https://www.iab.com/wp-content/uploads/2016/03/OpenRTB-API-Specification-Version-2-5-FINAL.pdf
       if (auctionId) {
         deepSetValue(ozoneRequest, 'source.tid', auctionId);
@@ -496,8 +523,9 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       const ozoneRequestSingle = Object.assign({}, ozoneRequest);
       ozoneRequestSingle.id = generateUUID(); // Unique ID of the bid request, provided by the exchange. (REQUIRED)
       ozoneRequestSingle.imp = [imp];
-      ozoneRequestSingle.ext = extObj;
-      deepSetValue(ozoneRequestSingle, 'user.ext.eids', userExtEids);
+      mergeDeep(ozoneRequestSingle, {ext: extObj});
+      mergeDeep(ozoneRequestSingle, {user: {ext: {eids: userExtEids}}});
+      // deepSetValue(ozoneRequestSingle, 'user.ext.eids', userExtEids);
       // https://www.iab.com/wp-content/uploads/2016/03/OpenRTB-API-Specification-Version-2-5-FINAL.pdf
       if (auctionId) {
         deepSetValue(ozoneRequestSingle, 'source.tid', auctionId);

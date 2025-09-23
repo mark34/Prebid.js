@@ -3,7 +3,7 @@ import { spec, getWidthAndHeightFromVideoObject, defaultSize } from 'modules/ozo
 import { config } from 'src/config.js';
 import {Renderer} from '../../../src/Renderer.js';
 import * as utils from '../../../src/utils.js';
-import {deepSetValue} from '../../../src/utils.js';
+import {deepSetValue, mergeDeep} from '../../../src/utils.js';
 const OZONEURI = 'https://elb.the-ozone-project.com/openrtb2/auction';
 const BIDDER_CODE = 'ozone';
 
@@ -2255,8 +2255,63 @@ var multiResponse1 = {
 /*
 --------------------end of 2 slots, 2 ----------------------------
  */
-
 describe('ozone Adapter', function () {
+  describe('internal function test deepSet', function() {
+    it('should check deepSet means "unconditionally set element to this value, optionally building the path" and Object.assign will blend the keys together, neither will deeply merge nested objects successfully.', function () {
+      // we want to set additional values on xx.site  whether the key exists or not.
+      // simple first...
+      let xx = {};
+      let yy = {
+        'publisher': {'id': 123},
+        'page': 567,
+        'id': 900
+      };
+      deepSetValue(xx, 'site', yy);
+      expect(xx.site).to.have.all.keys(['publisher', 'page', 'id']);
+
+      // now check site gets obliterated - note `name` will be overwritten:
+      xx = {site: {'name': 'test1'}};
+      deepSetValue(xx, 'site', yy);
+      expect(xx.site).to.have.all.keys([ 'publisher', 'page', 'id']);
+
+      // this compares the 2 functions directly
+      // `site.name` will NOT be overwritten:
+      xx = {site: {'name': 'test1'}};
+      Object.assign(xx.site, yy);
+      expect(xx.site).to.have.all.keys([ 'publisher', 'page', 'id', 'name']);
+
+      // site.name will be overwritten
+      xx = {site: {'name': 'test1'}};
+      deepSetValue(xx, 'site', yy);
+      expect(xx.site).to.have.all.keys([ 'publisher', 'page', 'id']);
+      //
+      //
+
+      // check that we maintain a key that we leapfrog; dsa will be retained
+      xx = {regs: {dsa: {'val1:': 1}}};
+      deepSetValue(xx, 'regs.ext.usprivacy', {'usp_key': 'usp_value'});
+      expect(xx.regs).to.have.all.keys(['dsa', 'ext']);
+
+      // if we set xx.regs, xx.regs.dsa will not be overwritten
+      xx = {regs: {dsa: {'val1:': 1}}};
+      deepSetValue(xx.regs, 'ext.usprivacy', {'usp_key': 'usp_value'});
+      expect(xx.regs).to.have.all.keys(['dsa', 'ext']);
+
+      let ozoneRequest = {user: { ext: {'data': 'some data ... '}, keywords: "a,b,c"}};
+      Object.assign(ozoneRequest, {user: {ext: {eids: ['some eid', 'another one']}}});
+      expect(ozoneRequest.user.ext).to.have.all.keys(['eids']);
+    });
+    it('should verify that mergeDeep does what I want it to do', function() {
+      let ozoneRequest = {user: { ext: {'data': 'some data ... '}, keywords: "a,b,c"}};
+      ozoneRequest = mergeDeep(ozoneRequest, {user: {ext: {eids: ['some eid', 'another one']}}});
+      expect(ozoneRequest.user.ext).to.have.all.keys(['eids', 'data']);
+
+      // check it modifies in-place
+      ozoneRequest = {user: { ext: {'data': 'some data ... '}, keywords: "a,b,c"}};
+      mergeDeep(ozoneRequest, {user: {ext: {eids: ['some eid', 'another one']}}});
+      expect(ozoneRequest.user.ext).to.have.all.keys(['eids', 'data']);
+    });
+  });
   describe('isBidRequestValid', function () {
     const validBidReq = {
       bidder: BIDDER_CODE,
