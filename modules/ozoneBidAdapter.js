@@ -208,15 +208,18 @@ export const spec = {
     const ozoneRequest = {site: {}, regs: {}, user: {}};
     // First party data (prebid core) : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
     // NOTE - see https://docs.prebid.org/features/firstPartyData.html
-    const fpd = deepAccess(bidderRequest, 'ortb2', null); // this contains the entire ortb2 object, including if it has been set using setBidderConfig
+    // const fpd = this.pruneToExtPaths(deepAccess(bidderRequest, 'ortb2', {}), {maxTestDepth: 2}); // this prunes the entire ortb2 object, all elements including if it has been set using setBidderConfig
+    const fpd = deepAccess(bidderRequest, 'ortb2', {}); // this prunes the entire ortb2 object, all elements including if it has been set using setBidderConfig
+    const fpdPruned = this.pruneToExtPaths(fpd, {maxTestDepth: 2}); // only the 'ext' paths.
     logInfo('got ortb2 fpd: ', fpd);
+    logInfo('got ortb2 fpdPruned: ', fpdPruned);
 
     // 20250918 - now we are adding the entire ortb2 object rather than adding things piecemeal
-    logInfo('going to assign the FPD ortb2 object to ozoneRequest, wholesale');
-    mergeDeep(ozoneRequest, fpd);
+    logInfo('going to assign the pruned (ext only) FPD ortb2 object to ozoneRequest, wholesale');
+    mergeDeep(ozoneRequest, fpdPruned);
     toOrtb25(ozoneRequest);
 
-    //  this is no longer necessary
+    // 20250923 this will be catered for with mergeDeep of the fpdPruned object
     // if (fpd && deepAccess(fpd, 'user')) {
     //   logInfo('added FPD user object');
     //   ozoneRequest.user = fpd.user;
@@ -224,8 +227,8 @@ export const spec = {
     const getParams = this.getGetParametersAsObject();
     const wlOztestmodeKey = 'oztestmode';
     const isTestMode = getParams[wlOztestmodeKey] || null; // this can be any string, it's used for testing ads
-    // 20250918 this is no longer necessary
-    // ozoneRequest.device = bidderRequest?.ortb2?.device || {}; // 20240925 rupesh changed this
+
+    mergeDeep(ozoneRequest, {device: bidderRequest?.ortb2?.device || {}}); // 20240925 rupesh changed this - 20250923 I updated it to be mergeDeep
     const placementIdOverrideFromGetParam = this.getPlacementIdOverrideFromGetParam(); // null or string
     // build the array of params to attach to `imp`
     let schain = null;
@@ -236,8 +239,9 @@ export const spec = {
     const tosendtags = validBidRequests.map(ozoneBidRequest => {
       var obj = {};
       // 20250918 - now we will pull in the ortb2 stuff, to allow adunit configs to be set
-      logInfo('merging into bid[] from ozoneBidRequest.ortb2Imp (this includes adunits ortb2imp and gpid & tid from gptPreAuction if included', ozoneBidRequest.ortb2Imp);
-      mergeDeep(obj, ozoneBidRequest.ortb2Imp);
+      let prunedImp = this.pruneToExtPaths(ozoneBidRequest.ortb2Imp, {maxTestDepth: 2});
+      logInfo('merging into bid[] from pruned ozoneBidRequest.ortb2Imp (this includes adunits ortb2imp and gpid & tid from gptPreAuction if included', prunedImp);
+      mergeDeep(obj, prunedImp);
       const placementId = placementIdOverrideFromGetParam || this.getPlacementId(ozoneBidRequest);
       obj.id = ozoneBidRequest.bidId;
       obj.tagid = placementId;
@@ -411,7 +415,8 @@ export const spec = {
       'page': getRefererInfo().page,
       'id': htmlParams.siteId
     });
-    delete (ozoneRequest.site?.content); // this kills ozone's server but it's part of the ortb 2.5 spec so should be fine...
+    // 20250923 not needed if we only pull in the cherry-piucked ext paths:
+    // delete (ozoneRequest.site?.content); // this kills ozone's server but it's part of the ortb 2.5 spec so should be fine...
     ozoneRequest.test = config.getConfig('debug') ? 1 : 0; // this has to be literally set, not assigned
     if (bidderRequest && bidderRequest.gdprConsent) {
       logInfo('ADDING GDPR');
@@ -436,11 +441,12 @@ export const spec = {
     }
     // coded from https://docs.prebid.org/dev-docs/modules/consentManagementGpp.html
     // 20240918 - not needed, toOrtb25() will do this
-    // if (bidderRequest?.ortb2?.regs?.gpp) {
+    // 20250923 re-added this as we are not merging in everything from fpd - only the ext stuff and these 2 are not in an ext path.
+    if (bidderRequest?.ortb2?.regs?.gpp) {
     //   20240604 - Pat - regs.ext.gpp -> regs.gpp
-      // deepSetValue(ozoneRequest, 'regs.ext.gpp', bidderRequest.ortb2.regs.gpp);
-      // deepSetValue(ozoneRequest, 'regs.ext.gpp_sid', bidderRequest.ortb2.regs.gpp_sid);
-    // }
+      deepSetValue(ozoneRequest, 'regs.ext.gpp', bidderRequest.ortb2.regs.gpp);
+      deepSetValue(ozoneRequest, 'regs.ext.gpp_sid', bidderRequest.ortb2.regs.gpp_sid);
+    }
     if (schain) { // we set this while iterating over the bids
       logInfo('schain found');
       deepSetValue(ozoneRequest, 'source.ext.schain', schain);
@@ -456,10 +462,10 @@ export const spec = {
 
     /*
     For a bid request, no matter whether single, batch or non-single:
-====================++==============================++===========
-id = unique random, always
-source.tid AND imp[].ext.ozone.auctionId = auctionId (validBidRequests[].ortb2.source.tid) if pub opts in & it is set
-imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.tid) if pub opts in & it is set
+    ====================++==============================++===========
+    id = unique random, always
+    source.tid AND imp[].ext.ozone.auctionId = auctionId (validBidRequests[].ortb2.source.tid) if pub opts in & it is set
+    imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.tid) if pub opts in & it is set
      */
     // are we to batch the requests (used by reach)
     const batchRequestsVal = this.getBatchRequests(); // false|numeric
@@ -887,21 +893,11 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     // this.debugBidRequest(bidRequest);
 
     const ret = {};
-    // 20250819 change - venatus noticed problems when userIdAsEids was present but not an array. Prebid fixed this Aug 2025 but this was implemented here just in case an older version of pb core is being used.
+    // 20250819 change - venatus noticed problems when userIdAsEids was present but not an array.
+    // Prebid fixed this Aug 2025 but this was implemented here just in case an older version of pb core is being used.
+    // set this to [] if it has a falsy value
     let userIdAsEids = bidRequest.userIdAsEids || [];
 
-    // good solution but this is not testable!!
-    // https://docs.prebid.org/dev-docs/publisher-api-reference/getUserIdsAsEids.html - this will return an array. Except it doesn't always.
-    // if (typeof getGlobal().getUserIdsAsEids === 'function') {
-    //   userIdAsEids = getGlobal().getUserIdsAsEids();
-    //   logInfo('findAllUserIdsFromEids got userIdAsEids from global getUserIdsAsEids', userIdAsEids);
-    // }
-
-    // if (!Array.isArray(userIdAsEids)) {
-    //   logInfo('findAllUserIdsFromEids setting userIdAsEids to an empty array');
-    //   userIdAsEids = [];
-    // }
-    // note - removed the keymap. We are no longer mapping the eid ID back to being userId
     /**
      * userIdAsEids =
      * [{
@@ -920,25 +916,25 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
     this.tryGetPubCidFromOldLocation(ret, bidRequest); // legacy
     return ret;
   },
-  debugBidRequest(o) {
-    const hasOwn = Object.hasOwn(o, 'userIdAsEids');
-    const inChain = 'userIdAsEids' in o;
-    const ownDesc = Object.getOwnPropertyDescriptor(o, 'userIdAsEids');
-    const proto = Object.getPrototypeOf(o);
-    const protoDesc = proto && Object.getOwnPropertyDescriptor(proto, 'userIdAsEids');
-    const hasToJSON = typeof o?.toJSON === 'function';
-    logInfo({info: "***** DEBUG object *****",
-      extensible: Object.isExtensible(o),
-      hasOwn,
-      inChain,
-      ownDesc,      // if exists but enumerable:false, stringify will hide it
-      protoDesc,    // if accessor with {get: f, set: undefined}, assignment won’t create an own prop
-      hasToJSON,
-      keys: Object.keys(o),
-      reflectSetOk: Reflect.set(o, '___probe', 1, o),
-      hasProbe: Object.hasOwn(o, '___probe')
-    });
-  },
+  // debugBidRequest(o) {
+  //   const hasOwn = Object.hasOwn(o, 'userIdAsEids');
+  //   const inChain = 'userIdAsEids' in o;
+  //   const ownDesc = Object.getOwnPropertyDescriptor(o, 'userIdAsEids');
+  //   const proto = Object.getPrototypeOf(o);
+  //   const protoDesc = proto && Object.getOwnPropertyDescriptor(proto, 'userIdAsEids');
+  //   const hasToJSON = typeof o?.toJSON === 'function';
+  //   logInfo({info: "***** DEBUG object *****",
+  //     extensible: Object.isExtensible(o),
+  //     hasOwn,
+  //     inChain,
+  //     ownDesc,      // if exists but enumerable:false, stringify will hide it
+  //     protoDesc,    // if accessor with {get: f, set: undefined}, assignment won’t create an own prop
+  //     hasToJSON,
+  //     keys: Object.keys(o),
+  //     reflectSetOk: Reflect.set(o, '___probe', 1, o),
+  //     hasProbe: Object.hasOwn(o, '___probe')
+  //   });
+  // },
   tryGetPubCidFromOldLocation(ret, bidRequest) {
     if (!ret.hasOwnProperty('pubcid')) {
       const pubcid = deepAccess(bidRequest, 'crumbs.pubcid');
@@ -1102,7 +1098,63 @@ imp[].ext.ozone.transactionId = transactionId (validBidRequests[].ortb2Imp.ext.t
       logObj.floorData = bid.floorData;
     }
     return logObj;
+  },
+
+  /**
+   * Keep only subtrees whose path includes key === testKey ('ext' by default),
+   * but only if that key appears at or above maxTestDepth.
+   *
+   * Depth definition:
+   *   - Root object properties are depth 1: ortb2.ext, ortb2.site
+   *   - Their children are depth 2:       ortb2.site.ext
+   *   - And so on...
+   *
+   * @param {any} input
+   * @param {{ testKey?: string, maxTestDepth?: number }} [opts]
+   *   - testKey: which key name to match (default 'ext')
+   *   - maxTestDepth: inclusive depth limit for where testKey is honored (default Infinity)
+   */
+  pruneToExtPaths: function (input, { testKey = 'ext', maxTestDepth = Infinity } = {}) {
+    const isPlainObj = v => v && typeof v === 'object' && !Array.isArray(v);
+    const deepClone = node => {
+      if (Array.isArray(node)) return node.map(deepClone);
+      if (isPlainObj(node)) {
+        const out = {};
+        for (const [k, v] of Object.entries(node)) out[k] = deepClone(v);
+        return out;
+      }
+      return node;
+    };
+    const isEmpty = v =>
+        v == null ||
+        (Array.isArray(v) ? v.length === 0
+            : isPlainObj(v) ? Object.keys(v).length === 0 : false);
+    function prune(node, inExt, depth) {
+      if (node == null) return undefined;
+      // Primitives only survive if we're already inside an accepted 'ext' subtree.
+      if (typeof node !== 'object') return inExt ? node : undefined;
+      // Already inside an accepted 'ext' subtree: keep verbatim (clone to avoid mutation).
+      if (inExt) return deepClone(node);
+      if (Array.isArray(node)) {
+        const kept = node
+        .map(el => prune(el, false, depth)) // array elements do not increase key depth
+        .filter(el => el !== undefined && !isEmpty(el));
+        return kept.length ? kept : undefined;
+      }
+      // Plain object: walk children. We only "enter ext mode" if key === testKey AND depth+1 <= maxTestDepth.
+      const out = {};
+      for (const [k, v] of Object.entries(node)) {
+        const kDepth = depth + 1; // this key's depth
+        const enterExt = (k === testKey) && (kDepth <= maxTestDepth);
+        const child = prune(v, enterExt, kDepth);
+        if (child !== undefined && !isEmpty(child)) out[k] = child;
+      }
+      return Object.keys(out).length ? out : undefined;
+    }
+    const result = prune(input, false, 0);
+    return result ?? (Array.isArray(input) ? [] : {});
   }
+
 };
 /**
  * add a page-level-unique adId element to all server response bids.

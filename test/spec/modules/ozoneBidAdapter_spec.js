@@ -3104,16 +3104,20 @@ describe('ozone Adapter', function () {
       expect(payload.imp[0].ext.ozone.customData[0].targeting.name).to.equal('example_ortb2_name');
       expect(payload.imp[0].ext.ozone.customData[0].targeting).to.not.have.property('gender')
     });
-    it('should add ortb2 user data to the user object', function () {
+    it('should add ortb2 user data to the user object ONLY if inside ext/', function () {
       const bidderRequest = JSON.parse(JSON.stringify(validBidderRequest));
       bidderRequest.ortb2 = {
         'user': {
-          'gender': 'I identify as a box of rocks'
+          'gender': 'I identify as a box of rocks',
+          'ext': {
+            'gender': 'I identify as a fence panel'
+          }
         }
       };
       const request = spec.buildRequests(validBidRequests, bidderRequest);
       const payload = JSON.parse(request.data);
-      expect(payload.user.gender).to.equal('I identify as a box of rocks');
+      expect(payload.user.ext.gender).to.equal('I identify as a fence panel');
+      expect(payload.user).to.not.have.property('gender');
     });
     it('should not override the user.ext.consent string even if this is set in config ortb2', function () {
       const bidderRequest = JSON.parse(JSON.stringify(bidderRequestWithFullGdpr));
@@ -3853,6 +3857,274 @@ describe('ozone Adapter', function () {
       });
       let response = spec.findAllUserIdsFromEids(bid);
       expect(Object.keys(response).length).to.equal(1);
+    });
+  });
+  describe('pruneToExtPaths', function() {
+    it('should prune a json object according to my params', function () {
+      const jsonObj = JSON.parse(`{
+          "site": {
+            "name": "example",
+            "domain": "page.example.com",
+            "cat": ["IAB2"],
+            "sectioncat": ["IAB2-2"],
+            "pagecat": ["IAB2-2"],
+            "page": "https://page.example.com/here.html",
+            "ref": "https://ref.example.com",
+            "keywords": "power tools, drills",
+            "search": "drill",
+            "content": {
+              "userrating": "4",
+              "data": [
+                {
+                  "name": "www.dataprovider1.com",
+                  "ext": {
+                    "segtax": "7",
+                    "cids": ["iris_c73g5jq96mwso4d8"]
+                  },
+                  "segment": [
+                    { "id": "687" },
+                    { "id": "123" }
+                  ]
+                }
+              ],
+              "id": "some_id",
+              "episode": "1",
+              "title": "some title",
+              "series": "some series",
+              "season": "s1",
+              "artist": "John Doe",
+              "genre": "some genre",
+              "isrc": "CC-XXX-YY-NNNNN",
+              "url": "http://foo_url.de",
+              "cat": ["IAB1-1", "IAB1-2", "IAB2-10"],
+              "context": "7",
+              "keywords": "k1,k2",
+              "live": "0"
+            },
+            "ext": {
+              "data": {
+                "pageType": "article",
+                "category": "repair"
+              }
+            }
+          },
+          "user": {
+            "keywords": "a,b",
+            "data": [
+              {
+                "name": "dataprovider.com",
+                "ext": {
+                  "segtax": "4"
+                },
+                "segment": [
+                  {
+                    "id": "1"
+                  }
+                ]
+              }
+            ],
+            "ext": {
+              "data": {
+                "registered": "true",
+                "interests": ["cars"]
+              }
+            }
+          },
+          "regs": {
+            "gpp": "abc1234",
+            "gpp_sid": ["7"],
+            "ext": {
+              "dsa": {
+                "dsarequired": "3",
+                "pubrender": "0",
+                "datatopub": "2",
+                "transparency": [
+                  {
+                    "domain": "platform1domain.com",
+                    "dsaparams": ["1"]
+                  },
+                  {
+                    "domain": "platform2domain.com",
+                    "dsaparams": ["1", "2"]
+                  }
+                ]
+              }
+            }
+          },
+          "ext": {
+            "testval1": "value 1",
+            "data": {
+              "testval2": "value 2"
+            }
+          },
+          "test_bad": {
+            "testvalX": "XXXXXXXX",
+            "data": {
+              "testvalY": "YYYYYYYYYYYY"
+            },
+            "not_ext": {
+              "somekey": "someval"
+            }
+          }
+        }
+      `);
+      const parsed = spec.pruneToExtPaths(jsonObj, {maxTestDepth: 2});
+      expect(parsed).to.have.all.keys('site', 'user', 'regs', 'ext');
+      expect(Object.keys(parsed.site).length).to.equal(1);
+      expect(parsed.site).to.have.all.keys('ext');
+    });
+    it('should prune a json object according to my params even when its empty', function () {
+      const jsonObj = {};
+      const parsed = spec.pruneToExtPaths(jsonObj, {maxTestDepth: 2});
+
+      // console.log('parsed', parsed);
+
+      expect(Object.keys(parsed).length).to.equal(0);
+    });
+    it('should prune a json object using Infinity as max depth', function () {
+      const jsonObj = JSON.parse(`{
+          "site": {
+            "name": "example",
+            "domain": "page.example.com",
+            "cat": ["IAB2"],
+            "sectioncat": ["IAB2-2"],
+            "pagecat": ["IAB2-2"],
+            "page": "https://page.example.com/here.html",
+            "ref": "https://ref.example.com",
+            "keywords": "power tools, drills",
+            "search": "drill",
+            "content": {
+              "userrating": "4",
+              "data": [
+                {
+                  "name": "www.dataprovider1.com",
+                  "ext": {
+                    "segtax": "7",
+                    "cids": ["iris_c73g5jq96mwso4d8"]
+                  },
+                  "segment": [
+                    { "id": "687" },
+                    { "id": "123" }
+                  ]
+                }
+              ],
+              "id": "some_id",
+              "episode": "1",
+              "title": "some title",
+              "series": "some series",
+              "season": "s1",
+              "artist": "John Doe",
+              "genre": "some genre",
+              "isrc": "CC-XXX-YY-NNNNN",
+              "url": "http://foo_url.de",
+              "cat": ["IAB1-1", "IAB1-2", "IAB2-10"],
+              "context": "7",
+              "keywords": "k1,k2",
+              "live": "0"
+            },
+            "ext": {
+              "data": {
+                "pageType": "article",
+                "category": "repair"
+              }
+            }
+          },
+          "user": {
+            "keywords": "a,b",
+            "data": [
+              {
+                "name": "dataprovider.com",
+                "ext": {
+                  "segtax": "4"
+                },
+                "segment": [
+                  {
+                    "id": "1"
+                  }
+                ]
+              }
+            ],
+            "ext": {
+              "data": {
+                "registered": "true",
+                "interests": ["cars"]
+              }
+            }
+          },
+          "regs": {
+            "gpp": "abc1234",
+            "gpp_sid": ["7"],
+            "ext": {
+              "dsa": {
+                "dsarequired": "3",
+                "pubrender": "0",
+                "datatopub": "2",
+                "transparency": [
+                  {
+                    "domain": "platform1domain.com",
+                    "dsaparams": ["1"]
+                  },
+                  {
+                    "domain": "platform2domain.com",
+                    "dsaparams": ["1", "2"]
+                  }
+                ]
+              }
+            }
+          },
+          "ext": {
+            "testval1": "value 1",
+            "data": {
+              "testval2": "value 2"
+            }
+          },
+          "test_bad": {
+            "testvalX": "XXXXXXXX",
+            "data": {
+              "testvalY": "YYYYYYYYYYYY"
+            },
+            "not_ext": {
+              "somekey": "someval"
+            }
+          }
+        }
+      `);
+      const parsed = spec.pruneToExtPaths(jsonObj, {maxTestDepth: Infinity});
+
+      // console.log('parsed', parsed);
+
+      expect(parsed.site.content.data[0].ext.segtax).to.equal('7');
+    });
+    it('should prune another json object', function () {
+      const jsonObj = JSON.parse(`{
+          "site": {
+            "ext": {
+              "data": {
+                "pageType": "article",
+                "category": "something_easy_to_find"
+              }
+            }
+          },
+          "user": {
+            "ext": {
+              "data": {
+                "registered": true,
+                "interests": ["cars", "trucks", "aligators", "scorpions"]
+              }
+            },
+            "data": {
+              "key1": "This will not be picked up",
+              "reason": "Because its outside of ext"
+            }
+          }
+        }`);
+      const parsed = spec.pruneToExtPaths(jsonObj, {maxTestDepth: 2});
+
+      // console.log('parsed', parsed);
+
+      expect(Object.keys(parsed.user).length).to.equal(1);
+      expect(Object.keys(parsed)).to.have.members(['site', 'user']);
+      expect(Object.keys(parsed.user)).to.have.members(['ext']);
     });
   });
 });
