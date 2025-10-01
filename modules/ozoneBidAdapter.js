@@ -707,7 +707,7 @@ export const spec = {
             if (seat.match(/^ozappnexus/)) {
               adserverTargeting[prefix + '_' + seat + '_sid'] = String(allBidsForThisBidid[seat].cid);
             }
-            labels = deepAccess(allBidsForThisBidid[seat], 'ext.prebid.labels', null);
+            labels = deepAccess(allBidsForThisBidid[seat], 'ext.prebid.labels', null) || deepAccess(allBidsForThisBidid[seat], 'ext.bidder.prebid.label', null); // note - singular in the new location
             if (labels) {
               adserverTargeting[prefix + '_' + seat + '_labels'] = labels.join(',');
             }
@@ -731,7 +731,7 @@ export const spec = {
         adserverTargeting[prefix + '_uuid'] = deepAccess(thisBid, 'ext.prebid.targeting.hb_uuid', 'no-id');
         if (enhancedAdserverTargeting) {
           // 20250211 - labels returned (array)
-          labels = deepAccess(winningBid, 'ext.prebid.labels', null);
+          labels = deepAccess(winningBid, 'ext.prebid.labels', null) || deepAccess(winningBid, 'ext.bidder.prebid.label', null); // note - singular in the new location
           if (labels) {
             adserverTargeting[prefix + '_labels'] = labels.join(',');
           }
