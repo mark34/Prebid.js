@@ -152,7 +152,7 @@ export const spec = {
         logError(`${vf} :no customData[0].targeting`, adUnitCode);
         return false;
       }
-      if (typeof bid.params.customData[0]['targeting'] != 'object') {
+      if (typeof bid.params.customData[0]['targeting'] !== 'object') {
         logError(`${vf} : customData[0].targeting is not an Object`, adUnitCode);
         return false;
       }
@@ -262,7 +262,7 @@ export const spec = {
         if (ozoneBidRequest.mediaTypes.hasOwnProperty(VIDEO)) {
           logInfo('openrtb 2.5 compliant video');
           // examine all the video attributes in the config, and either put them into obj.video if allowed by IAB2.5 or else in to obj.video.ext
-          if (typeof ozoneBidRequest.mediaTypes[VIDEO] == 'object') {
+          if (typeof ozoneBidRequest.mediaTypes[VIDEO] === 'object') {
             const childConfig = deepAccess(ozoneBidRequest, 'params.video', {});
             obj.video = this.unpackVideoConfigIntoIABformat(ozoneBidRequest.mediaTypes[VIDEO], childConfig);
             obj.video = this.addVideoDefaults(obj.video, ozoneBidRequest.mediaTypes[VIDEO], childConfig);
@@ -615,7 +615,7 @@ export const spec = {
     let labels;
     let enhancedAdserverTargeting = config.getConfig('ozone.enhancedAdserverTargeting');
     logInfo('enhancedAdserverTargeting', enhancedAdserverTargeting);
-    if (typeof enhancedAdserverTargeting == 'undefined') {
+    if (typeof enhancedAdserverTargeting === 'undefined') {
       enhancedAdserverTargeting = true;
     }
     logInfo('enhancedAdserverTargeting', enhancedAdserverTargeting);
@@ -1126,9 +1126,9 @@ export const spec = {
       return node;
     };
     const isEmpty = v =>
-        v == null ||
+      v == null ||
         (Array.isArray(v) ? v.length === 0
-            : isPlainObj(v) ? Object.keys(v).length === 0 : false);
+          : isPlainObj(v) ? Object.keys(v).length === 0 : false);
     function prune(node, inExt, depth) {
       if (node == null) return undefined;
       // Primitives only survive if we're already inside an accepted 'ext' subtree.
@@ -1137,8 +1137,8 @@ export const spec = {
       if (inExt) return deepClone(node);
       if (Array.isArray(node)) {
         const kept = node
-        .map(el => prune(el, false, depth)) // array elements do not increase key depth
-        .filter(el => el !== undefined && !isEmpty(el));
+          .map(el => prune(el, false, depth)) // array elements do not increase key depth
+          .filter(el => el !== undefined && !isEmpty(el));
         return kept.length ? kept : undefined;
       }
       // Plain object: walk children. We only "enter ext mode" if key === testKey AND depth+1 <= maxTestDepth.

@@ -3,6 +3,9 @@ import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 import { _each, _map, deepAccess, deepSetValue, formatQS, triggerPixel, logInfo } from '../src/utils.js';
+import { ajax } from '../src/ajax.js';
+import { config as pbjsConfig } from '../src/config.js';
+import { isWebdriverEnabled } from '../libraries/webdriver/webdriver.js';
 
 /**
  * @typedef {import('../src/adapters/bidderFactory.js').Bid} Bid
@@ -48,14 +51,37 @@ import { _each, _map, deepAccess, deepSetValue, formatQS, triggerPixel, logInfo 
 
 const BIDDER_CODE = 'yandex';
 const BIDDER_URL = 'https://yandex.ru/ads/prebid';
+const EVENT_TRACKER_URL = 'https://yandex.ru/ads/trace';
+// We send data in 1% of cases
+const DEFAULT_SAMPLING_RATE = 0.1;
+const EVENT_LOG_RANDOM_NUMBER = Math.random();
 const DEFAULT_TTL = 180;
 const DEFAULT_CURRENCY = 'EUR';
 /**
  * @type {MediaType[]}
  */
 const SUPPORTED_MEDIA_TYPES = [BANNER, NATIVE, VIDEO];
+
+const ORTB_MTYPES = {
+  BANNER: 1,
+  VIDEO: 2,
+  NATIVE: 4
+};
+
 const SSP_ID = 10500;
-const ADAPTER_VERSION = '2.3.0';
+const ADAPTER_VERSION = '2.7.0';
+
+const TRACKER_METHODS = {
+  img: 1,
+  js: 2,
+};
+
+const TRACKER_EVENTS = {
+  impression: 1,
+  'viewable-mrc50': 2,
+  'viewable-mrc100': 3,
+  'viewable-video50': 4,
+};
 
 const IMAGE_ASSET_TYPES = {
   ICON: 1,
@@ -177,8 +203,13 @@ export const spec = {
         site: ortb2?.site,
         tmax: timeout,
         user: ortb2?.user,
-        device: ortb2?.device,
+        device: ortb2?.device ? { ...ortb2.device, ...(ortb2.device.ext ? { ext: { ...ortb2.device.ext } } : {}) } : undefined,
       };
+
+      // Warning: accessing navigator.webdriver may impact fingerprinting scores when this API is included in the built script.
+      if (isWebdriverEnabled()) {
+        deepSetValue(data, 'device.ext.webdriver', true);
+      }
 
       if (!data?.site?.content?.language) {
         const documentLang = deepAccess(ortb2, 'site.ext.data.documentLang');
@@ -223,7 +254,31 @@ export const spec = {
     }
 
     triggerPixel(nurl);
-  }
+  },
+
+  /**
+   * Register bidder specific code, which will execute if bidder timed out after an auction
+   *
+   * @param {Array} timeoutData timeout specific data
+   */
+  onTimeout: function(timeoutData) {
+    eventLog('PREBID_TIMEOUT_EVENT', timeoutData);
+  },
+  onBidderError: function({ error, bidderRequest }) {
+    eventLog('PREBID_BIDDER_ERROR_EVENT', {
+      error: {
+        message: error?.reason?.message,
+        stack: error?.reason?.stack,
+      },
+      bidderRequest,
+    });
+  },
+  onBidBillable: function (bid) {
+    eventLog('PREBID_BID_BILLABLE_EVENT', bid);
+  },
+  onAdRenderSucceeded: function (bid) {
+    eventLog('PREBID_AD_RENDER_SUCCEEDED_EVENT', bid);
+  },
 }
 
 /**
@@ -312,20 +367,20 @@ function mapBanner(bidRequest) {
 function mapVideo(bidRequest) {
   const videoParams = deepAccess(bidRequest, 'mediaTypes.video');
   if (videoParams) {
-      const { sizes, playerSize } = videoParams;
+    const { sizes, playerSize } = videoParams;
 
-      const format = (playerSize || sizes)?.map((size) => ({ w: size[0], h: size[1] }));
+    const format = (playerSize || sizes)?.map((size) => ({ w: size[0], h: size[1] }));
 
-      const [firstSize] = format || [];
+    const [firstSize] = format || [];
 
-      delete videoParams.sizes;
+    delete videoParams.sizes;
 
-      return {
-          ...videoParams,
-          w: firstSize?.w,
-          h: firstSize?.h,
-          format,
-      };
+    return {
+      ...videoParams,
+      w: firstSize?.w,
+      h: firstSize?.h,
+      format,
+    };
   }
 }
 
@@ -347,10 +402,13 @@ function mapNative(bidRequest) {
     });
 
     return {
-      ver: 1.1,
+      ver: 1.2,
       request: JSON.stringify({
-        ver: 1.1,
-        assets
+        ver: 1.2,
+        assets,
+        eventtrackers: [
+          { event: TRACKER_EVENTS.impression, methods: [TRACKER_METHODS.img] },
+        ],
       }),
     };
   }
@@ -443,15 +501,23 @@ function interpretResponse(serverResponse, { bidRequest }) {
       }
     };
 
-    if (bidReceived.adm.indexOf('{') === 0) {
-      prBid.mediaType = NATIVE;
-      prBid.native = interpretNativeAd(bidReceived, price, currency);
-    } else if (bidReceived.adm.indexOf('<VAST') > -1) {
-      prBid.mediaType = VIDEO;
-      prBid.vastXml = bidReceived.adm;
-    } else {
-      prBid.mediaType = BANNER;
-      prBid.ad = bidReceived.adm;
+    if (bidReceived.lurl) {
+      prBid.lurl = bidReceived.lurl;
+    }
+
+    switch (bidReceived.mtype) {
+      case ORTB_MTYPES.VIDEO:
+        prBid.mediaType = VIDEO;
+        prBid.vastXml = bidReceived.adm;
+        break;
+      case ORTB_MTYPES.NATIVE:
+        prBid.mediaType = NATIVE;
+        prBid.native = interpretNativeAd(bidReceived, price, currency);
+        break;
+      case ORTB_MTYPES.BANNER:
+        prBid.mediaType = BANNER;
+        prBid.ad = bidReceived.adm;
+        break;
     }
 
     return prBid;
@@ -485,9 +551,22 @@ function interpretNativeAd(bidReceived, price, currency) {
       }
     });
 
-    result.impressionTrackers = _map(native.imptrackers, (tracker) =>
+    const impressionTrackers = _map(native.imptrackers || [], (tracker) =>
       replaceAuctionPrice(tracker, price, currency)
     );
+
+    _each(native.eventtrackers || [], (eventtracker) => {
+      if (
+        eventtracker.event === TRACKER_EVENTS.impression &&
+        eventtracker.method === TRACKER_METHODS.img
+      ) {
+        impressionTrackers.push(
+          replaceAuctionPrice(eventtracker.url, price, currency)
+        );
+      }
+    });
+
+    result.impressionTrackers = impressionTrackers;
 
     return result;
   } catch (e) {}
@@ -519,6 +598,25 @@ function addRTT(url, rtt) {
   url = urlObj.toString();
 
   return url;
+}
+
+function eventLog(name, resp) {
+  const bidderConfig = pbjsConfig.getConfig();
+
+  const samplingRate = bidderConfig?.yandex?.sampling ?? DEFAULT_SAMPLING_RATE;
+
+  if (samplingRate > EVENT_LOG_RANDOM_NUMBER) {
+    resp.adapterVersion = ADAPTER_VERSION;
+    resp.prebidVersion = '$prebid.version$';
+
+    const data = {
+      name: name,
+      unixtime: Math.floor(Date.now() / 1000),
+      data: resp,
+    };
+
+    ajax(EVENT_TRACKER_URL, undefined, JSON.stringify(data), { method: 'POST', withCredentials: true });
+  }
 }
 
 registerBidder(spec);
