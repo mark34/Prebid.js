@@ -188,6 +188,15 @@ export const spec = {
     const bidderKey = BIDDER_CODE;
     const prefix = KEY_PREFIX;
     logInfo(`buildRequests time: ${this.propertyBag.buildRequestsStart} v ${OZONEVERSION} validBidRequests`, deepClone(validBidRequests), 'bidderRequest', deepClone(bidderRequest));
+
+    // 20260622 - comment this out - prebid would object
+    // 20251021 - lets reveal what is going on in the bidRequests re userIds
+    // specifically log the userId bits, as they are now hidden from logging on the object :-(
+    // logInfo('bidRequest[0].userIdAsEids = ', deepAccess(validBidRequests, '0.userIdAsEids')); // see https://docs.prebid.org/dev-docs/modules/userId.html
+    // if (Array.isArray(validBidRequests) && validBidRequests.length > 0) {
+    //   this.debugBidRequest(validBidRequests[0]);
+    // }
+
     // First check - is there any config to block this request?
     if (this.blockTheRequest()) {
       return [];
@@ -917,18 +926,22 @@ export const spec = {
     return ret;
   },
   // debugBidRequest(o) {
-  //   const hasOwn = Object.hasOwn(o, 'userIdAsEids');
+  //   const hasOwnUserIdAsEids = Object.hasOwn(o, 'userIdAsEids');
+  //   const type = hasOwnUserIdAsEids ? typeof o.userIdAsEids : 'n/a';
+  //   const objValue = hasOwnUserIdAsEids ? JSON.parse(JSON.stringify(o.userIdAsEids)) : 'n/a';
   //   const inChain = 'userIdAsEids' in o;
-  //   const ownDesc = Object.getOwnPropertyDescriptor(o, 'userIdAsEids');
+  //   const ownPropertyDescriptor = Object.getOwnPropertyDescriptor(o, 'userIdAsEids');
   //   const proto = Object.getPrototypeOf(o);
-  //   const protoDesc = proto && Object.getOwnPropertyDescriptor(proto, 'userIdAsEids');
+  //   const prototypeDescriptor = proto && Object.getOwnPropertyDescriptor(proto, 'userIdAsEids');
   //   const hasToJSON = typeof o?.toJSON === 'function';
-  //   logInfo({info: "***** DEBUG object *****",
+  //   logInfo({info: "***** DEBUG bid object, examining bid[0].userIdAsEids *****",
   //     extensible: Object.isExtensible(o),
-  //     hasOwn,
+  //     hasOwnUserIdAsEids,
+  //     'typeOf': type,
+  //     'value': objValue,
   //     inChain,
-  //     ownDesc,      // if exists but enumerable:false, stringify will hide it
-  //     protoDesc,    // if accessor with {get: f, set: undefined}, assignment won’t create an own prop
+  //     ownPropertyDescriptor,      // if exists but enumerable:false, stringify will hide it
+  //     prototypeDescriptor,    // if accessor with {get: f, set: undefined}, assignment won’t create an own prop
   //     hasToJSON,
   //     keys: Object.keys(o),
   //     reflectSetOk: Reflect.set(o, '___probe', 1, o),
