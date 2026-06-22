@@ -49,7 +49,7 @@ const AUCTIONURI = '/openrtb2/auction';
 const OZONECOOKIESYNC = '/static/load-cookie.html';
 const OZONE_RENDERER_URL = 'https://prebid.the-ozone-project.com/ozone-renderer.js';
 const KEY_PREFIX = 'oz';
-const OZONEVERSION = '4.0.2';
+const OZONEVERSION = '4.1';
 export const spec = {
   // can be added for testing - maybe that onAdRenderSucceeded might be useful for tracking.
   // onBidWon: function(bid, options) { LogInfo('onBidWon', JSON.stringify(bid) ); },
@@ -188,6 +188,9 @@ export const spec = {
     const bidderKey = BIDDER_CODE;
     const prefix = KEY_PREFIX;
     logInfo(`buildRequests time: ${this.propertyBag.buildRequestsStart} v ${OZONEVERSION} validBidRequests`, deepClone(validBidRequests), 'bidderRequest', deepClone(bidderRequest));
+
+    // 20260622 - call ozone to get additional keys before bidding
+
 
     // 20260622 - comment this out - prebid would object
     // 20251021 - lets reveal what is going on in the bidRequests re userIds
