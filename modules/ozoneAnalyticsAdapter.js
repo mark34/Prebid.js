@@ -32,7 +32,7 @@ var _analyticsQueue = [];
 var _endpoint = 'https://elb.the-ozone-project.com/csa'; // 20240213
 var _sendCount = 0;
 const analyticsType = 'endpoint';
-export const ANALYTICS_VERSION = '0.2';
+export const ANALYTICS_VERSION = '0.3';
 
 /*
 Options:
@@ -91,8 +91,19 @@ function getFloorFields(floorData = {}) {
   };
 }
 
-function getOzoneRtdFloorData(args) {
-  return auctionManager.index.getBidRequest(args)?.ozoneRtdFloorData;
+function getAnalyticsFloorData(args) {
+  const bidRequest = auctionManager.index.getBidRequest(args);
+
+  // The RTD provider removes getFloor() when it has no floor for this bid and
+  // persists that decision on the bid request. The price floors response hook
+  // may still attach its base/default floorData later, but that floor was not
+  // sent to the bidder and therefore must not be reported by this adapter.
+  if (bidRequest?.ignoreFloors === true) {
+    logInfo('getAnalyticsFloorData: ignoring floorData because bidRequest.ignoreFloors is true');
+    return {};
+  }
+
+  return bidRequest?.ozoneRtdFloorData ?? args.ozoneRtdFloorData ?? args.floorData ?? {};
 }
 
 // to see what's available use the debug console to pause execution in a browser
@@ -101,9 +112,11 @@ function getOzoneRtdFloorData(args) {
  * get the object we need to send for logging for bid response
  * @param eventType string = one of the event constants
  * @param objArgs object `t` we get for e="bidResponse" in debug window; this will basically be a bid object
+ * @param _configOptions
  * @returns {Object}
  */
 export function mapObject(eventType, objArgs, _configOptions) {
+  logInfo('mapObject: eventType: ' + eventType + ', objArgs', deepClone(objArgs), ', _configOptions: ', deepClone(_configOptions));
   // 20260707 - updated these from originally looking for 'bidderRequests.0.bids.0.params.publisherId' - objArgs is already just a bid, not the whole array, for bid type events.
   publisherId = publisherId || deepAccess(objArgs, 'params.publisherId', '');
   siteId = siteId || deepAccess(objArgs, 'params.siteId', '');
@@ -137,7 +150,7 @@ export function mapObject(eventType, objArgs, _configOptions) {
     pb_timeout: String(objArgs.timeout || ''), // this is present on bid timeout events - might be useful; it's the prebid timeout value set for the auction
     adm_seat: String(admSeat),
     extra: String(objArgs.extra || ''),
-    ...getFloorFields(getOzoneRtdFloorData(objArgs) || objArgs.ozoneRtdFloorData || objArgs.floorData)
+    ...getFloorFields(getAnalyticsFloorData(objArgs))
   };
   // add conditional bits
   if (objArgs.bidder === 'ozone' && eventType === BID_RESPONSE) {

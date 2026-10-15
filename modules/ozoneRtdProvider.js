@@ -225,15 +225,20 @@ export function applyFloors(reqBidsConfigObj, floors, floorsByBidder) {
     const generic = byAdUnit[adUnit.code];
     const perBidder = byBidder[adUnit.code] || {};
     (adUnit.bids || []).forEach((bid) => {
+      logInfo(`${MODULE_NAME}: applyFloors: bid: `, deepClone(bid), ` bidder ${bid.bidder} on adUnit ${adUnit.code}`);
       const f = perBidder[bid.bidder] || generic;
       const floor = parseFloat(f?.declaredFloor);
       // The base floors config exists only to activate the floors module before
       // this RTD hook. Remove its getFloor signal when RTD supplied no floor for
       // this bid; adapters must not receive placeholder/null floor fields.
       if (isNaN(floor)) {
+        logInfo(`${MODULE_NAME}: applyFloors: no floor for bidder ${bid.bidder} on adUnit ${adUnit.code}, removing getFloor() wrapper & floorData if it exists`);
         delete bid.getFloor;
+        if (bid.floorData) delete bid.floorData;
+        bid.ignoreFloors = true;
         return;
       }
+      logInfo(`${MODULE_NAME}: applyFloors: bidder ${bid.bidder} on adUnit ${adUnit.code} has declaredFloor ${floor}`);
       // only wrap when we have a numeric floor AND the floors module already
       // attached getFloor() to this bid (ie floors are active for the auction)
       if (typeof bid.getFloor !== 'function') return;
@@ -244,7 +249,14 @@ export function applyFloors(reqBidsConfigObj, floors, floorsByBidder) {
         const base = orig.call(this, params) || {};
         const baseFloor = typeof base.floor === 'number' ? base.floor : 0;
         const appliedFloor = Math.max(floor, baseFloor);
-        storeOzoneRtdFloorData(reqBidsConfigObj, adUnit, bid, buildOzoneRtdFloorData(f, appliedFloor, currency, params));
+        const floorData = buildOzoneRtdFloorData(f, appliedFloor, currency, params);
+        storeOzoneRtdFloorData(reqBidsConfigObj, adUnit, bid, floorData);
+        // adapterManager clones ad-unit bids into bidder requests. getFloor() is
+        // invoked as a method of that clone, so persist the exact value returned
+        // to the adapter on the indexed request that analytics later retrieves.
+        if (this !== bid) {
+          storeOzoneRtdFloorData(reqBidsConfigObj, adUnit, this, floorData);
+        }
         return { floor: appliedFloor, currency };
       };
       applied++;

@@ -216,6 +216,19 @@ describe('Ozone RTD Provider', function () {
       expect(req.adUnits[0].bids[0].getFloor().floor).to.equal(0.9);
     });
 
+    it('stores the applied floor on the cloned bid request that invokes getFloor', function () {
+      const req = { adUnits: [{ code: 'mpu', bids: [{ bidder: 'ozone', getFloor: () => ({ floor: 0.01, currency: 'USD' }) }] }] };
+      applyFloors(req, { mpu: { declaredFloor: 0.40, currency: 'USD' } }, {});
+      const bidRequest = { ...req.adUnits[0].bids[0] };
+
+      expect(bidRequest.getFloor({ mediaType: 'banner', size: [300, 250], currency: 'USD' })).to.deep.equal({ floor: 0.40, currency: 'USD' });
+      expect(bidRequest.ozoneRtdFloorData).to.include({
+        floorValue: 0.40,
+        floorCurrency: 'USD'
+      });
+      expect(bidRequest.ozoneRtdFloorData.matchedFields).to.deep.equal({ mediaType: 'banner' });
+    });
+
     it('does not wrap bids without getFloor (floors module inactive)', function () {
       const req = { adUnits: [{ code: 'mpu', bids: [{ bidder: 'ozone' }] }] };
       expect(applyFloors(req, { mpu: { declaredFloor: 0.40 } }, {})).to.equal(0);
