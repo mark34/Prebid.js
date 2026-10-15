@@ -624,3 +624,12 @@ gulp.task('validate-names', function (done) {
     validateNaming().then(done, done);
   });
 });
+
+
+
+// Expose selected gulp plugins globally for gulpExtra tasks that avoid require/import
+globalThis.gulp = gulp
+globalThis.strip = require('gulp-strip-comments')
+globalThis.replace = replace
+globalThis.rename = rename
+require("require-dir")("./gulpExtra");
